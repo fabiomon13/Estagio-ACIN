@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# Python / backend
+backend/.venv
+backend/**/__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Node / frontend
+frontend/node_modules
+frontend/dist
+frontend/dist-ssr
+*.local
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
