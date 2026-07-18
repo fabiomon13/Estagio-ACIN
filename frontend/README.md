@@ -39,6 +39,50 @@ The app runs at `http://localhost:5173`.
 
 ## Structure
 
+The following structure represents the recommended organization for each feature. Not every feature will necessarily require all of these directories. Create `components`, `hooks`, `services` or `types` only when they are actually needed.
+
+```text
+src/
+├── app/
+│   └── AppRouter.tsx          # Central application routing
+│
+├── assets/                    # Images, icons and static assets
+│
+├── components/
+│   ├── layout/                # Shared structural components
+│   └── ui/                    # Shared reusable UI components
+│
+├── features/
+│   ├── admin/
+│   ├── auth/
+│   ├── client/
+│   ├── kitchen/
+│   └── staff/
+│
+├── hooks/                     # Hooks shared across features
+├── services/
+│   └── api/                   # Shared API client and configuration
+├── utils/                     # Shared utility functions
+├── App.tsx                    # Root application component
+├── index.css                  # Global styles and Tailwind entry point
+└── main.tsx                   # Application entry point
+```
+
+Each feature may follow this internal structure when required:
+
+```text
+feature/
+├── components/                # Components used only by this feature
+├── hooks/                     # Feature-specific hooks
+├── pages/                     # Route-level pages
+├── services/                  # Feature-specific API operations
+└── types/                     # Feature-specific TypeScript types
+```
+
+Feature-specific code should remain inside its respective feature. Code shared by multiple features should be placed in the top-level `components`, `hooks`, `services` or `utils` directories.
+
+> Some currently empty directories contain a `.gitkeep` file so they can be tracked by Git. Remove the `.gitkeep` file when adding the first real file to that directory.
+
 ## Conventions
 
 - Code is formatted with Prettier (`.prettierrc`) and linted with ESLint (`eslint.config.js`).
