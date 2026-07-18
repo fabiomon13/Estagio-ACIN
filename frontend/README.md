@@ -1,75 +1,46 @@
-# React + TypeScript + Vite
+# Scan & Serve — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend for **Scan & Serve**, a group internship project. Web interface to manage a buffet restaurant, built with React and TypeScript.
 
-Currently, two official plugins are available:
+> This package is the frontend only. For the project's overall picture (including the FastAPI backend), see the [root README](../README.md).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Stack
 
-## React Compiler
+- [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
+- [Vite](https://vite.dev/) as bundler and dev server
+- [React Router](https://reactrouter.com/) for routing
+- [Tailwind CSS 4](https://tailwindcss.com/) for styling
+- [ESLint](https://eslint.org/) + [Prettier](https://prettier.io/) for linting and formatting
+- [Husky](https://typicode.github.io/husky/) + [lint-staged](https://github.com/lint-staged/lint-staged) for automated pre-commit checks
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Requirements
 
-## Expanding the ESLint configuration
+- Node 24 (see `../mise.toml`; installed automatically if you use [mise](https://mise.jdx.dev/))
+- Yarn
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Setup
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+yarn install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Available scripts
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+| Command             | Description                                      |
+| ------------------- | ------------------------------------------------ |
+| `yarn dev`          | Starts the dev server with HMR                   |
+| `yarn build`        | Type-checks (`tsc -b`) and builds for production |
+| `yarn preview`      | Serves the production build locally              |
+| `yarn lint`         | Runs ESLint across the project                   |
+| `yarn format`       | Formats the project with Prettier                |
+| `yarn format:check` | Checks formatting without writing changes        |
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+The app runs at `http://localhost:5173`.
 
-```
+## Structure
+
+## Conventions
+
+- Code is formatted with Prettier (`.prettierrc`) and linted with ESLint (`eslint.config.js`).
+- A pre-commit hook (Husky + lint-staged) automatically runs Prettier on staged files (`.js`, `.jsx`, `.ts`, `.tsx`, `.json`, `.css`, `.md`, `.html`) before each commit.
+- Avoid `--no-verify` to skip the hook; fix the reported formatting/lint issues instead.
