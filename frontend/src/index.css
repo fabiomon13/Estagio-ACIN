@@ -1,24 +1,97 @@
 @import 'tailwindcss';
 
-:root {
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@theme {
+  /* Surfaces */
+  --color-background: #0d1419;
+  --color-surface: #12171e;
+  --color-surface-raised: #171d27;
+  --color-surface-elevated: #222a35;
+  --color-surface-hover: #1d2530;
+
+  /* Borders */
+  --color-border: #29313d;
+  --color-border-strong: #3a4452;
+
+  /* Brand */
+  --color-primary: #ff5757;
+  --color-primary-hover: #eb4e52;
+  --color-primary-active: #d94449;
+  --color-primary-soft: #3a2025;
+
+  /* Text */
+  --color-content: #f7f8fa;
+  --color-content-muted: #9aa3af;
+  --color-content-subtle: #667180;
+  --color-content-disabled: #454e5b;
+
+  /* Status */
+  --color-success: #2ad5a0;
+  --color-success-soft: #15372f;
+
+  --color-warning: #ffb84d;
+  --color-warning-soft: #3b2d18;
+
+  --color-danger: #ff4a4a;
+  --color-danger-soft: #541717;
+
+  --color-info: #4da3ff;
+  --color-info-soft: #172d45;
+
+  --color-purple: #a66cff;
+  --color-purple-soft: #2c2143;
+
+  /* Dialog motion */
+  --animate-overlay-in: overlay-in 200ms ease-out forwards;
+  --animate-overlay-out: overlay-out 150ms ease-in forwards;
+  --animate-dialog-in: dialog-in 200ms ease-out forwards;
+  --animate-dialog-out: dialog-out 150ms ease-in forwards;
 }
 
-html {
-  min-width: 320px;
-  min-height: 100%;
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes dialog-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+:root {
+  color-scheme: dark;
 }
 
 body {
+  margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  margin: 0;
-}
-
-#root {
-  min-height: 100vh;
+  background-color: var(--color-app);
+  color: var(--color-content);
 }
