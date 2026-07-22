@@ -1,6 +1,8 @@
 # app/models/restaurant_table.py
 
-from sqlalchemy import Column, Integer
+from uuid import uuid4
+
+from sqlalchemy import Column, Integer, String, text
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -24,6 +26,15 @@ class RestaurantTable(Base):
     max_capacity = Column(
         Integer,
         nullable=False,
+    )
+
+    public_code = Column(
+        String(36),
+        nullable=False,
+        unique=True,
+        index=True,
+        default=lambda: str(uuid4()),
+        server_default=text("gen_random_uuid()::text"),
     )
 
     associated_dining_sessions = relationship(
