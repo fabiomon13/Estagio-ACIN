@@ -1,7 +1,5 @@
-import type { InputSize } from './Input.types';
-
 export const baseStyles = [
-  'rounded-lg font-normal',
+  'w-full resize-y rounded-lg px-4 py-2 font-normal',
   'bg-surface-raised text-content placeholder:text-content-subtle',
   'border border-border',
   'transition-colors duration-200',
@@ -11,11 +9,6 @@ export const baseStyles = [
 ].join(' ');
 
 export const errorStyles = ['border-danger', 'focus:border-danger'].join(' ');
-
-export const sizeStyles: Record<InputSize, string> = {
-  md: 'h-10 px-4 text-sm',
-  lg: 'h-12 px-4 text-base',
-};
 
 export const labelStyles = 'mb-1.5 block text-sm font-medium text-content';
 

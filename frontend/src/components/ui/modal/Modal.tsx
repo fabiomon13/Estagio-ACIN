@@ -42,6 +42,17 @@ export default function Modal({
     };
   }, [open, closeOnEscape, onClose]);
 
+  useEffect(() => {
+    if (!isRendered) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isRendered]);
+
   if (!isRendered) return null;
 
   const handleOverlayClick = () => {

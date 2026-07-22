@@ -83,6 +83,11 @@ Feature-specific code should remain inside its respective feature. Code shared b
 
 > Some currently empty directories contain a `.gitkeep` file so they can be tracked by Git. Remove the `.gitkeep` file when adding the first real file to that directory.
 
+## Shared UI components
+
+The project includes reusable UI components such as buttons, inputs,
+modals, alerts and more.
+
 ## Conventions
 
 - Code is formatted with Prettier (`.prettierrc`) and linted with ESLint (`eslint.config.js`).
