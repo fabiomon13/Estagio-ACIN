@@ -5,8 +5,10 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     func,
+    text,
 )
 from sqlalchemy.orm import relationship
 
@@ -15,6 +17,15 @@ from app.db.base import Base
 
 class DiningSession(Base):
     __tablename__ = "dining_sessions"
+
+    __table_args__ = (
+            Index(
+                "uq_dining_sessions_active_table",
+                "table_id",
+                unique=True,
+                postgresql_where=text("is_active = true"),
+            ),
+        )
 
     id = Column(
         Integer,
