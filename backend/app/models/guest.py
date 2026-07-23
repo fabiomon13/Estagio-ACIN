@@ -2,8 +2,10 @@
 
 from sqlalchemy import (
     Column,
+    DateTime,
     ForeignKey,
     Index,
+    func,
     Integer,
     String,
 )
@@ -43,6 +45,12 @@ class Guest(Base):
     device_token_hash = Column(
         String(255),
         nullable=False,
+    )
+
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
     )
 
     dining_session = relationship(

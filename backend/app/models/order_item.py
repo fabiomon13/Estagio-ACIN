@@ -1,3 +1,5 @@
+#backend/app/models/order_item.py
+
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric, Text, func
 from sqlalchemy.orm import relationship
 
@@ -29,6 +31,11 @@ class OrderItem(Base):
     quantity = Column(Integer, nullable=False, default=1, server_default="1")
     notes = Column(Text, nullable=True)
     unit_price = Column(Numeric(10, 2), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
     updated_at = Column(
         DateTime(timezone=True),
         nullable=False,

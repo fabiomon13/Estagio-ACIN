@@ -2,7 +2,7 @@
 
 from uuid import uuid4
 
-from sqlalchemy import Column, Integer, String, text
+from sqlalchemy import Column, DateTime, Integer, String, func, text
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -35,6 +35,19 @@ class RestaurantTable(Base):
         index=True,
         default=lambda: str(uuid4()),
         server_default=text("gen_random_uuid()::text"),
+    )
+
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     associated_dining_sessions = relationship(
