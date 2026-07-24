@@ -38,7 +38,7 @@ class Guest(Base):
             "buffets.id",
             ondelete="RESTRICT",
         ),
-        nullable=False,
+        nullable=True,
         index=True,
     )
 
