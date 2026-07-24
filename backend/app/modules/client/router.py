@@ -23,6 +23,7 @@ from app.models.restaurant_table import RestaurantTable
 
 from app.modules.client.security import hash_device_token
 from app.modules.client.schemas import (
+    BuffetResponse,
     GuestCreate,
     GuestResponse,
     SessionCreate,
@@ -247,3 +248,17 @@ def get_current_guest(
         )
 
     return guest
+
+
+@router.get(
+    "/buffets",
+    response_model=list[BuffetResponse],
+)
+def get_buffets(
+    db: Annotated[Session, Depends(get_db)],
+) -> list[Buffet]:
+    return list(
+        db.scalars(
+            select(Buffet).order_by(Buffet.name)
+        ).all()
+    )
