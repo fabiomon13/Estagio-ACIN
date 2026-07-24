@@ -59,6 +59,18 @@ class ServiceRequest(Base):
         server_default=func.now(),
     )
 
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    resolved_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
     dining_session = relationship(
         "DiningSession",
         back_populates="service_requests",

@@ -14,6 +14,7 @@ class BuffetItem(Base):
         ForeignKey("menu_items.id", ondelete="CASCADE"),
         primary_key=True,
     )
+    
     buffet_id = Column(
         Integer,
         ForeignKey("buffets.id", ondelete="CASCADE"),
