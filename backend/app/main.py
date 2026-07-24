@@ -1,6 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
+from app.api.deps import ACCESS_TOKEN_COOKIE_NAME, InvalidSessionError
 from app.api.router import api_router
 
 
@@ -19,6 +21,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(InvalidSessionError)
+async def handle_invalid_session(request: Request, exc: InvalidSessionError) -> JSONResponse:
+    response = JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    response.delete_cookie(key=ACCESS_TOKEN_COOKIE_NAME, path="/")
+    return response
 
 
 app.include_router(

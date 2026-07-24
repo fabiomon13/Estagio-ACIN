@@ -34,6 +34,10 @@ yarn dev
 
 The app is available at `http://localhost:5173`.
 
+## Docs
+
+- [Staff authentication & authorization](docs/auth.md) — how login/roles work, and how to use them in new endpoints/pages.
+
 ## Structure
 
 ```
