@@ -7,8 +7,10 @@ from app.models.service_request_status import ServiceRequestStatus
 
 
 DEFAULT_SERVICE_REQUEST_STATUSES = [
-    "Assitance",
-    "Payment"
+    "Pending",
+    "In Progress",
+    "Resolved",
+    "Cancelled",
 ]
 
 
