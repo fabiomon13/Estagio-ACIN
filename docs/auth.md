@@ -94,7 +94,19 @@ def my_tables(staff: Staff = Depends(get_current_staff)):
 
 **Rules to keep this consistent:**
 - Never compare role strings by hand (`if staff.staff_role.name == "Admin"`). Always go through `StaffRoleEnum` and, if you need to read a `Staff` object's current role, the `staff_role(staff)` helper in `app/core/roles.py`.
-- There is currently no endpoint to create staff accounts. Only the dev-seed Admin exists. Building a "create staff member" endpoint is future work, and it should itself be `require_role(StaffRoleEnum.ADMIN)`-protected.
+
+**Creating staff accounts.** `POST /api/staff` (`app/api/routes/staff.py`) is Admin-only (`require_role(StaffRoleEnum.ADMIN)`) and creates a new `Staff` row:
+
+```json
+{ "name": "...", "email": "...", "password": "...", "role": "waiter" }
+```
+
+It hashes the password with the same `hash_password()` used everywhere else, rejects an already-used email with `409`, and looks up the matching `StaffRole` row via `role_display_name()` (the enum→DB-name counterpart of `staff_role()`, both in `app/core/roles.py`). `AdminPage.tsx` has a bare-bones test form calling it — functional, but not styled/finished.
+
+**Known limitations of this endpoint (not yet built):**
+- New accounts are always created with `is_active=True` — there's no way to create a deactivated account, and no way to deactivate/reactivate one afterward. There's no `PATCH /api/staff/{id}` (or similar) yet.
+- `is_active` isn't exposed anywhere in the API — `StaffOut` only has `id`, `name`, `email`, `role`. The only ways to check an account's active status today are querying the database directly, or trying to log in as that account (a deactivated account gets the `403` "Conta desativada..." response — that's the only user-facing signal).
+- There's no `GET /api/staff` (list) endpoint either, so there's no way to see all staff accounts through the API — only by querying the database.
 
 ## Using this in new frontend pages
 
@@ -177,7 +189,6 @@ The first message is intentionally identical for "wrong password" and "no such e
 
 ## What's explicitly out of scope (not built yet)
 
-- **Creating staff accounts.** Only the dev-seed Admin exists; there's no "add a staff member" flow yet.
 - **Fine-grained, per-record permissions** — e.g. "a waiter can only see their own assigned tables." Today's system only checks role, not ownership of a specific record.
 - **Rate limiting / brute-force protection** on `/auth/login`.
 - **Refresh tokens or "remember me."** Sessions simply expire after 8 hours; there's no silent renewal.

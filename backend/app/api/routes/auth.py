@@ -1,5 +1,3 @@
-# app/api/routes/auth.py
-
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
@@ -14,7 +12,7 @@ from app.schemas.auth import LoginRequest, StaffOut
 router = APIRouter(prefix="/auth")
 
 
-def _to_staff_out(staff: Staff) -> StaffOut:
+def staff_to_out(staff: Staff) -> StaffOut:
     return StaffOut(
         id=staff.id,
         name=staff.name,
@@ -50,7 +48,7 @@ def login(credentials: LoginRequest, response: Response, db: Session = Depends(g
 
     token = create_access_token(staff.id)
     _set_access_token_cookie(response, token)
-    return _to_staff_out(staff)
+    return staff_to_out(staff)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -60,4 +58,4 @@ def logout(response: Response) -> None:
 
 @router.get("/me", response_model=StaffOut)
 def me(staff: Staff = Depends(get_current_staff)) -> StaffOut:
-    return _to_staff_out(staff)
+    return staff_to_out(staff)

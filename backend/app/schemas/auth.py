@@ -8,6 +8,13 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class CreateStaffRequest(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    role: StaffRoleEnum
+
+
 class StaffOut(BaseModel):
     id: int
     name: str
