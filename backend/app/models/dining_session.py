@@ -1,12 +1,14 @@
-# app/models/dining_session.py
+#backend/app/models/dining_session.py
 
 from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     func,
+    text,
 )
 from sqlalchemy.orm import relationship
 
@@ -15,6 +17,15 @@ from app.db.base import Base
 
 class DiningSession(Base):
     __tablename__ = "dining_sessions"
+
+    __table_args__ = (
+        Index(
+            "uq_dining_sessions_active_table",
+            "table_id",
+            unique=True,
+            postgresql_where=text("is_active = true"),
+        ),
+    )
 
     id = Column(
         Integer,
@@ -69,6 +80,11 @@ class DiningSession(Base):
         nullable=False,
         default=False,
         server_default="false",
+    )
+
+    approved_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
     )
 
     restaurant_table = relationship(

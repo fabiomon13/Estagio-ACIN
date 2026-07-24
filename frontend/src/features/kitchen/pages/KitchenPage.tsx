@@ -11,6 +11,7 @@ import Radio from '../../../components/ui/radio/Radio';
 import SearchInput from '../../../components/ui/search-input/SearchInput';
 import Textarea from '../../../components/ui/textarea/Textarea';
 import Checkbox from '../../../components/ui/checkbox/Checkbox';
+import { useAuth } from '../../auth/hooks/useAuth';
 
 export function KitchenPage() {
   const [isDefaultDialogOpen, setIsDefaultDialogOpen] = useState(false);
@@ -22,6 +23,7 @@ export function KitchenPage() {
   const [sortOrder, setSortOrder] = useState<'oldest' | 'newest'>('oldest');
   const [notifyWaiter, setNotifyWaiter] = useState(false);
   const { showToast } = useToast();
+  const { logout } = useAuth();
 
   const handleLoadingConfirm = () => {
     setIsConfirming(true);
@@ -34,6 +36,12 @@ export function KitchenPage() {
   return (
     <div className="bg-background">
       <h1>Kitchen</h1>
+
+      <div className="p-5">
+        <Button variant="outline" onClick={() => logout()}>
+          Log out
+        </Button>
+      </div>
 
       <section className="p-5 flex flex-col gap-4 max-w-2xl">
         <Alert variant="info" title="New feature">
@@ -153,6 +161,7 @@ export function KitchenPage() {
 
         <Button
           variant="primary"
+          disabled
           onClick={() =>
             showToast({
               variant: 'success',
