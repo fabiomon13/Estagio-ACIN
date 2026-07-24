@@ -19,6 +19,7 @@ api_router.include_router(
     client_router,
     prefix="/client",
     tags=["Client"],
+)
 
 api_router.include_router(
     auth_router,
