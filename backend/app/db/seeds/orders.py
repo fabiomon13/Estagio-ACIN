@@ -41,7 +41,3 @@ def seed_orders() -> None:
 
 if __name__ == "__main__":
     seed_orders()
-
-
-
- 
