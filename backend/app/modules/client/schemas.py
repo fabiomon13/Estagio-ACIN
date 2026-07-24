@@ -1,6 +1,7 @@
 #backend/app/modules/client/schemas.py
 
 from datetime import datetime
+from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -43,3 +44,12 @@ class GuestResponse(BaseModel):
     id: int
     session_id: int
     buffet_id: int
+
+
+class BuffetResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    price: Decimal
+    waste_charge: Decimal
