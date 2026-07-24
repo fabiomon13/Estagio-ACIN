@@ -53,6 +53,15 @@ def ver_algo(staff: Staff = Depends(get_current_staff)):
     ...
 ```
 
+### Criar contas de staff novas
+
+Já existe: `POST /api/staff`, só o Admin pode chamá-lo. Recebe nome, email, password e o papel (`admin`/`waiter`/`chef`), e cria a conta (com a password já em hash, como as outras). Já há um formulário de teste em `/admin` que o chama — simples, ainda por melhorar visualmente.
+
+**O que ainda falta neste endpoint:**
+- Toda conta nova fica sempre **ativa** (`is_active=True`) — não há forma de a criar desativada, nem de a desativar/reativar depois.
+- Não dá para ver se uma conta está ativa através da API (`StaffOut` não inclui esse campo) — só olhando diretamente na base de dados, ou tentando fazer login com essa conta (se estiver desativada, o login dá o erro "Conta desativada...").
+- Também não existe nenhum endpoint para **listar** todo o staff — só se vê consultando a base de dados diretamente.
+
 ### Se estás a criar uma página nova no frontend
 
 Para a proteger por papel:
@@ -106,7 +115,6 @@ password: ChangeMe123!
 
 ## O que ainda NÃO existe
 
-- Criar contas de staff novas — só existe esta conta de teste (Admin).
 - Permissões mais específicas do que o papel — por exemplo, "cada waiter só vê as suas próprias mesas" ainda não está feito, só se verifica o papel geral.
 - Proteção contra várias tentativas de login erradas seguidas (rate limiting).
 - Login dos clientes (via QR code na mesa) — sistema completamente diferente, ainda por construir.
