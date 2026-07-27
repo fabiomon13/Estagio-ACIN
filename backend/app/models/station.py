@@ -11,6 +11,7 @@ class Station(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False, unique=True, index=True)
+    alias = Column(String(100), nullable=False, unique=True, index=True)
 
     created_at = Column(
         DateTime(timezone=True),
