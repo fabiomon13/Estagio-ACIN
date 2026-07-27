@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes } from 'react';
+import type { InputHTMLAttributes, ReactNode } from 'react';
 
 export type InputSize = 'md' | 'lg';
 
@@ -8,4 +8,5 @@ export type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> & {
   helperText?: string;
   size?: InputSize;
   fullWidth?: boolean;
+  endAdornment?: ReactNode;
 };
