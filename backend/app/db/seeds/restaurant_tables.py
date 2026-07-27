@@ -1,3 +1,5 @@
+#backend/app/db/seeds/restaurant_tables.py
+
 from sqlalchemy import select
 
 from app.db.session import SessionLocal

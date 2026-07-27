@@ -1,3 +1,5 @@
+#backend/app/db/seeds/orders.py
+
 from sqlalchemy import select
 
 from app.db.session import SessionLocal
@@ -11,6 +13,7 @@ from app.models.order_item_status import OrderItemStatus
 DEFAULT_MENU_ITEM_ALIAS = "chicken-ramen"
 DEFAULT_STATUS_ALIAS = "ready"
 DEFAULT_ROUND_NUMBER = 1
+DEFAULT_CLIENT_REQUEST_ID = "00000000-0000-4000-8000-000000000001"
 
 
 def seed_orders() -> None:
@@ -60,6 +63,7 @@ def seed_orders() -> None:
             order = Order(
                 guest_id=guest.id,
                 round_number=DEFAULT_ROUND_NUMBER,
+                client_request_id=DEFAULT_CLIENT_REQUEST_ID,
             )
             session.add(order)
             session.flush()

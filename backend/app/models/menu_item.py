@@ -59,3 +59,7 @@ class MenuItem(Base):
         back_populates="menu_item",
         cascade="all, delete-orphan",
     )
+
+    @property
+    def tags(self):
+        return [tag_link.tag for tag_link in self.tag_links]

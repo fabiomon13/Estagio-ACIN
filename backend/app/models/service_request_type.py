@@ -1,3 +1,5 @@
+# backend/app/models/service_request_type.py
+
 from sqlalchemy import Boolean, Column, Integer, String
 from sqlalchemy.orm import relationship
 
