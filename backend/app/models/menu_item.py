@@ -26,6 +26,7 @@ class MenuItem(Base):
     )
 
     name = Column(String(150), nullable=False, unique=True, index=True)
+    alias = Column(String(150), nullable=False, unique=True, index=True)
     description = Column(Text, nullable=True)
     base_price = Column(Numeric(10, 2), nullable=False)
     base_preparation_time = Column(Integer, nullable=False)

@@ -21,6 +21,13 @@ class ServiceRequestStatus(Base):
         index=True,
     )
 
+    alias = Column(
+        String(50),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+
     service_requests = relationship(
         "ServiceRequest",
         back_populates="status",
