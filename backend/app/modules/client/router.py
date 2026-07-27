@@ -40,6 +40,7 @@ from app.modules.client.schemas import (
     SessionCreate,
     SessionResponse,
     TableResponse,
+    ServiceRequestTypeResponse,
 )
 
 
@@ -68,13 +69,18 @@ def find_table(
 def find_active_session(
     table_id: int,
     db: Session,
+    *,
+    lock: bool = False,
 ) -> DiningSession:
-    dining_session = db.scalar(
-        select(DiningSession).where(
-            DiningSession.table_id == table_id,
-            DiningSession.is_active.is_(True),
-        )
+    query = select(DiningSession).where(
+        DiningSession.table_id == table_id,
+        DiningSession.is_active.is_(True),
     )
+
+    if lock:
+        query = query.with_for_update()
+
+    dining_session = db.scalar(query)
 
     if dining_session is None:
         raise HTTPException(
@@ -200,7 +206,11 @@ def create_guest(
     db: Annotated[Session, Depends(get_db)],
 ) -> Guest:
     table = find_table(table_code, db)
-    dining_session = find_active_session(table.id, db)
+    dining_session = find_active_session(
+        table.id,
+        db,
+        lock=True,
+    )
 
     if not dining_session.is_approved:
         raise HTTPException(
@@ -233,6 +243,18 @@ def create_guest(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Este dispositivo já pertence à sessão",
+        )
+
+    guest_count = db.scalar(
+        select(func.count(Guest.id)).where(
+            Guest.session_id == dining_session.id,
+        )
+    ) or 0
+
+    if guest_count >= dining_session.num_clients:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A sessão já atingiu o número máximo de clientes",
         )
 
     guest = Guest(
@@ -356,7 +378,7 @@ def create_order(
 
     pending_status = db.scalar(
         select(OrderItemStatus).where(
-            OrderItemStatus.name == "Pending",
+            OrderItemStatus.alias == "pending",
         )
     )
 
@@ -394,6 +416,12 @@ def create_order(
                         f"Artigo {requested_item.item_id} "
                         "não encontrado"
                     ),
+                )
+
+            if not menu_item.is_available:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Artigo {menu_item.name} indisponível",
                 )
 
             if guest.buffet_id is not None:
@@ -689,4 +717,46 @@ def get_bill(
         extras_total=extras_total,
         total=buffet_total + extras_total,
         is_paid=payment is not None,
+    )
+
+@router.get(
+    "/service-request-types",
+    response_model=list[ServiceRequestTypeResponse],
+)
+def get_service_request_types(
+    db: Annotated[Session, Depends(get_db)],
+) -> list[ServiceRequestType]:
+    return list(
+        db.scalars(
+            select(ServiceRequestType).order_by(ServiceRequestType.name)
+        ).all()
+    )
+
+@router.get(
+    "/menu-items",
+    response_model=list[MenuItemResponse],
+)
+def get_menu_items(
+    db: Annotated[Session, Depends(get_db)],
+    category_id: int | None = None,
+) -> list[MenuItem]:
+    query = select(MenuItem)
+
+    if category_id is not None:
+        category = db.get(Category, category_id)
+
+        if category is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Categoria não encontrada",
+            )
+
+        query = query.where(
+            MenuItem.category_id == category_id
+        )
+
+    query = query.order_by(MenuItem.name)
+
+    return list(
+        db.scalars(query).all()
     )

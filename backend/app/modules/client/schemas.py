@@ -66,11 +66,12 @@ class MenuItemResponse(BaseModel):
 
     id: int
     category_id: int
-    station_id: int
     name: str
     description: str | None
+    photo_url: str | None
     base_price: Decimal
     base_preparation_time: int
+    is_available: bool
 
 
 class OrderItemCreate(BaseModel):
@@ -127,3 +128,11 @@ class BillResponse(BaseModel):
     extras_total: Decimal
     total: Decimal
     is_paid: bool
+
+class ServiceRequestTypeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    alias: str
+    is_high_priority: bool

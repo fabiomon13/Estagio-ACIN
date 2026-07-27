@@ -6,6 +6,7 @@ from app.models.dining_session import DiningSession
 from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.guest import Guest
+from app.models.menu_item import MenuItem
 from app.models.service_request import ServiceRequest
 from app.schemas.staff.staff_contract import (
     StaffDashboard,
@@ -140,3 +141,23 @@ def mark_item_as_served(db: Session, item_id: int) -> dict:
         "item_id": order_item.id,
         "updated_status_id": order_item.status_id
     }
+
+
+def set_menu_item_availability(
+    db: Session,
+    item_id: int,
+    is_available: bool,
+) -> MenuItem:
+    menu_item = db.get(MenuItem, item_id)
+
+    if menu_item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Menu item not found",
+        )
+
+    menu_item.is_available = is_available
+    db.commit()
+    db.refresh(menu_item)
+
+    return menu_item
