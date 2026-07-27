@@ -1,4 +1,4 @@
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload   
 
@@ -121,3 +121,22 @@ def approve_session(db: Session, session_id: int) -> dict:
         "session_id": session_id,
         "is_approved": session.is_approved
             }
+
+def mark_item_as_served(db: Session, item_id: int) -> dict:
+
+    order_item = db.query(OrderItem).filter(OrderItem.id == item_id).first()
+
+    if not order_item:
+        raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail="Order item not found")\
+
+    order_item.status_id = 4  # Assuming '4' corresponds to 'Served'
+    db.commit()
+
+    db.refresh(order_item)
+
+    return {
+        "success": True,
+        "message": f"Order item {item_id} successfully marked as served.",
+        "item_id": order_item.id,
+        "updated_status_id": order_item.status_id
+    }

@@ -13,10 +13,6 @@ api_router.include_router(
 )
 
 api_router.include_router(
-    staff_router
-)
-
-api_router.include_router(
     client_router,
     prefix="/client",
     tags=["Client"],
