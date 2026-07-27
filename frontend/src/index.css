@@ -1,6 +1,15 @@
+@import '@fontsource/baloo-bhaijaan-2/600.css';
+@import '@fontsource/baloo-bhaijaan-2/700.css';
+@import '@fontsource/plus-jakarta-sans/400.css';
+@import '@fontsource/plus-jakarta-sans/500.css';
+@import '@fontsource/plus-jakarta-sans/600.css';
 @import 'tailwindcss';
 
 @theme {
+  /* Typography */
+  --font-display: 'Baloo Bhaijaan 2', sans-serif;
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+
   /* Surfaces */
   --color-background: #0d1419;
   --color-surface: #12171e;
@@ -131,4 +140,10 @@ body {
   min-height: 100vh;
   background-color: var(--color-app);
   color: var(--color-content);
+  font-family: var(--font-sans);
+}
+
+h1,
+h2 {
+  font-family: var(--font-display);
 }
