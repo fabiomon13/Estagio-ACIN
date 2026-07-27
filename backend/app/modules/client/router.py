@@ -23,6 +23,7 @@ from app.models.payment import Payment
 from app.models.restaurant_table import RestaurantTable
 from app.models.service_request import ServiceRequest
 from app.models.service_request_status import ServiceRequestStatus
+from app.models.service_request_type import ServiceRequestType
 
 from app.modules.client.security import hash_device_token
 from app.modules.client.schemas import (
@@ -539,7 +540,7 @@ def create_service_request(
 
     pending_status = db.scalar(
         select(ServiceRequestStatus).where(
-            ServiceRequestStatus.name == "Pending",
+            ServiceRequestStatus.alias == "pending",
         )
     )
 
@@ -549,11 +550,22 @@ def create_service_request(
             detail="Estado Pending de assistência não configurado",
         )
 
+    request_type = db.scalar(
+        select(ServiceRequestType).where(
+            ServiceRequestType.alias == request_data.type,
+        )
+    )
+
+    if request_type is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Tipo de pedido de assistência inválido",
+        )
+
     service_request = ServiceRequest(
         session_id=guest.session_id,
         status_id=pending_status.id,
-        type=request_data.type,
-        priority=request_data.priority,
+        type_id=request_type.id,
     )
 
     db.add(service_request)

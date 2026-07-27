@@ -106,7 +106,6 @@ class OrderResponse(BaseModel):
 
 class ServiceRequestCreate(BaseModel):
     type: str = Field(min_length=1, max_length=50)
-    priority: str = Field(default="normal", pattern="^(low|normal|high)$")
 
 
 class ServiceRequestResponse(BaseModel):
@@ -115,8 +114,9 @@ class ServiceRequestResponse(BaseModel):
     id: int
     session_id: int
     status_id: int
+    type_id: int
     type: str
-    priority: str
+    is_high_priority: bool
     created_at: datetime
     resolved_at: datetime | None
 

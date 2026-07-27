@@ -11,6 +11,7 @@ from app.models.payment import Payment
 from app.models.restaurant_table import RestaurantTable
 from app.models.service_request import ServiceRequest
 from app.models.service_request_status import ServiceRequestStatus
+from app.models.service_request_type import ServiceRequestType
 from app.models.staff import Staff
 from app.models.staff_role import StaffRole
 from app.models.station import Station
@@ -31,6 +32,7 @@ __all__ = [
     "RestaurantTable",
     "ServiceRequest",
     "ServiceRequestStatus",
+    "ServiceRequestType",
     "Staff",
     "StaffRole",
     "Station",
