@@ -5,7 +5,6 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
-    String,
     func,
 )
 from sqlalchemy.orm import relationship
@@ -41,16 +40,14 @@ class ServiceRequest(Base):
         index=True,
     )
 
-    type = Column(
-        String(50),
+    type_id = Column(
+        Integer,
+        ForeignKey(
+            "service_request_types.id",
+            ondelete="RESTRICT",
+        ),
         nullable=False,
-    )
-
-    priority = Column(
-        String(20),
-        nullable=False,
-        default="normal",
-        server_default="normal",
+        index=True,
     )
 
     created_at = Column(
@@ -80,3 +77,18 @@ class ServiceRequest(Base):
         "ServiceRequestStatus",
         back_populates="service_requests",
     )
+
+    request_type = relationship(
+        "ServiceRequestType",
+        back_populates="service_requests",
+    )
+
+    @property
+    def type(self) -> str:
+        """Mantém o alias do tipo disponível nas respostas da API."""
+        return self.request_type.alias
+
+    @property
+    def is_high_priority(self) -> bool:
+        """Indica se o tipo do pedido tem prioridade alta."""
+        return self.request_type.is_high_priority

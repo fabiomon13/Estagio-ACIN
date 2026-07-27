@@ -118,7 +118,7 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
             id=request.id,
             table_number=request.dining_session.restaurant_table.table_number if request.dining_session and request.dining_session.restaurant_table else 0,
             type=request.type,
-            priority=request.priority,
+            is_high_priority=request.is_high_priority,
             created_at=request.created_at
         )
         for request in open_requests
