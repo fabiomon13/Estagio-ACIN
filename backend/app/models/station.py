@@ -26,4 +26,4 @@ class Station(Base):
         onupdate=func.now(),
     )
 
-    menu_items = relationship("MenuItem", back_populates="station")
+    categories = relationship("Category", back_populates="station")

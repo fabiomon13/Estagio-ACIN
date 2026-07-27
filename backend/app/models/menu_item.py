@@ -18,13 +18,6 @@ class MenuItem(Base):
         index=True,
     )
 
-    station_id = Column(
-        Integer,
-        ForeignKey("stations.id", ondelete="RESTRICT"),
-        nullable=False,
-        index=True,
-    )
-
     name = Column(String(150), nullable=False, unique=True, index=True)
     alias = Column(String(150), nullable=False, unique=True, index=True)
     description = Column(Text, nullable=True)
@@ -45,7 +38,6 @@ class MenuItem(Base):
     )
 
     category = relationship("Category", back_populates="menu_items")
-    station = relationship("Station", back_populates="menu_items")
     order_items = relationship("OrderItem", back_populates="menu_item")
     buffet_links = relationship(
         "BuffetItem",
