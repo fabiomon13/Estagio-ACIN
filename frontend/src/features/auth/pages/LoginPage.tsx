@@ -90,6 +90,7 @@ export function LoginPage() {
               label="Email"
               type="email"
               autoComplete="email"
+              className="lg:h-12 md:text-base"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
@@ -99,6 +100,7 @@ export function LoginPage() {
               label="Password"
               type={isPasswordVisible ? 'text' : 'password'}
               autoComplete="current-password"
+              className="lg:h-12 md:text-base"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
