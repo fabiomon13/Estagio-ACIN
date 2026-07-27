@@ -18,8 +18,8 @@ from app.schemas.staff.staff_contract import (
     StaffReadyTable,
     StaffReadyItem
 )
-from app import db
-from backend.app.models.service_request_status import ServiceRequestStatus
+from app.models.service_request_type import ServiceRequestType
+from app.models.service_request_status import ServiceRequestStatus
 
 READY_ORDER_ITEM_ALIAS = "ready"
 SERVED_ORDER_ITEM_ALIAS = "served"
@@ -42,6 +42,12 @@ def get_order_item_status_by_alias(db: Session, alias: str) -> OrderItemStatus:
         )
 
     return status_row
+
+def get_service_request_type_by_alias(db: Session, alias: str) -> ServiceRequestType:
+    row = db.query(ServiceRequestType).filter(func.lower(ServiceRequestType.alias) == alias.lower()).first()
+    if row is None:
+        raise HTTPException(status_code=500, detail=f"Service request type '{alias}' is not configured")
+    return row
 
 def get_service_request_status_by_alias(db: Session, alias: str) -> ServiceRequestStatus:
     row = db.query(ServiceRequestStatus).filter(func.lower(ServiceRequestStatus.alias) == alias.lower()).first()
@@ -70,8 +76,9 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
         # Calculate table total
         total_amount = db.query(func.sum(OrderItem.unit_price_at_order * OrderItem.quantity))\
             .join(Order, Order.id == OrderItem.order_id)\
-                .filter(Order.guest_id == session.id)\
-                    .scalar() or 0.0
+            .join(Guest, Guest.id == Order.guest_id)\
+            .filter(Guest.session_id == session.id)\
+            .scalar() or 0.0
 
         # Count ready items for summary
         ready_items = db.query(OrderItem).join(Order, Order.id == OrderItem.order_id).join(Guest, Guest.id == Order.guest_id).filter(
@@ -109,7 +116,9 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
             )
 
     # Open service requests
-    open_requests = db.query(ServiceRequest).join(ServiceRequest.dining_session)\
+    open_requests = db.query(ServiceRequest, ServiceRequestType)\
+    .join(DiningSession, DiningSession.id == ServiceRequest.session_id)\
+    .join(ServiceRequestType, ServiceRequestType.id == ServiceRequest.type_id)\
     .options(joinedload(ServiceRequest.dining_session).joinedload(DiningSession.restaurant_table))\
     .filter(DiningSession.is_active == True, ServiceRequest.resolved_at.is_(None)).all()
 
@@ -117,11 +126,11 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
         StaffOpenRequest(
             id=request.id,
             table_number=request.dining_session.restaurant_table.table_number if request.dining_session and request.dining_session.restaurant_table else 0,
-            type=request.type,
-            is_high_priority=request.is_high_priority,
+            type=request_type.alias,
+            is_high_priority=request_type.is_high_priority,
             created_at=request.created_at
         )
-        for request in open_requests
+        for request, request_type in open_requests
     ]
 
     summary = StaffDashboardSummary(
@@ -191,24 +200,23 @@ def request_payment(db: Session, session_id: int) -> dict:
     if session is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dining session not found or inactive.")
 
+    request_type = get_service_request_type_by_alias(db, PAYMENT_REQUEST_TYPE)
+    pending_status = get_service_request_status_by_alias(db, PENDING_SERVICE_REQUEST_ALIAS)
+
     existing_request = (db.query(ServiceRequest).filter(
         ServiceRequest.session_id == session.id,
-        ServiceRequest.type == PAYMENT_REQUEST_TYPE,
-        ServiceRequest.resolved_at.is_(None)
-        ).first()
-    )
+        ServiceRequest.type_id == request_type.id,
+        ServiceRequest.status_id == pending_status.id
+    ).first())
 
-    if existing_request is not None:
-        raise HTTPException(status_code = 409, detail="A payment request for this session already exists.")
+    if  existing_request is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A pending payment request already exists for this session.")
 
-    payment_status = get_service_request_status_by_alias(db, Pending_SERVICE_REQUEST_ALIAS)
 
     new_request = ServiceRequest(
         session_id=session.id,
-        status_id=payment_status.id,
-        type=PAYMENT_REQUEST_TYPE,
-        priority= "urgent",
-        resolved_at=None
+        status_id=pending_status.id,
+        type_id=request_type.id
     )
 
     db.add(new_request)

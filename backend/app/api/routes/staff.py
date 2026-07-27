@@ -6,9 +6,9 @@ from app.models.order_item import OrderItem
 from app.db.dependencies import get_db
 from app.schemas.staff.staff_contract import (StaffDashboard)
 from app.services import staff_service
-from backend.app.api.deps import require_role
-from backend.app.core.roles import StaffRoleEnum
-from backend.app.models.staff import Staff
+from app.api.deps import require_role
+from app.core.roles import StaffRoleEnum
+from app.models.staff import Staff
 
 router = APIRouter(
     prefix="/staff",
@@ -24,7 +24,7 @@ def get_staff_dashboard(db: Session = Depends(get_db)) -> StaffDashboard:
 
     return staff_service.get_staff_dashboard(db)
 
-@router.post("/sessions/{session_id}/approve", dependencies=[Depends(require_role(StaffRoleEnum.WAITER))])
+@router.post("/sessions/{session_id}/approve")
 
 def approve_session(session_id: int, db: Session = Depends(get_db)):
 
