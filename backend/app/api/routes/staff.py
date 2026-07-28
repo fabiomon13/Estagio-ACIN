@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db.dependencies import get_db
@@ -50,3 +50,28 @@ def mark_item_as_served(item_id: int, db: Session = Depends(get_db)):
 )
 def resolve_request(request_id: int, db: Session = Depends(get_db)):
     return staff_service.resolve_service_request(db, request_id)
+
+@router.get("/requests", tags=["Staff - Services"])
+def list_staff_requests(db: Session = Depends(get_db), limit: int = 50, offset: int = 0):
+    """
+    Returns open (pending) service requests for staff dashboard.
+    """
+    requests = staff_service.list_open_service_requests(db, limit=limit, offset=offset)
+    return {"success": True, "count": len(requests), "items": requests}
+
+@router.get("/sessions/{session_id}", tags=["Staff - Table management"])
+def get_staff_session(session_id: int, db: Session = Depends(get_db)):
+    """
+    Detailed session view including guests, orders, items, and open service requests.
+    """
+    session = staff_service.get_session_detail(db, session_id)
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    return {"success": True, "session": session}
+
+@router.get("/requests/{request_id}", tags=["Staff - Services"])
+def get_staff_request(request_id: int, db: Session = Depends(get_db)):
+    item = staff_service.get_service_request_detail(db, request_id)
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service request not found")
+    return {"success": True, "request": item}

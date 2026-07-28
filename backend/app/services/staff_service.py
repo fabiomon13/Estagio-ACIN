@@ -278,3 +278,98 @@ def deactivate_session(db: Session, session_id: int) -> dict:
         "session_id": session.id,
         "is_active": session.is_active
         }
+
+
+def list_open_service_requests(db: Session, limit: int = 50, offset: int = 0):
+    results = (
+        db.query(ServiceRequest)
+        .join(ServiceRequest.dining_session)
+        .join(ServiceRequest.status)
+        .options(joinedload(ServiceRequest.dining_session).joinedload(DiningSession.restaurant_table),
+                 joinedload(ServiceRequest.status),
+                 )
+                 .filter(DiningSession.is_active == True, 
+                         ServiceRequest.resolved_at.is_(None), 
+                         func.lower(ServiceRequestStatus.alias) == PENDING_SERVICE_REQUEST_ALIAS)
+                         )\
+    .order_by(ServiceRequest.created_at.asc())\
+    .limit(limit)\
+    .offset(offset)\
+    .all()
+
+
+    items = []
+    for r in results:
+        items.append({
+            "id": r.id,
+            "type_id": r.type_id,
+            "type_name": r.type,
+            "table_session_id": r.session_id,
+            "is_high_priority": getattr(r, "is_high_priority", False),
+            "created_at": r.created_at,
+            "note": getattr(r, "note", None),
+        })
+    return items
+
+def get_session_detail(db: Session, session_id: int):
+    s = db.query(DiningSession).filter(DiningSession.id == session_id).first()
+    if not s:
+        return None
+    # guests
+    guests = db.query(Guest).filter(Guest.session_id == session_id).all()
+    # orders & items
+    orders = db.query(Order).join(Guest).filter(Guest.session_id == session_id).all()
+    orders_serialized = []
+    for o in orders:
+        items = [{"id": it.id, "menu_item_id": it.menu_item_id, "qty": it.qty, "status_id": it.status_id} for it in o.items]
+        orders_serialized.append({"order_id": o.id, "guest_id": o.guest_id, "items": items, "total": getattr(o, "total", None)})
+
+    # open requests for this session
+    pending = get_service_request_status_by_alias(db, PENDING_SERVICE_REQUEST_ALIAS)
+    open_requests = []
+    if pending:
+        open_requests = db.query(ServiceRequest).filter(ServiceRequest.session_id == session_id, ServiceRequest.status_id == pending.id).all()
+    requests_serialized = [{"id": r.id, "type_id": r.type_id, "created_at": r.created_at, "is_high_priority": getattr(r, "is_high_priority", False)} for r in open_requests]
+
+    return {
+        "id": s.id,
+        "table_id": s.table_id,
+        "is_active": s.is_active,
+        "is_approved": s.is_approved,
+        "guests_count": s.num_clients,
+        "orders": orders_serialized,
+        "open_requests": requests_serialized
+    }
+
+def get_service_request_detail(db, request_id: int):
+    r = (
+        db.query(ServiceRequest)
+        .join(ServiceRequest.dining_session)
+        .join(ServiceRequest.status)
+        .filter(
+            ServiceRequest.id == request_id,
+            DiningSession.is_active == True,
+            ServiceRequest.resolved_at.is_(None),
+            func.lower(ServiceRequestStatus.alias) == PENDING_SERVICE_REQUEST_ALIAS
+        )
+        .first()  
+    )
+
+    if not r:
+        return None
+
+    return {
+        "id": r.id,
+        "session_id": r.session_id,
+        "table_number": (
+            r.dining_session.restaurant_table.table_number
+            if r.dining_session and r.dining_session.restaurant_table
+            else None
+        ),
+        "type": r.type,  # string in your current model
+        "is_high_priority": getattr(r, "is_high_priority", False),
+        "status": r.status.name if r.status else None,
+        "created_at": r.created_at,
+        "resolved_at": r.resolved_at,
+        "is_open": r.resolved_at is None,
+    }
