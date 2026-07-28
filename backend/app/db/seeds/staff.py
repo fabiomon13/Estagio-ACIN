@@ -1,3 +1,5 @@
+#backend/app/db/seeds/staff.py
+
 from sqlalchemy import select
 
 from app.core.security import hash_password

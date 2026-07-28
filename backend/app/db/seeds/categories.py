@@ -1,3 +1,5 @@
+#backend/app/db/seeds/categories.py
+
 from sqlalchemy import select
 
 from app.db.session import SessionLocal
