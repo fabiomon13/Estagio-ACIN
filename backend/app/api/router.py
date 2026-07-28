@@ -24,6 +24,5 @@ api_router.include_router(
 )
 
 api_router.include_router(
-    staff_router,
-    tags=["Staff"],
+    staff_router
 )
