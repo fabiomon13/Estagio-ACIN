@@ -23,14 +23,18 @@ from app.models.service_request_status import ServiceRequestStatus
 
 READY_ORDER_ITEM_ALIAS = "ready"
 SERVED_ORDER_ITEM_ALIAS = "served"
+
 PAYMENT_REQUEST_TYPE = "payment_request"
+ASSISTANCE_REQUEST_TYPE = "assistance"
+
 PENDING_SERVICE_REQUEST_ALIAS = "pending"
 RESOLVED_SERVICE_REQUEST_ALIAS = "resolved"
 
 def get_order_item_status_by_alias(db: Session, alias: str) -> OrderItemStatus:
-
-    """Fetches an OrderItemStatus by its alias."""
-
+    """
+    Fetches an OrderItemStatus by its alias[cite: 1].
+    Raises an HTTP 500 error if the status alias is not found in the database[cite: 1].
+    """
     status_row = db.query(OrderItemStatus)\
     .filter(func.lower(OrderItemStatus.alias) == alias.lower())\
     .first()
@@ -44,21 +48,31 @@ def get_order_item_status_by_alias(db: Session, alias: str) -> OrderItemStatus:
     return status_row
 
 def get_service_request_type_by_alias(db: Session, alias: str) -> ServiceRequestType:
+    """
+    Fetches a ServiceRequestType by its alias[cite: 1].
+    Raises an HTTP 500 error if the service request type is not configured in the database[cite: 1].
+    """
     row = db.query(ServiceRequestType).filter(func.lower(ServiceRequestType.alias) == alias.lower()).first()
     if row is None:
         raise HTTPException(status_code=500, detail=f"Service request type '{alias}' is not configured")
     return row
 
 def get_service_request_status_by_alias(db: Session, alias: str) -> ServiceRequestStatus:
+    """
+    Fetches a ServiceRequestStatus by its alias[cite: 1].
+    Raises an HTTP 500 error if the service request status is not configured in the database[cite: 1].
+    """
     row = db.query(ServiceRequestStatus).filter(func.lower(ServiceRequestStatus.alias) == alias.lower()).first()
     if row is None:
         raise HTTPException(status_code=500, detail=f"Service request status '{alias}' is not configured")
     return row
 
 def get_staff_dashboard(db: Session) -> StaffDashboard:
-
-    """Fetches and formats all data for the staff dashboard."""
-
+    """
+    Fetches and formats all data for the staff dashboard[cite: 1].
+    Calculates occupied tables, guest counts, and table totals for active sessions[cite: 1].
+    Also compiles lists of ready-to-serve items and open service requests for the dashboard response[cite: 1].
+    """
     active_sessions = db.query(DiningSession).options(
         joinedload(DiningSession.restaurant_table)).filter(DiningSession.is_active == True).all()
 
@@ -147,7 +161,10 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
     )
 
 def approve_session(db: Session, session_id: int) -> dict:
-
+    """
+    Approves a dining session by setting its is_approved attribute to True[cite: 1].
+    Raises an HTTP 404 error if the session is not found, or an HTTP 400 error if it is already approved[cite: 1].
+    """
     session = db.query(DiningSession).filter(DiningSession.id == session_id).first()
 
     if not session:
@@ -166,7 +183,10 @@ def approve_session(db: Session, session_id: int) -> dict:
             }
 
 def mark_item_as_served(db: Session, item_id: int) -> dict:
-
+    """
+    Updates a specific order item's status to 'served'[cite: 1].
+    Raises an HTTP 404 error if the order item is not found, or an HTTP 400 error if the item is not currently in a 'ready' state[cite: 1].
+    """
     order_item = db.query(OrderItem).filter(OrderItem.id == item_id).first()
 
     if not order_item:
@@ -193,44 +213,30 @@ def mark_item_as_served(db: Session, item_id: int) -> dict:
         "updated_status_id": served_status.id
     }
 
-def request_payment(db: Session, session_id: int) -> dict:
-
-    session = (db.query(DiningSession).filter(DiningSession.id == session_id, DiningSession.is_active == True).first())
-
-    if session is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dining session not found or inactive.")
-
-    request_type = get_service_request_type_by_alias(db, PAYMENT_REQUEST_TYPE)
-    pending_status = get_service_request_status_by_alias(db, PENDING_SERVICE_REQUEST_ALIAS)
-
-    existing_request = (db.query(ServiceRequest).filter(
-        ServiceRequest.session_id == session.id,
-        ServiceRequest.type_id == request_type.id,
-        ServiceRequest.status_id == pending_status.id
-    ).first())
-
-    if  existing_request is not None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A pending payment request already exists for this session.")
-
-
-    new_request = ServiceRequest(
-        session_id=session.id,
-        status_id=pending_status.id,
-        type_id=request_type.id
-    )
-
-    db.add(new_request)
-    db.commit()
-    db.refresh(new_request)
-
-    return {"success": True, "request_id": new_request.id, "session_id": session.id} 
 
 def resolve_service_request(db: Session, request_id: int) -> dict:
+    """
+    Marks a service request as resolved and sets resolved_at in UTC.
+    Raises 404 if request does not exist.
+    Raises 409 if request is already resolved.
+    """
+    service_request = (
+        db.query(ServiceRequest)
+        .filter(ServiceRequest.id == request_id)
+        .first()
+    )
 
-    service_request = db.query(ServiceRequest).filter(ServiceRequest.id == request_id).first()
+    if service_request is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Service request not found.",
+        )
 
-    if not service_request:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service request not found.")
+    if service_request.resolved_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Service request is already resolved.",
+        )
 
     resolved_status = get_service_request_status_by_alias(db, RESOLVED_SERVICE_REQUEST_ALIAS)
 
@@ -245,11 +251,15 @@ def resolve_service_request(db: Session, request_id: int) -> dict:
         "message": f"Service request {request_id} successfully resolved.",
         "request_id": service_request.id,
         "updated_status_id": resolved_status.id,
-        "resolved_at": service_request.resolved_at
+        "updated_status_alias": resolved_status.alias,
+        "resolved_at": service_request.resolved_at,
     }
 
 def deactivate_session(db: Session, session_id: int) -> dict:
-
+    """
+    Deactivates a dining session and sets its end time to the current UTC time[cite: 1].
+    Raises an HTTP 404 error if the session is not found, or an HTTP 409 error if the session is already marked inactive[cite: 1].
+    """
     session = db.query(DiningSession).filter(DiningSession.id == session_id).first()
 
     if session is None:
