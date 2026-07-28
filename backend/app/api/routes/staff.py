@@ -37,8 +37,15 @@ def mark_item_as_served(item_id: int, db: Session = Depends(get_db)):
     return staff_service.mark_item_as_served(db, item_id)   
 
 
-@router.post("/sessions/{session_id}/payment-request", dependencies=[Depends(require_role(StaffRoleEnum.WAITER))])
+@router.post("/sessions/{session_id}/payment-request")
 
 def request_payment(session_id: int, db: Session = Depends(get_db)):
 
     return staff_service.request_payment(db, session_id) 
+
+
+@router.patch("/sessions/{session_id}/deactivate")
+def deactivate_session(session_id: int, db: Session = Depends(get_db)):
+
+    return staff_service.deactivate_session(db, session_id)
+

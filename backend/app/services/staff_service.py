@@ -247,3 +247,24 @@ def resolve_service_request(db: Session, request_id: int) -> dict:
         "updated_status_id": resolved_status.id,
         "resolved_at": service_request.resolved_at
     }
+
+def deactivate_session(db: Session, session_id: int) -> dict:
+
+    session = db.query(DiningSession).filter(DiningSession.id == session_id).first()
+
+    if session is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dining session not found.")
+
+    if not session.is_active:
+        raise HTTPException(status_code= 409, detail="Dining session is already inactive.")
+
+    session.is_active = False
+    session.end_time = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(session)
+
+    return {
+        "success": True,
+        "session_id": session.id,
+        "is_active": session.is_active
+        }
