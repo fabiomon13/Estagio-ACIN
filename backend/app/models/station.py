@@ -11,6 +11,7 @@ class Station(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False, unique=True, index=True)
+    alias = Column(String(100), nullable=False, unique=True, index=True)
 
     created_at = Column(
         DateTime(timezone=True),
@@ -25,4 +26,4 @@ class Station(Base):
         onupdate=func.now(),
     )
 
-    menu_items = relationship("MenuItem", back_populates="station")
+    categories = relationship("Category", back_populates="station")

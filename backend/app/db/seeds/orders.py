@@ -1,43 +1,94 @@
+from sqlalchemy import select
+
 from app.db.session import SessionLocal
+from app.models.guest import Guest
 from app.models.menu_item import MenuItem
 from app.models.order import Order
 from app.models.order_item import OrderItem
-from app.models.guest import Guest
+from app.models.order_item_status import OrderItemStatus
+
+
+DEFAULT_MENU_ITEM_ALIAS = "chicken-ramen"
+DEFAULT_STATUS_ALIAS = "ready"
+DEFAULT_ROUND_NUMBER = 1
+
 
 def seed_orders() -> None:
+    """Cria um pedido de exemplo com um item no estado Ready."""
+    with SessionLocal() as session:
+        guest = session.scalar(
+            select(Guest).order_by(Guest.id).limit(1)
+        )
+        if guest is None:
+            raise RuntimeError(
+                "Nenhum convidado encontrado. Corre o seeder guests primeiro."
+            )
 
-    """Creates a sample order with a 'Ready' item for testing."""
+        menu_item = session.scalar(
+            select(MenuItem).where(
+                MenuItem.alias == DEFAULT_MENU_ITEM_ALIAS
+            )
+        )
+        if menu_item is None:
+            raise RuntimeError(
+                f"Item '{DEFAULT_MENU_ITEM_ALIAS}' não encontrado. "
+                "Corre o seeder menu_items primeiro."
+            )
 
-    with SessionLocal() as db:
-        # Fetch a guest to associate with the order
-        guest = db.query(Guest).first()
-        if not guest:
-            print("No guests found. Please seed guests first.")
+        ready_status = session.scalar(
+            select(OrderItemStatus).where(
+                OrderItemStatus.alias == DEFAULT_STATUS_ALIAS
+            )
+        )
+        if ready_status is None:
+            raise RuntimeError(
+                f"Estado '{DEFAULT_STATUS_ALIAS}' não encontrado. "
+                "Corre o seeder order_item_statuses primeiro."
+            )
+
+        order = session.scalar(
+            select(Order)
+            .where(
+                Order.guest_id == guest.id,
+                Order.round_number == DEFAULT_ROUND_NUMBER,
+            )
+            .order_by(Order.id)
+            .limit(1)
+        )
+
+        if order is None:
+            order = Order(
+                guest_id=guest.id,
+                round_number=DEFAULT_ROUND_NUMBER,
+            )
+            session.add(order)
+            session.flush()
+
+        existing_order_item = session.scalar(
+            select(OrderItem).where(
+                OrderItem.order_id == order.id,
+                OrderItem.item_id == menu_item.id,
+            )
+        )
+
+        if existing_order_item is not None:
+            print("O pedido de exemplo já existe.")
             return
 
-        menu_item = db.query(MenuItem).first()
-        item_id = menu_item.id if menu_item else 1
-        
+        session.add(
+            OrderItem(
+                order_id=order.id,
+                item_id=menu_item.id,
+                status_id=ready_status.id,
+                quantity=1,
+                unit_price=menu_item.base_price,
+                unit_price_at_order=menu_item.base_price,
+            )
+        )
+        session.commit()
 
-        # Create a new order for the guest
-        new_order = Order(guest_id=guest.id, round_number=1)
-        db.add(new_order)
-        db.commit()
-        db.refresh(new_order)
+        print("Pedido de exemplo criado com um Chicken Ramen no estado Ready.")
 
-        new_order_item = OrderItem(
-           order_id=new_order.id,
-           item_id=item_id,
-           status_id=3,  # Assuming '3' corresponds to 'Ready'
-           quantity=1,
-           unit_price=10.00,
-           unit_price_at_order=10.00
-       )
-
-        db.add(new_order_item)
-        db.commit()
-
-        print("Successfully seeded a 'Ready' order item!")
 
 if __name__ == "__main__":
     seed_orders()

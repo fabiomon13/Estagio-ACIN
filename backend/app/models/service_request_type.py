@@ -1,13 +1,11 @@
-#backend/app/models/service_request_status.py
-
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Boolean, Column, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
 
 
-class ServiceRequestStatus(Base):
-    __tablename__ = "service_requests_statuses"
+class ServiceRequestType(Base):
+    __tablename__ = "service_request_types"
 
     id = Column(
         Integer,
@@ -15,20 +13,27 @@ class ServiceRequestStatus(Base):
     )
 
     name = Column(
-        String(50),
+        String(100),
         nullable=False,
         unique=True,
         index=True,
     )
 
     alias = Column(
-        String(50),
+        String(100),
         nullable=False,
         unique=True,
         index=True,
     )
 
+    is_high_priority = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+
     service_requests = relationship(
         "ServiceRequest",
-        back_populates="status",
+        back_populates="request_type",
     )
