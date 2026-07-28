@@ -1,10 +1,12 @@
 from fastapi import HTTPException, status
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session, joinedload   
+from datetime import datetime, timezone
 
 from app.models.dining_session import DiningSession
 from app.models.order import Order
 from app.models.order_item import OrderItem
+from app.models.order_item_status import OrderItemStatus
 from app.models.guest import Guest
 from app.models.menu_item import MenuItem
 from app.models.service_request import ServiceRequest
@@ -17,11 +19,61 @@ from app.schemas.staff.staff_contract import (
     StaffReadyTable,
     StaffReadyItem
 )
+from app.models.service_request_type import ServiceRequestType
+from app.models.service_request_status import ServiceRequestStatus
+
+READY_ORDER_ITEM_ALIAS = "ready"
+SERVED_ORDER_ITEM_ALIAS = "served"
+
+PAYMENT_REQUEST_TYPE = "payment_request"
+ASSISTANCE_REQUEST_TYPE = "assistance"
+
+PENDING_SERVICE_REQUEST_ALIAS = "pending"
+RESOLVED_SERVICE_REQUEST_ALIAS = "resolved"
+
+def get_order_item_status_by_alias(db: Session, alias: str) -> OrderItemStatus:
+    """
+    Fetches an OrderItemStatus by its alias[cite: 1].
+    Raises an HTTP 500 error if the status alias is not found in the database[cite: 1].
+    """
+    status_row = db.query(OrderItemStatus)\
+    .filter(func.lower(OrderItemStatus.alias) == alias.lower())\
+    .first()
+   
+    if status_row is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Order item status with alias '{alias}' not found."
+        )
+
+    return status_row
+
+def get_service_request_type_by_alias(db: Session, alias: str) -> ServiceRequestType:
+    """
+    Fetches a ServiceRequestType by its alias[cite: 1].
+    Raises an HTTP 500 error if the service request type is not configured in the database[cite: 1].
+    """
+    row = db.query(ServiceRequestType).filter(func.lower(ServiceRequestType.alias) == alias.lower()).first()
+    if row is None:
+        raise HTTPException(status_code=500, detail=f"Service request type '{alias}' is not configured")
+    return row
+
+def get_service_request_status_by_alias(db: Session, alias: str) -> ServiceRequestStatus:
+    """
+    Fetches a ServiceRequestStatus by its alias[cite: 1].
+    Raises an HTTP 500 error if the service request status is not configured in the database[cite: 1].
+    """
+    row = db.query(ServiceRequestStatus).filter(func.lower(ServiceRequestStatus.alias) == alias.lower()).first()
+    if row is None:
+        raise HTTPException(status_code=500, detail=f"Service request status '{alias}' is not configured")
+    return row
 
 def get_staff_dashboard(db: Session) -> StaffDashboard:
-
-    """Fetches and formats all data for the staff dashboard."""
-
+    """
+    Fetches and formats all data for the staff dashboard[cite: 1].
+    Calculates occupied tables, guest counts, and table totals for active sessions[cite: 1].
+    Also compiles lists of ready-to-serve items and open service requests for the dashboard response[cite: 1].
+    """
     active_sessions = db.query(DiningSession).options(
         joinedload(DiningSession.restaurant_table)).filter(DiningSession.is_active == True).all()
 
@@ -34,15 +86,18 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
     for session in active_sessions:
         state = StaffTableState.ACTIVE if session.is_approved else StaffTableState.AWAITING_APPROVAL
 
+        ready_status = get_order_item_status_by_alias(db, READY_ORDER_ITEM_ALIAS)
+
         # Calculate table total
         total_amount = db.query(func.sum(OrderItem.unit_price_at_order * OrderItem.quantity))\
             .join(Order, Order.id == OrderItem.order_id)\
-                .filter(Order.guest_id == session.id)\
-                    .scalar() or 0.0
+            .join(Guest, Guest.id == Order.guest_id)\
+            .filter(Guest.session_id == session.id)\
+            .scalar() or 0.0
 
         # Count ready items for summary
         ready_items = db.query(OrderItem).join(Order, Order.id == OrderItem.order_id).join(Guest, Guest.id == Order.guest_id).filter(
-                    Guest.session_id == session.id, OrderItem.status_id == 3).all()
+                    Guest.session_id == session.id, OrderItem.status_id == ready_status.id).all()
 
         
         tables_data.append(
@@ -76,19 +131,21 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
             )
 
     # Open service requests
-    open_requests = db.query(ServiceRequest).join(ServiceRequest.dining_session)\
+    open_requests = db.query(ServiceRequest, ServiceRequestType)\
+    .join(DiningSession, DiningSession.id == ServiceRequest.session_id)\
+    .join(ServiceRequestType, ServiceRequestType.id == ServiceRequest.type_id)\
     .options(joinedload(ServiceRequest.dining_session).joinedload(DiningSession.restaurant_table))\
-    .filter(DiningSession.is_active == True).all()
+    .filter(DiningSession.is_active == True, ServiceRequest.resolved_at.is_(None)).all()
 
     requests_data = [
         StaffOpenRequest(
             id=request.id,
             table_number=request.dining_session.restaurant_table.table_number if request.dining_session and request.dining_session.restaurant_table else 0,
-            type=request.type,
-            is_high_priority=request.is_high_priority,
+            type=request_type.alias,
+            is_high_priority=request_type.is_high_priority,
             created_at=request.created_at
         )
-        for request in open_requests
+        for request, request_type in open_requests
     ]
 
     summary = StaffDashboardSummary(
@@ -105,7 +162,10 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
     )
 
 def approve_session(db: Session, session_id: int) -> dict:
-
+    """
+    Approves a dining session by setting its is_approved attribute to True[cite: 1].
+    Raises an HTTP 404 error if the session is not found, or an HTTP 400 error if it is already approved[cite: 1].
+    """
     session = db.query(DiningSession).filter(DiningSession.id == session_id).first()
 
     if not session:
@@ -124,13 +184,25 @@ def approve_session(db: Session, session_id: int) -> dict:
             }
 
 def mark_item_as_served(db: Session, item_id: int) -> dict:
-
+    """
+    Updates a specific order item's status to 'served'[cite: 1].
+    Raises an HTTP 404 error if the order item is not found, or an HTTP 400 error if the item is not currently in a 'ready' state[cite: 1].
+    """
     order_item = db.query(OrderItem).filter(OrderItem.id == item_id).first()
 
     if not order_item:
         raise HTTPException(status_code= status.HTTP_404_NOT_FOUND, detail="Order item not found")\
 
-    order_item.status_id = 4  # Assuming '4' corresponds to 'Served'
+    ready_status = get_order_item_status_by_alias(db, READY_ORDER_ITEM_ALIAS)
+    served_status = get_order_item_status_by_alias(db, SERVED_ORDER_ITEM_ALIAS)
+
+    if order_item.status_id != ready_status.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Order item {item_id} is not in 'ready' status and cannot be marked as served."
+        )
+
+    order_item.status_id = served_status.id
     db.commit()
 
     db.refresh(order_item)
@@ -139,7 +211,49 @@ def mark_item_as_served(db: Session, item_id: int) -> dict:
         "success": True,
         "message": f"Order item {item_id} successfully marked as served.",
         "item_id": order_item.id,
-        "updated_status_id": order_item.status_id
+        "updated_status_id": served_status.id
+    }
+
+
+def resolve_service_request(db: Session, request_id: int) -> dict:
+    """
+    Marks a service request as resolved and sets resolved_at in UTC.
+    Raises 404 if request does not exist.
+    Raises 409 if request is already resolved.
+    """
+    service_request = (
+        db.query(ServiceRequest)
+        .filter(ServiceRequest.id == request_id)
+        .first()
+    )
+
+    if service_request is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Service request not found.",
+        )
+
+    if service_request.resolved_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Service request is already resolved.",
+        )
+
+    resolved_status = get_service_request_status_by_alias(db, RESOLVED_SERVICE_REQUEST_ALIAS)
+
+    service_request.status_id = resolved_status.id
+    service_request.resolved_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(service_request)
+
+    return {
+        "success": True,
+        "message": f"Service request {request_id} successfully resolved.",
+        "request_id": service_request.id,
+        "updated_status_id": resolved_status.id,
+        "updated_status_alias": resolved_status.alias,
+        "resolved_at": service_request.resolved_at,
     }
 
 
@@ -161,3 +275,27 @@ def set_menu_item_availability(
     db.refresh(menu_item)
 
     return menu_item
+ 
+def deactivate_session(db: Session, session_id: int) -> dict:
+    """
+    Deactivates a dining session and sets its end time to the current UTC time[cite: 1].
+    Raises an HTTP 404 error if the session is not found, or an HTTP 409 error if the session is already marked inactive[cite: 1].
+    """
+    session = db.query(DiningSession).filter(DiningSession.id == session_id).first()
+
+    if session is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dining session not found.")
+
+    if not session.is_active:
+        raise HTTPException(status_code= 409, detail="Dining session is already inactive.")
+
+    session.is_active = False
+    session.end_time = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(session)
+
+    return {
+        "success": True,
+        "session_id": session.id,
+        "is_active": session.is_active
+        }

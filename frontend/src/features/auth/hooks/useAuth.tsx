@@ -26,10 +26,12 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+// Provides authentication state and actions to the entire application
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [staff, setStaff] = useState<AuthStaff | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Checks whether the user already has a valid session when the app loads
   useEffect(() => {
     apiFetch<AuthStaff>('/auth/me')
       .then(setStaff)
@@ -37,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false));
   }, []);
 
+  // Authenticates the user and stores the returned staff data
   const login = async (email: string, password: string): Promise<AuthStaff> => {
     const result = await apiFetch<AuthStaff>('/auth/login', {
       method: 'POST',
@@ -47,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result;
   };
 
+  // Ends the current session and clears the authenticated staff data
   const logout = async (): Promise<void> => {
     await apiFetch<void>('/auth/logout', { method: 'POST' });
     setStaff(null);
@@ -59,6 +63,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Returns the current authentication state and actions
+// Must be used inside AuthProvider
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
   if (context === null) {

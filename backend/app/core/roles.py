@@ -10,7 +10,7 @@ class StaffRoleEnum(str, Enum):
 
 
 def staff_role(staff: Staff) -> StaffRoleEnum:
-    return StaffRoleEnum(staff.staff_role.name.lower())
+    return StaffRoleEnum(staff.staff_role.alias.lower())
 
 
 def role_display_name(role: StaffRoleEnum) -> str:
