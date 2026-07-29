@@ -9,17 +9,34 @@ from app.db.base import Base
 class Category(Base):
     __tablename__ = "categories"
 
-    id = Column(Integer, primary_key=True)
-
-    station_id = Column(
+    id = Column(
         Integer,
-        ForeignKey("stations.id", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+
+    default_station_id = Column(
+        Integer,
+        ForeignKey(
+            "stations.id",
+            ondelete="RESTRICT",
+        ),
         nullable=False,
         index=True,
     )
-    
-    name = Column(String(100), nullable=False, unique=True, index=True)
-    alias = Column(String(100), nullable=False, unique=True, index=True)
+
+    name = Column(
+        String(100),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+
+    alias = Column(
+        String(100),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
 
     created_at = Column(
         DateTime(timezone=True),
@@ -34,5 +51,13 @@ class Category(Base):
         onupdate=func.now(),
     )
 
-    station = relationship("Station", back_populates="categories")
-    menu_items = relationship("MenuItem", back_populates="category")
+    default_station = relationship(
+        "Station",
+        back_populates="default_categories",
+        foreign_keys=[default_station_id],
+    )
+
+    menu_items = relationship(
+        "MenuItem",
+        back_populates="category",
+    )

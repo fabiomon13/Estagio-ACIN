@@ -1,3 +1,5 @@
+#backend/app/db/seeds/buffet_items.py
+
 from sqlalchemy import select
 
 from app.db.session import SessionLocal

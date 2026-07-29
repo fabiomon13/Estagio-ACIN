@@ -8,6 +8,7 @@ from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.order_item_status import OrderItemStatus
 from app.models.guest import Guest
+from app.models.menu_item import MenuItem
 from app.models.service_request import ServiceRequest
 from app.schemas.staff.staff_contract import (
     StaffDashboard,
@@ -268,6 +269,26 @@ def resolve_service_request(db: Session, request_id: int) -> dict:
         "resolved_at": service_request.resolved_at,
     }
 
+
+def set_menu_item_availability(
+    db: Session,
+    item_id: int,
+    is_available: bool,
+) -> MenuItem:
+    menu_item = db.get(MenuItem, item_id)
+
+    if menu_item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Menu item not found",
+        )
+
+    menu_item.is_available = is_available
+    db.commit()
+    db.refresh(menu_item)
+
+    return menu_item
+ 
 def deactivate_session(db: Session, session_id: int) -> dict:
     """
     Deactivates a dining session and sets its end time to the current UTC time[cite: 1].

@@ -1,3 +1,5 @@
+#backend/app/db/seeds/restaurant_tables.py
+
 from sqlalchemy import select
 
 from app.db.session import SessionLocal
@@ -9,7 +11,7 @@ DEFAULT_TABLE_CAPACITY = 4
 
 
 def seed_restaurant_table() -> None:
-    """Cria uma mesa de quatro lugares, se ainda não existir."""
+    """Garante a existência de três mesas com quatro lugares cada."""
     with SessionLocal() as session:
         existing_numbers =set(
             session.scalars(

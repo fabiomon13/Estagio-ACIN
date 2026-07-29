@@ -18,6 +18,7 @@ def staff_to_out(staff: Staff) -> StaffOut:
         name=staff.name,
         email=staff.email,
         role=staff_role(staff),
+        photo_url=staff.photo_url,
     )
 
 

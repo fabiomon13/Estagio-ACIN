@@ -43,6 +43,15 @@ class StaffReadyTable(BaseModel):
     table_number: int
     items: list[StaffReadyItem]
 
+
+class MenuItemAvailabilityUpdate(BaseModel):
+    is_available: bool
+
+
+class MenuItemAvailabilityResponse(BaseModel):
+    id: int
+    is_available: bool
+
 #Define the data model for an open request made to a staff member
 class StaffOpenRequest(BaseModel):
     id: int

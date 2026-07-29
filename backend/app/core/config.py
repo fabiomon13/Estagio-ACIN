@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     supabase_service_role_key: str = ""
 
     jwt_secret_key: str
+    device_token_secret: str | None = None
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 480
     cookie_secure: bool = False
