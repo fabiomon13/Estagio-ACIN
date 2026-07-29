@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Button from '../../../components/ui/button/Button';
-import { PlusIcon } from '../../../components/icons';
+import { EyeIcon, PlusIcon } from '../../../components/icons';
+import Dropdown from '../../../components/ui/dropdown/Dropdown';
 import Input from '../../../components/ui/input/Input';
 import Badge from '../../../components/ui/badge/Badge';
 import ConfirmDialog from '../../../components/ui/confirm-dialog/ConfirmDialog';
@@ -22,6 +23,7 @@ export function KitchenPage() {
   const [autoAcceptOrders, setAutoAcceptOrders] = useState(false);
   const [sortOrder, setSortOrder] = useState<'oldest' | 'newest'>('oldest');
   const [notifyWaiter, setNotifyWaiter] = useState(false);
+  const [station, setStation] = useState<string | null>(null);
   const { showToast } = useToast();
   const { logout } = useAuth();
 
@@ -114,6 +116,31 @@ export function KitchenPage() {
         <Radio name="radio-demo-disabled-on" label="Disabled on" disabled defaultChecked />
 
         <Radio name="radio-demo-bare" />
+      </section>
+
+      <section className="p-5 flex flex-col gap-4 max-w-sm">
+        <Dropdown
+          label="Estação"
+          value={station}
+          onChange={setStation}
+          leftContent={<EyeIcon size={16} />}
+          placeholder="Todas as estações"
+          options={[
+            { value: 'sushi-bar', label: 'Sushi Bar', leftContent: <Badge size="sm">3</Badge> },
+            { value: 'hot-wok', label: 'Hot / Wok' },
+            { value: 'fryer', label: 'Fryer' },
+            { value: 'cold-pantry', label: 'Cold / Pantry' },
+            { value: 'bar', label: 'Bar' },
+          ]}
+        />
+
+        <Dropdown
+          label="Disabled"
+          value={null}
+          onChange={() => {}}
+          disabled
+          options={[{ value: 'a', label: 'Opção A' }]}
+        />
       </section>
 
       <section className="p-5 flex flex-col gap-4 max-w-sm">
