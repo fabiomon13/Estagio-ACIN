@@ -70,7 +70,7 @@ class CategoryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    station_id: int
+    default_station_id: int
     name: str
     alias: str
 
@@ -80,6 +80,7 @@ class TagResponse(BaseModel):
 
     id: int
     name: str
+    description: str | None
     alias: str
 
 
@@ -88,6 +89,7 @@ class MenuItemResponse(BaseModel):
 
     id: int
     category_id: int
+    station_id: int | None
     name: str
     alias: str
     description: str | None
