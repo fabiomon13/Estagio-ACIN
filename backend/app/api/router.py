@@ -13,8 +13,7 @@ api_router.include_router(
 )
 
 api_router.include_router(
-    client_router,
-    prefix="/client",
+    client_router
 )
 
 api_router.include_router(
