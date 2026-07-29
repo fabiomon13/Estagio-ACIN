@@ -4,5 +4,14 @@ export { default as SearchIcon } from './SearchIcon';
 export { default as CheckIcon } from './CheckIcon';
 export { default as EyeIcon } from './EyeIcon';
 export { default as EyeOffIcon } from './EyeOffIcon';
+export { default as ChevronIcon } from './ChevronIcon';
+export { default as AvatarIcon } from './AvatarIcon';
+export { default as CompactLogo } from './CompactLogo';
+export { default as BillIcon } from './BillIcon';
+export { default as BillFilledIcon } from './BillFilledIcon';
+export { default as HistoryIcon } from './HistoryIcon';
+export { default as HistoryFilledIcon } from './HistoryFilledIcon';
+export { default as SettingsIcon } from './SettingsIcon';
+export { default as SettingsFilledIcon } from './SettingsFilledIcon';
 
 export type { IconProps } from './Icon.types';

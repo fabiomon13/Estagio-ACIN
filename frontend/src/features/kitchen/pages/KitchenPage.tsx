@@ -35,8 +35,6 @@ export function KitchenPage() {
 
   return (
     <div className="bg-background">
-      <h1>Kitchen</h1>
-
       <div className="p-5">
         <Button variant="outline" onClick={() => logout()}>
           Log out

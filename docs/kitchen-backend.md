@@ -2,8 +2,6 @@
 
 This document explains the Kitchen module's backend: what the two endpoints do, how a "ticket" is defined, and how to run and extend the test suite. If you're building the kitchen frontend, or adding a related endpoint (e.g. the waiter's "mark as served" or the client's "cancel item"), read this first.
 
-Design rationale and the full decision history live in `docs/superpowers/specs/2026-07-27-kitchen-backend-foundations-design.md` (and the implementation plan next to it, in `docs/superpowers/plans/`). This doc is the practical "how do I use this" reference; those are the "why was it built this way" reference.
-
 **Scope:** this is the first of several planned sub-projects for the Kitchen Display board. It covers reading active tickets and advancing an item through `Pending → Preparing → Ready`. It does **not** cover: the frontend UI, real-time updates (v1 uses polling, built on top of this later), cancelling an item (client/waiter side), or marking an item `Served` (waiter side).
 
 ## The short version
