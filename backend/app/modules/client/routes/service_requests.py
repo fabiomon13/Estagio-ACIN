@@ -52,7 +52,7 @@ def create_service_request(
     # Find the service request type based on the provided alias in the request data
     request_type = db.scalar(
         select(ServiceRequestType).where(
-            ServiceRequestType.alias == request_data.type,
+            ServiceRequestType.alias == request_data.type_alias,
         )
     )
 

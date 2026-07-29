@@ -11,11 +11,18 @@ from app.db.dependencies import get_db
 from app.models.dining_session import DiningSession
 from app.models.guest import Guest
 from app.models.restaurant_table import RestaurantTable
-from app.modules.client.security import hash_device_token
+from app.modules.client.security import (
+    hash_device_token,
+    hash_legacy_device_token,
+)
 
 DeviceTokenHeader = Annotated[
     str | None,
-    Header(alias="X-Device-Token")
+    Header(
+        alias="X-Device-Token",
+        min_length=32,
+        max_length=128,
+    ),
 ]
 
 
@@ -30,7 +37,7 @@ def find_table(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Table not found",
-        )
+        ) from None
 
     table = db.scalar(
         select(RestaurantTable).where(
@@ -89,18 +96,24 @@ def require_current_guest(
     table = find_table(table_code, db)
     dining_session = find_active_session(table.id, db)
 
-    if not dining_session.is_approved:
+    if (
+        not dining_session.is_approved
+        or dining_session.waiter_id is None
+    ):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="The session has not been approved yet",
         )
 
-    token_hash = hash_device_token(device_token)
+    token_hashes = (
+        hash_device_token(device_token),
+        hash_legacy_device_token(device_token),
+    )
 
     guest = db.scalar(
         select(Guest).where(
             Guest.session_id == dining_session.id,
-            Guest.device_token_hash == token_hash,
+            Guest.device_token_hash.in_(token_hashes),
         )
     )
 

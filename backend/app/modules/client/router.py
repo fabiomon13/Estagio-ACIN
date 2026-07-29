@@ -12,7 +12,7 @@ from app.modules.client.routes.service_requests import (
 from app.modules.client.routes.tables import router as tables_router
 
 
-router = APIRouter()
+router = APIRouter(prefix="/client")
 
 router.include_router(tables_router)
 router.include_router(guests_router)

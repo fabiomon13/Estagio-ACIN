@@ -21,7 +21,10 @@ from app.modules.client.schemas import (
     GuestCreate,
     GuestResponse,
 )
-from app.modules.client.security import hash_device_token
+from app.modules.client.security import (
+    hash_device_token,
+    hash_legacy_device_token,
+)
 
 
 router = APIRouter(
@@ -68,14 +71,15 @@ def create_guest(
             detail="Buffet não encontrado",
         )
 
-    token_hash = hash_device_token(
-        guest_data.device_token,
+    token_hashes = (
+        hash_device_token(guest_data.device_token),
+        hash_legacy_device_token(guest_data.device_token),
     )
 
     existing_guest = db.scalar(
         select(Guest).where(
             Guest.session_id == dining_session.id,
-            Guest.device_token_hash == token_hash,
+            Guest.device_token_hash.in_(token_hashes),
         )
     )
 
@@ -107,7 +111,7 @@ def create_guest(
             if buffet is not None
             else None
         ),
-        device_token_hash=token_hash,
+        device_token_hash=token_hashes[0],
     )
 
     db.add(guest)
