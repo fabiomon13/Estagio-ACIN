@@ -20,6 +20,9 @@ from app.schemas.staff.staff_contract import (
 )
 from app.models.service_request_type import ServiceRequestType
 from app.models.service_request_status import ServiceRequestStatus
+from app.models.staff import Staff
+from app.models.staff_role import StaffRole
+import random
 
 READY_ORDER_ITEM_ALIAS = "ready"
 SERVED_ORDER_ITEM_ALIAS = "served"
@@ -160,7 +163,7 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
         requests=requests_data,
     )
 
-def approve_session(db: Session, session_id: int) -> dict:
+def approve_session(db: Session, session_id: int, approved_by_staff_id: int) -> dict:
     """
     Approves a dining session by setting its is_approved attribute to True[cite: 1].
     Raises an HTTP 404 error if the session is not found, or an HTTP 400 error if it is already approved[cite: 1].
@@ -173,13 +176,23 @@ def approve_session(db: Session, session_id: int) -> dict:
     if session.is_approved:
         raise HTTPException(status_code=400, detail="Dining session is already approved")
 
+    chosen_waiter, current_load = associate_staff_to_tables(db)
+
     session.is_approved = True
+    session.approved_at = datetime.now(timezone.utc)
+    session.waiter_id = chosen_waiter.id
+
     db.commit()
+    db.refresh(session)
 
     return {
         "message": "Dining session approved successfully",
         "session_id": session_id,
-        "is_approved": session.is_approved
+        "is_approved": session.is_approved,
+        "approved_by_staff_id": approved_by_staff_id,
+        "waiter_id": chosen_waiter.id,
+        "waiter_name": chosen_waiter.name,
+        "waiter_active_tables_after_assignment": current_load + 1,
             }
 
 def mark_item_as_served(db: Session, item_id: int) -> dict:
@@ -400,3 +413,50 @@ def list_staff_sessions(
             })
 
         return items
+
+def associate_staff_to_tables(db: Session) -> tuple[Staff, int]:
+    """
+    Randomly associates a staff member to a table for demonstration purposes.
+    Returns the staff member and the table number they are associated with.
+    """
+
+    waiters = (
+        db.query(Staff)
+        .join(Staff.staff_role)
+        .filter(
+            Staff.is_active.is_(True),
+            func.lower(StaffRole.alias) == "waiter"
+        )
+        .all()
+    )
+
+    if not waiters:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No active waiters available for table association."
+        )
+
+    waiter_ids = [w.id for w in waiters]
+
+    load_rows = (
+        db.query(DiningSession.waiter_id, func.count(DiningSession.id))
+        .filter(
+            DiningSession.is_active.is_(True),
+            DiningSession.is_approved.is_(True),
+            DiningSession.waiter_id.in_(waiter_ids)
+        )
+        .group_by(DiningSession.waiter_id)
+        .all()
+    )
+
+    loads = {wid:0 for wid in waiter_ids}
+    for wid, cnt in load_rows:
+        loads[wid] = cnt
+
+
+    min_load = min(loads.values())
+    tied_ids = [wid for wid, cnt in loads.items() if cnt == min_load]
+    chosen_id = random.choice(tied_ids)
+    chosen_waiter = next(w for w in waiters if w.id == chosen_id)
+
+    return chosen_waiter, min_load

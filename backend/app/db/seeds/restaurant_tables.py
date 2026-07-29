@@ -4,36 +4,34 @@ from app.db.session import SessionLocal
 from app.models.restaurant_table import RestaurantTable
 
 
-DEFAULT_TABLE_NUMBER = 1
+DEFAULT_TABLE_NUMBER = [1,2,3,4,5,6,7,8,9,10]
 DEFAULT_TABLE_CAPACITY = 4
 
 
 def seed_restaurant_table() -> None:
     """Cria uma mesa de quatro lugares, se ainda não existir."""
     with SessionLocal() as session:
-        existing_table = session.scalar(
-            select(RestaurantTable).where(
-                RestaurantTable.table_number == DEFAULT_TABLE_NUMBER
-            )
+        existing_numbers =set(
+            session.scalars(
+                select(RestaurantTable.table_number)
+                .where(RestaurantTable.table_number.in_(DEFAULT_TABLE_NUMBER))
+            ).all()
         )
 
-        if existing_table is not None:
-            print(f"Mesa {DEFAULT_TABLE_NUMBER} já existe.")
+        to_create = [
+            RestaurantTable(table_number=number, max_capacity=DEFAULT_TABLE_CAPACITY)
+            for number in DEFAULT_TABLE_NUMBER
+            if number not in existing_numbers
+        ]
+
+        if not to_create:
+            print("Todas as mesas já existem.")
             return
 
-        restaurant_table = RestaurantTable(
-            table_number=DEFAULT_TABLE_NUMBER,
-            max_capacity=DEFAULT_TABLE_CAPACITY,
-        )
-
-        session.add(restaurant_table)
+        session.add_all(to_create)
         session.commit()
 
-        print(
-            f"Mesa {DEFAULT_TABLE_NUMBER} criada com "
-            f"{DEFAULT_TABLE_CAPACITY} lugares."
-        )
-
+        print(f"{len(to_create)} mesa(s) criada(s).")
 
 if __name__ == "__main__":
     seed_restaurant_table()
