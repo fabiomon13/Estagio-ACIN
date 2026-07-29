@@ -41,3 +41,15 @@ def require_role(*roles: StaffRoleEnum):
         return staff
 
     return dependency
+
+
+def require_exact_role(role: StaffRoleEnum):
+    def dependency(staff: Staff = Depends(get_current_staff)) -> Staff:
+        if staff_role(staff) != role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=FORBIDDEN_DETAIL,
+            )
+        return staff
+
+    return dependency
