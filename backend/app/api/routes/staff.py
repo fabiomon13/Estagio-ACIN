@@ -20,7 +20,7 @@ router = APIRouter(prefix="/staff")
     tags=["Staff - Dashboard"],
     dependencies=[Depends(require_role(StaffRoleEnum.WAITER))]
 )
-def get_staff_dashboard(db: Session = Depends(get_db)) -> StaffDashboard:
+def get_staff_dashboard(db: Session = Depends(get_db), current_staff: Staff = Depends(get_current_staff),) -> StaffDashboard:
     return staff_service.get_staff_dashboard(db)
 
 
@@ -39,7 +39,7 @@ def approve_session(session_id: int, db: Session = Depends(get_db), approver: St
     tags=["Staff - Table management"],
     dependencies=[Depends(require_role(StaffRoleEnum.WAITER))]
     )
-def deactivate_session(session_id: int, db: Session = Depends(get_db)):
+def deactivate_session(session_id: int, db: Session = Depends(get_db), current_staff: Staff = Depends(get_current_staff),):
     return staff_service.deactivate_session(db, session_id)
 
 
@@ -49,7 +49,7 @@ def deactivate_session(session_id: int, db: Session = Depends(get_db)):
     tags=["Staff - Services"],
     dependencies=[Depends(require_role(StaffRoleEnum.WAITER))]
 )
-def mark_item_as_served(item_id: int, db: Session = Depends(get_db)):
+def mark_item_as_served(item_id: int, db: Session = Depends(get_db), current_staff: Staff = Depends(get_current_staff)):
     return staff_service.mark_item_as_served(db, item_id)
 
 
@@ -58,7 +58,7 @@ def mark_item_as_served(item_id: int, db: Session = Depends(get_db)):
     tags=["Staff - Services"],
     dependencies=[Depends(require_role(StaffRoleEnum.WAITER))]
 )
-def resolve_request(request_id: int, db: Session = Depends(get_db)):
+def resolve_request(request_id: int, db: Session = Depends(get_db), current_staff: Staff = Depends(get_current_staff)):
     return staff_service.resolve_service_request(db, request_id)
 
 @router.get("/requests", tags=["Staff - Services"], dependencies=[Depends(require_role(StaffRoleEnum.WAITER))])
