@@ -1,8 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.api.deps import require_role
+from app.core.roles import StaffRoleEnum
 from app.db.dependencies import get_db
-from app.schemas.staff.staff_contract import StaffDashboard
+from app.models.staff import Staff
+from app.schemas.staff.staff_contract import (
+    MenuItemAvailabilityResponse,
+    MenuItemAvailabilityUpdate,
+    StaffDashboard,
+)
 from app.services import staff_service
 from app import db
 

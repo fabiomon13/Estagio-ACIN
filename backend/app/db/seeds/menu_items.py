@@ -1,3 +1,5 @@
+#backend/app/db/seeds/menu_items.py
+
 from decimal import Decimal
 
 from sqlalchemy import select

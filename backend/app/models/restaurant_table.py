@@ -34,7 +34,7 @@ class RestaurantTable(Base):
         unique=True,
         index=True,
         default=lambda: str(uuid4()),
-        server_default=text("gen_random_uuid()::text"),
+        server_default=text("(gen_random_uuid())::text"),
     )
 
     created_at = Column(
