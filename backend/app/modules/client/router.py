@@ -92,6 +92,7 @@ def find_current_guest(
 ) -> Guest:
     table = find_table(table_code, db)
     dining_session = find_active_session(table.id, db)
+
     token_hash = hash_device_token(device_token)
 
     guest = db.scalar(

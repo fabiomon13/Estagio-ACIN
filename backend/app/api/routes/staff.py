@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.db.dependencies import get_db
 from app.schemas.staff.staff_contract import StaffDashboard
 from app.services import staff_service
+from app import db
 
 router = APIRouter(prefix="/staff")
 
@@ -75,3 +76,18 @@ def get_staff_request(request_id: int, db: Session = Depends(get_db)):
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service request not found")
     return {"success": True, "request": item}
+
+@router.get("/sessions", tags=["Staff - Table management"])
+def list_staff_sessions(
+    db: Session = Depends(get_db),
+    limit: int = 50,
+    offset: int = 0,
+    only_active: bool = True,
+):
+    items = staff_service.list_staff_sessions(
+        db=db,
+        limit=limit,
+        offset=offset,
+        only_active=only_active,
+    )
+    return {"success": True, "count": len(items), "items": items}

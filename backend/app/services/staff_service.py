@@ -373,3 +373,30 @@ def get_service_request_detail(db, request_id: int):
         "resolved_at": r.resolved_at,
         "is_open": r.resolved_at is None,
     }
+
+def list_staff_sessions(
+        db: Session,
+        limit: int = 50,
+        offset: int = 0,
+        only_active: bool = True,
+):
+    q = db.query(DiningSession).options(joinedload(DiningSession.restaurant_table))
+
+    if only_active:
+        q = q.filter(DiningSession.is_active == True)
+
+        sessions = q.order_by(DiningSession.start_time.desc()).limit(limit).offset(offset).all()
+
+        items = []
+        for s in sessions:
+            items.append({
+                "id": s.id,
+                "table_number": s.restaurant_table.table_number if s.restaurant_table else None,
+                "is_active": s.is_active,
+                "is_approved": s.is_approved,
+                "guests_count": s.num_clients,
+                "start_time": s.start_time,
+                "end_time": s.end_time
+            })
+
+        return items
