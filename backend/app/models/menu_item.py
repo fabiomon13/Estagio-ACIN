@@ -18,6 +18,13 @@ class MenuItem(Base):
         index=True,
     )
 
+    station_id = Column(
+        Integer,
+        ForeignKey("stations.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+
     name = Column(String(150), nullable=False, unique=True, index=True)
     alias = Column(String(150), nullable=False, unique=True, index=True)
     description = Column(Text, nullable=True)
@@ -48,6 +55,12 @@ class MenuItem(Base):
     category = relationship("Category", back_populates="menu_items")
     order_items = relationship("OrderItem", back_populates="menu_item")
 
+    station = relationship(
+        "Station",
+        back_populates="menu_items",
+        foreign_keys=[station_id],
+    )
+
     buffet_links = relationship(
         "BuffetItem",
         back_populates="menu_item",
@@ -59,6 +72,14 @@ class MenuItem(Base):
         back_populates="menu_item",
         cascade="all, delete-orphan",
     )
+
+    @property
+    def effective_station(self):
+        return (
+            self.station
+            if self.station is not None
+            else self.category.default_station
+        )
 
     @property
     def tags(self):

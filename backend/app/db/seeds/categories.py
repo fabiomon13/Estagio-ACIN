@@ -66,8 +66,8 @@ def seed_categories() -> None:
             existing_category = categories_by_alias.get(category_alias)
 
             if existing_category is not None:
-                if existing_category.station_id != station.id:
-                    existing_category.station_id = station.id
+                if existing_category.default_station_id != station.id:
+                    existing_category.default_station_id = station.id
                     updated_categories += 1
                 continue
 
@@ -75,7 +75,7 @@ def seed_categories() -> None:
                 Category(
                     name=category_name,
                     alias=category_alias,
-                    station_id=station.id,
+                    default_station_id=station.id,
                 )
             )
             created_categories += 1
