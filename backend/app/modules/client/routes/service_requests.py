@@ -13,7 +13,7 @@ from app.db.dependencies import get_db
 from app.models.service_request import ServiceRequest
 from app.models.service_request_status import ServiceRequestStatus
 from app.models.service_request_type import ServiceRequestType
-from app.modules.client.dependencies import CurrentGuest
+from app.modules.client.dependencies import CurrentGuest, DbSession
 from app.modules.client.schemas import (
     ServiceRequestCreate,
     ServiceRequestResponse,
@@ -24,60 +24,120 @@ router = APIRouter(
     tags=["Client - Service Requests"],
 )
 
+def require_request_status(
+    db: Session,
+    alias: str,
+) -> ServiceRequestStatus:
+    request_status = db.scalar(
+        select(ServiceRequestStatus).where(
+            ServiceRequestStatus.alias == alias,
+        )
+    )
+
+    if request_status is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Status '{alias}' not configured for service requests",
+        )
+
+    return request_status
+
+
+def require_service_request(
+    db: Session,
+    request_id: int,
+) -> ServiceRequest:
+    service_request = db.scalar(
+        select(ServiceRequest)
+        .options(
+            selectinload(ServiceRequest.request_type),
+            selectinload(ServiceRequest.status),
+        )
+        .where(ServiceRequest.id == request_id)
+    )
+
+    if service_request is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Pedido de assistência não encontrado",
+        )
+
+    return service_request
+
+
+def require_pending_service_request(
+    db: Session,
+    request_id: int,
+    session_id: int,
+    *,
+    lock: bool = False,
+) -> ServiceRequest:
+    query = (
+        select(ServiceRequest)
+        .options(selectinload(ServiceRequest.status))
+        .where(
+            ServiceRequest.id == request_id,
+            ServiceRequest.session_id == session_id,
+        )
+    )
+
+    if lock:
+        query = query.with_for_update()
+
+    service_request = db.scalar(query)
+
+    if service_request is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Pedido de assistência não encontrado",
+        )
+
+    if service_request.status.alias != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Apenas pedidos pendentes podem ser cancelados",
+        )
+
+    return service_request
+
 @router.post(
     "/tables/{table_code}/service-requests",
     response_model=ServiceRequestResponse,
     status_code=status.HTTP_201_CREATED,
 )
 def create_service_request(
-    table_code: str,
     request_data: ServiceRequestCreate,
     guest: CurrentGuest,
-    db: Annotated[Session, Depends(get_db)],
+    db: DbSession,
 ) -> ServiceRequest:
-    # Find the "pending" status for service requests
-    pending_status = db.scalar(
-        select(ServiceRequestStatus).where(
-            ServiceRequestStatus.alias == "pending",
-        )
-    )
+    pending_status = require_request_status(db, "pending")
 
-    # Check if the "pending" status exists; if not, raise an HTTP exception
-    if pending_status is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Estado Pending de assistência não configurado",
-        )
-
-    # Find the service request type based on the provided alias in the request data
     request_type = db.scalar(
         select(ServiceRequestType).where(
             ServiceRequestType.alias == request_data.type_alias,
         )
     )
 
-    # Check if the service request type exists; if not, raise an HTTP exception
     if request_type is None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Tipo de pedido de assistência inválido",
+            detail="Type of service request not found",
         )
 
-    # Check if there is an existing unresolved service request of the same type for the current guest's session
-    existing_request = db.scalar(
-        select(ServiceRequest).where(
+    existing_request_id = db.scalar(
+        select(ServiceRequest.id).where(
             ServiceRequest.session_id == guest.session_id,
             ServiceRequest.type_id == request_type.id,
             ServiceRequest.resolved_at.is_(None),
         )
     )
-    if existing_request is not None:
+
+    if existing_request_id is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Já existe um pedido deste tipo em aberto",
+            detail="There is already an open request of this type",
         )
 
-    # Create a new service request with the current guest's session ID, the "pending" status ID, and the service request type ID
     service_request = ServiceRequest(
         session_id=guest.session_id,
         status_id=pending_status.id,
@@ -89,31 +149,12 @@ def create_service_request(
     try:
         db.commit()
     except IntegrityError as exc:
-        db.rollback()
-
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Não foi possível criar o pedido de assistência",
+            detail="It was not possible to create the service request",
         ) from exc
 
-    # Refresh the service request instance to get the latest data from the database
-    created_request = db.scalar(
-        select(ServiceRequest)
-        .options(
-            selectinload(ServiceRequest.request_type),
-            selectinload(ServiceRequest.status),
-        )
-        .where(ServiceRequest.id == service_request.id)
-    )
-
-    # Check if the created service request was successfully retrieved; if not, raise an HTTP exception
-    if created_request is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Não foi possível carregar o pedido de assistência",
-        )
-
-    return created_request
+    return require_service_request(db, service_request.id)
 
 # Get service requests for a specific table endpoint
 @router.get(
@@ -123,7 +164,7 @@ def create_service_request(
 def get_service_requests(
     table_code: str,
     guest: CurrentGuest,
-    db: Annotated[Session, Depends(get_db)],
+    db: DbSession
 ) -> list[ServiceRequest]:
 
     # Retrieve all service requests for the guest's session, including their request type and status, ordered by creation date in descending order
@@ -147,7 +188,7 @@ def get_service_requests(
     response_model=list[ServiceRequestTypeResponse],
 )
 def get_service_request_types(
-    db: Annotated[Session, Depends(get_db)],
+    db: DbSession,
 ) -> list[ServiceRequestType]:
     # Fetch all service request types from the database, ordered by name, and return them as a list.
     return list(
@@ -160,62 +201,25 @@ def get_service_request_types(
 @router.patch(
     "/tables/{table_code}/service-requests/{request_id}/cancel",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
 )
 def cancel_service_request(
-    table_code: str,
     request_id: int,
     guest: CurrentGuest,
-    db: Annotated[Session, Depends(get_db)],
+    db: DbSession,
 ) -> None:
-    # Lock the service request
-    service_request = db.scalar(
-        select(ServiceRequest)
-        .options(selectinload(ServiceRequest.status))
-        .where(
-            ServiceRequest.id == request_id,
-            ServiceRequest.session_id == guest.session_id,
-        )
-        .with_for_update()
+    service_request = require_pending_service_request(
+        db=db,
+        request_id=request_id,
+        session_id=guest.session_id,
+        lock=True,
     )
 
-    # Check if the service request exists
-    if service_request is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Service request not found.",
-        )
-
-    # Check if the service request is in a cancellable state
-    if service_request.status.alias != "pending":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Not allowed to cancel a service request that is not in a pending state.",
-        )
-
-    # Find the cancelled status
-    canceled_status = db.scalar(
-        select(ServiceRequestStatus).where(
-            ServiceRequestStatus.alias == "cancelled",
-        )
+    cancelled_status = require_request_status(
+        db,
+        "cancelled",
     )
 
-    # Check if the cancelled status exists
-    if canceled_status is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Cancelled status not configured.",
-        )
-
-    # Update the service request status to cancelled and set the resolved_at timestamp
-    service_request.status_id = canceled_status.id
+    service_request.status_id = cancelled_status.id
     service_request.resolved_at = datetime.now(timezone.utc)
-
-    try:
-        db.commit()
-    except SQLAlchemyError as exc:
-        db.rollback()
-
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="It was not possible to cancel the service request",
-        ) from exc
+    db.commit()
