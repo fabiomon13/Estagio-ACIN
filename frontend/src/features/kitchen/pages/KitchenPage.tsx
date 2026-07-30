@@ -13,6 +13,170 @@ import SearchInput from '../../../components/ui/search-input/SearchInput';
 import Textarea from '../../../components/ui/textarea/Textarea';
 import Checkbox from '../../../components/ui/checkbox/Checkbox';
 import { useAuth } from '../../auth/hooks/useAuth';
+import TicketCard from '../components/ticket-card/TicketCard';
+import type { KitchenPatchableStatus, KitchenTicket } from '../types/kitchen.types';
+
+const now = () => new Date().toISOString();
+
+const SAMPLE_TICKET_NEW_1: KitchenTicket = {
+  order_id: 1042,
+  table_number: 6,
+  guest_number: 2,
+  round_number: 1,
+  created_at: now(),
+  items: [
+    {
+      order_item_id: 501,
+      menu_item_name: 'Dragon Roll',
+      quantity: 1,
+      notes: 'Extra spicy',
+      tags: ['Alergénio: crustáceos'],
+      station_id: 3,
+      station: 'Sushi Bar',
+      status: 'Pending',
+      created_at: now(),
+    },
+    {
+      order_item_id: 502,
+      menu_item_name: 'Pork Ramen',
+      quantity: 2,
+      notes: null,
+      tags: [],
+      station_id: 2,
+      station: 'Hot / Wok',
+      status: 'Pending',
+      created_at: now(),
+    },
+  ],
+};
+
+const SAMPLE_TICKET_NEW_2: KitchenTicket = {
+  order_id: 1051,
+  table_number: 3,
+  guest_number: 1,
+  round_number: 2,
+  created_at: now(),
+  items: [
+    {
+      order_item_id: 511,
+      menu_item_name: 'Chicken Katsu',
+      quantity: 1,
+      notes: null,
+      tags: [],
+      station_id: 5,
+      station: 'Fryer',
+      status: 'Pending',
+      created_at: now(),
+    },
+    {
+      order_item_id: 512,
+      menu_item_name: 'Miso Soup',
+      quantity: 1,
+      notes: null,
+      tags: ['Vegan'],
+      station_id: 4,
+      station: 'Cold / Pantry',
+      status: 'Pending',
+      created_at: now(),
+    },
+  ],
+};
+
+const SAMPLE_TICKET_PREPARING_1: KitchenTicket = {
+  order_id: 1038,
+  table_number: 9,
+  guest_number: 3,
+  round_number: 1,
+  created_at: now(),
+  items: [
+    {
+      order_item_id: 521,
+      menu_item_name: 'Beef Yakisoba',
+      quantity: 1,
+      notes: null,
+      tags: [],
+      station_id: 2,
+      station: 'Hot / Wok',
+      status: 'Preparing',
+      created_at: now(),
+    },
+    {
+      order_item_id: 522,
+      menu_item_name: 'Edamame',
+      quantity: 2,
+      notes: null,
+      tags: ['Vegan'],
+      station_id: 4,
+      station: 'Cold / Pantry',
+      status: 'Served',
+      created_at: now(),
+    },
+  ],
+};
+
+const SAMPLE_TICKET_PREPARING_2: KitchenTicket = {
+  order_id: 1060,
+  table_number: 12,
+  guest_number: 4,
+  round_number: 3,
+  created_at: now(),
+  items: [
+    {
+      order_item_id: 531,
+      menu_item_name: 'Peanut Satay Skewers',
+      quantity: 2,
+      notes: null,
+      tags: ['Alergénio: amendoim'],
+      station_id: 2,
+      station: 'Hot / Wok',
+      status: 'Preparing',
+      created_at: now(),
+    },
+    {
+      order_item_id: 532,
+      menu_item_name: 'Tempura Banana',
+      quantity: 1,
+      notes: 'Aniversário — sem pressa',
+      tags: [],
+      station_id: 5,
+      station: 'Fryer',
+      status: 'Pending',
+      created_at: now(),
+    },
+  ],
+};
+
+const SAMPLE_TICKET_READY_1: KitchenTicket = {
+  order_id: 1029,
+  table_number: 4,
+  guest_number: 1,
+  round_number: 1,
+  created_at: now(),
+  items: [
+    {
+      order_item_id: 541,
+      menu_item_name: 'Salmon Nigiri',
+      quantity: 2,
+      notes: null,
+      tags: [],
+      station_id: 3,
+      station: 'Sushi Bar',
+      status: 'Ready',
+      created_at: now(),
+    },
+    {
+      order_item_id: 542,
+      menu_item_name: 'Green Tea Mochi',
+      quantity: 1,
+      notes: null,
+      tags: [],
+      station_id: 4,
+      station: 'Cold / Pantry',
+      status: 'Cancelled',
+      created_at: now(),
+    },
+  ],
+};
 
 export function KitchenPage() {
   const [isDefaultDialogOpen, setIsDefaultDialogOpen] = useState(false);
@@ -35,8 +199,60 @@ export function KitchenPage() {
     }, 1500);
   };
 
+  const handleAdvanceStatus = (orderItemId: number, nextStatus: KitchenPatchableStatus) => {
+    showToast({
+      variant: 'info',
+      title: 'Advance status (demo)',
+      description: `Item ${orderItemId} -> ${nextStatus}`,
+    });
+  };
+
   return (
     <div className="bg-background">
+      <section className="p-5 flex items-start gap-4 w-full">
+        <div className="flex flex-1 min-w-0 flex-col gap-4">
+          <h2 className="text-content-subtle text-sm font-semibold uppercase">New</h2>
+          <TicketCard
+            elapsedMinutes={1}
+            ticket={SAMPLE_TICKET_NEW_1}
+            urgency="normal"
+            onAdvanceStatus={handleAdvanceStatus}
+          />
+          <TicketCard
+            elapsedMinutes={9}
+            ticket={SAMPLE_TICKET_NEW_2}
+            urgency="warning"
+            onAdvanceStatus={handleAdvanceStatus}
+          />
+        </div>
+
+        <div className="flex flex-1 min-w-0 flex-col gap-4">
+          <h2 className="text-content-subtle text-sm font-semibold uppercase">Preparing</h2>
+          <TicketCard
+            elapsedMinutes={3}
+            ticket={SAMPLE_TICKET_PREPARING_1}
+            urgency="normal"
+            onAdvanceStatus={handleAdvanceStatus}
+          />
+          <TicketCard
+            elapsedMinutes={11}
+            ticket={SAMPLE_TICKET_PREPARING_2}
+            urgency="danger"
+            onAdvanceStatus={handleAdvanceStatus}
+          />
+        </div>
+
+        <div className="flex flex-1 min-w-0 flex-col gap-4">
+          <h2 className="text-content-subtle text-sm font-semibold uppercase">Ready</h2>
+          <TicketCard
+            elapsedMinutes={5}
+            ticket={SAMPLE_TICKET_READY_1}
+            urgency="warning"
+            onAdvanceStatus={handleAdvanceStatus}
+          />
+        </div>
+      </section>
+
       <div className="p-5">
         <Button variant="outline" onClick={() => logout()}>
           Log out

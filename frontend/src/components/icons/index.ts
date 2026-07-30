@@ -13,5 +13,7 @@ export { default as HistoryIcon } from './HistoryIcon';
 export { default as HistoryFilledIcon } from './HistoryFilledIcon';
 export { default as SettingsIcon } from './SettingsIcon';
 export { default as SettingsFilledIcon } from './SettingsFilledIcon';
+export { default as PlayIcon } from './PlayIcon';
+export { default as WarningFilledIcon } from './WarningFilledIcon';
 
 export type { IconProps } from './Icon.types';
