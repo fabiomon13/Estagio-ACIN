@@ -152,11 +152,11 @@ class BuffetResponse(ResponseSchema):
     )
 
 # Schema for category response
-# id, station_id: int (greater than 0)
+# id, default_station_id: int (greater than 0)
 # name, alias: str (min length 1, max length 150)
 class CategoryResponse(ResponseSchema):
     id: int = Field(gt=0)
-    station_id: int = Field(gt=0)
+    default_station_id: int = Field(gt=0)
     name: str = Field(min_length=1, max_length=150)
     alias: str = Field(min_length=1, max_length=150)
 
