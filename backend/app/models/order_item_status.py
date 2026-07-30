@@ -11,5 +11,6 @@ class OrderItemStatus(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(50), nullable=False, unique=True, index=True)
+    alias = Column(String(50), nullable=False, unique=True, index=True)
 
     order_items = relationship("OrderItem", back_populates="status")

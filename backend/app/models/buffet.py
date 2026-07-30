@@ -12,6 +12,7 @@ class Buffet(Base):
     id = Column(Integer, primary_key=True)
     price = Column(Numeric(10, 2), nullable=False)
     name = Column(String(150), nullable=False, unique=True, index=True)
+    alias = Column(String(150), nullable=False, unique=True, index=True)
 
     waste_charge = Column(
         Numeric(10, 2),

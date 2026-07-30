@@ -115,3 +115,11 @@ class DiningSession(Base):
         back_populates="dining_session",
         cascade="all, delete-orphan",
     )
+
+    @property
+    def guest_count(self) -> int:
+        return len(self.guests)
+
+    @property
+    def available_places(self) -> int:
+        return max(self.num_clients - self.guest_count, 0)

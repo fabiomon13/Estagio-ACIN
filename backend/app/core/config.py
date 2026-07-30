@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
 
     jwt_secret_key: str
+    device_token_secret: str | None = None
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 480
     cookie_secure: bool = False

@@ -16,10 +16,6 @@ class StaffRequestType(StrEnum):
     PAYMENT_REQUEST = "payment_request"
 
 #Define the possible priorities of requests that can be made to staff members
-class StaffRequestPriority(StrEnum):
-    NORMAL = "normal"
-    URGENT = "urgent"
-
 #Define the data models for the staff dashboard, including summary information, table information and open requests
 class StaffDashboardSummary(BaseModel):
     occupied_tables: int
@@ -47,12 +43,21 @@ class StaffReadyTable(BaseModel):
     table_number: int
     items: list[StaffReadyItem]
 
+
+class MenuItemAvailabilityUpdate(BaseModel):
+    is_available: bool
+
+
+class MenuItemAvailabilityResponse(BaseModel):
+    id: int
+    is_available: bool
+
 #Define the data model for an open request made to a staff member
 class StaffOpenRequest(BaseModel):
     id: int
     table_number: int
     type: StaffRequestType
-    priority: StaffRequestPriority
+    is_high_priority: bool
     created_at: datetime
 
 #Define the overall data model for the staff dashboard

@@ -13,6 +13,7 @@ class CreateStaffRequest(BaseModel):
     email: EmailStr
     password: str
     role: StaffRoleEnum
+    photo_url: str | None = None
 
 
 class StaffOut(BaseModel):
@@ -20,3 +21,4 @@ class StaffOut(BaseModel):
     name: str
     email: str
     role: StaffRoleEnum
+    photo_url: str | None

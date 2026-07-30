@@ -9,7 +9,7 @@ from app.db.base import Base
 class TagItem(Base):
     __tablename__ = "tag_items"
 
-    item_id = Column(
+    menu_item_id = Column(
         Integer,
         ForeignKey("menu_items.id", ondelete="CASCADE"),
         primary_key=True,

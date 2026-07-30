@@ -21,6 +21,13 @@ class StaffRole(Base):
         index=True,
     )
 
+    alias = Column(
+        String(50),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+
     staff_members = relationship(
         "Staff",
         back_populates="staff_role",

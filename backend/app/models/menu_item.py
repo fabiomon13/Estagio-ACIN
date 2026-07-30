@@ -1,6 +1,6 @@
 #backend/app/models/menu_item.py
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -21,14 +21,23 @@ class MenuItem(Base):
     station_id = Column(
         Integer,
         ForeignKey("stations.id", ondelete="RESTRICT"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
 
     name = Column(String(150), nullable=False, unique=True, index=True)
+    alias = Column(String(150), nullable=False, unique=True, index=True)
     description = Column(Text, nullable=True)
+    photo_url = Column(String(500), nullable=True)
     base_price = Column(Numeric(10, 2), nullable=False)
     base_preparation_time = Column(Integer, nullable=False)
+
+    is_available = Column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default="true",
+    )
 
     created_at = Column(
         DateTime(timezone=True),
@@ -44,15 +53,34 @@ class MenuItem(Base):
     )
 
     category = relationship("Category", back_populates="menu_items")
-    station = relationship("Station", back_populates="menu_items")
     order_items = relationship("OrderItem", back_populates="menu_item")
+
+    station = relationship(
+        "Station",
+        back_populates="menu_items",
+        foreign_keys=[station_id],
+    )
+
     buffet_links = relationship(
         "BuffetItem",
         back_populates="menu_item",
         cascade="all, delete-orphan",
     )
+
     tag_links = relationship(
         "TagItem",
         back_populates="menu_item",
         cascade="all, delete-orphan",
     )
+
+    @property
+    def effective_station(self):
+        return (
+            self.station
+            if self.station is not None
+            else self.category.default_station
+        )
+
+    @property
+    def tags(self):
+        return [tag_link.tag for tag_link in self.tag_links]

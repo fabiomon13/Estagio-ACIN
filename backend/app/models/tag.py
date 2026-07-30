@@ -1,6 +1,6 @@
 #backend/app/models/tag.py
 
-from sqlalchemy import Column, DateTime, Integer, String, func
+from sqlalchemy import Column, DateTime, Integer, String, Text, func
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -11,6 +11,8 @@ class Tag(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False, unique=True, index=True)
+    description = Column(Text, nullable=True)
+    alias = Column(String(100), nullable=False, unique=True, index=True)
 
     created_at = Column(
         DateTime(timezone=True),
