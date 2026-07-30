@@ -5,7 +5,7 @@ from app.api.deps import ACCESS_TOKEN_COOKIE_NAME, INVALID_CREDENTIALS_DETAIL, g
 from app.core.config import settings
 from app.core.roles import staff_role
 from app.core.security import create_access_token, verify_password
-from app.db.session import get_db
+from app.db.dependencies import get_db
 from app.models.staff import Staff
 from app.schemas.auth import LoginRequest, StaffOut
 

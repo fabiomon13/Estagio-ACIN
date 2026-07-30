@@ -13,8 +13,9 @@ from app.models.guest import Guest
 from app.models.order import Order
 from app.modules.client.dependencies import (
     CurrentGuest,
+    CurrentTable,
+    DbSession,
     find_active_session,
-    find_table,
 )
 from app.modules.client.schemas import (
     GuestBuffetUpdate,
@@ -31,6 +32,23 @@ router = APIRouter(
     tags=["Client - Guests"],
 )
 
+def find_buffet(
+    db: Session,
+    buffet_id: int | None,
+) -> Buffet | None:
+    if buffet_id is None:
+        return None
+
+    buffet = db.get(Buffet, buffet_id)
+
+    if buffet is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Buffet not found",
+        )
+
+    return buffet
+
 # Create guest endpoint
 @router.post(
     "/tables/{table_code}/guests",
@@ -38,55 +56,42 @@ router = APIRouter(
     status_code=status.HTTP_201_CREATED,
 )
 def create_guest(
-    table_code: str,
     guest_data: GuestCreate,
-    db: Annotated[Session, Depends(get_db)],
+    table: CurrentTable,
+    db: DbSession,
 ) -> Guest:
-    table = find_table(table_code, db)
-
     dining_session = find_active_session(
         table_id=table.id,
         db=db,
         lock=True,
     )
 
-    if not dining_session.is_approved:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="A sessão ainda não foi aprovada",
-        )
-
-    buffet = (
-        db.get(Buffet, guest_data.buffet_id)
-        if guest_data.buffet_id is not None
-        else None
-    )
-
     if (
-        guest_data.buffet_id is not None
-        and buffet is None
+        not dining_session.is_approved
+        or dining_session.waiter_id is None
     ):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Buffet não encontrado",
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The session has not been approved yet",
         )
 
-    token_hashes = (
-        hash_device_token(guest_data.device_token),
-        hash_legacy_device_token(guest_data.device_token),
-    )
+    buffet = find_buffet(db, guest_data.buffet_id)
+    current_hash = hash_device_token(guest_data.device_token)
+    legacy_hash = hash_legacy_device_token(guest_data.device_token)
 
-    existing_guest = db.scalar(
-        select(Guest).where(
+    existing_guest_id = db.scalar(
+        select(Guest.id).where(
             Guest.session_id == dining_session.id,
-            Guest.device_token_hash.in_(token_hashes),
+            Guest.device_token_hash.in_(
+                (current_hash, legacy_hash)
+            ),
         )
     )
 
-    if existing_guest is not None:
+    if existing_guest_id is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Este dispositivo já pertence à sessão",
+            detail="This device is already associated with the session",
         )
 
     guest_count = db.scalar(
@@ -98,20 +103,13 @@ def create_guest(
     if guest_count >= dining_session.num_clients:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                "A sessão já atingiu o número máximo "
-                "de clientes"
-            ),
+            detail="The session has reached the maximum number of clients",
         )
 
     guest = Guest(
         session_id=dining_session.id,
-        buffet_id=(
-            buffet.id
-            if buffet is not None
-            else None
-        ),
-        device_token_hash=token_hashes[0],
+        buffet_id=buffet.id if buffet else None,
+        device_token_hash=current_hash,
     )
 
     db.add(guest)
@@ -119,18 +117,12 @@ def create_guest(
     try:
         db.commit()
     except IntegrityError as exc:
-        db.rollback()
-
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                "Não foi possível adicionar "
-                "o cliente à sessão"
-            ),
+            detail="It was not possible to add the guest to the session",
         ) from exc
 
     db.refresh(guest)
-
     return guest
 
 # Get current guest endpoint
@@ -139,7 +131,6 @@ def create_guest(
     response_model=GuestResponse,
 )
 def get_current_guest(
-    table_code: str,
     guest: CurrentGuest,
 ) -> Guest:
     return guest
@@ -153,7 +144,7 @@ def update_current_guest_buffet(
     table_code: str,
     guest_data: GuestBuffetUpdate,
     guest: CurrentGuest,
-    db: Annotated[Session, Depends(get_db)],
+    db: DbSession,
 ) -> Guest:
     locked_guest = db.scalar(
         select(Guest)
@@ -164,7 +155,7 @@ def update_current_guest_buffet(
     if locked_guest is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cliente não encontrado",
+            detail="Guest not found",
         )
 
     existing_order = db.scalar(
@@ -177,16 +168,12 @@ def update_current_guest_buffet(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
-                "Não é possível alterar o buffet "
-                "depois do primeiro pedido"
+                "It is not possible to change the buffet "
+                "after the first order has been placed"
             ),
         )
 
-    buffet = (
-        db.get(Buffet, guest_data.buffet_id)
-        if guest_data.buffet_id is not None
-        else None
-    )
+    buffet = find_buffet(db, guest_data.buffet_id)
 
     if (
         guest_data.buffet_id is not None
@@ -194,14 +181,10 @@ def update_current_guest_buffet(
     ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Buffet não encontrado",
+            detail="Buffet not found",
         )
 
-    locked_guest.buffet_id = (
-        buffet.id
-        if buffet is not None
-        else None
-    )
+    locked_guest.buffet_id = buffet.id if buffet else None
 
     try:
         db.commit()
@@ -210,7 +193,7 @@ def update_current_guest_buffet(
 
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Não foi possível alterar o buffet",
+            detail="It was not possible to change the buffet",
         ) from exc
 
     db.refresh(locked_guest)

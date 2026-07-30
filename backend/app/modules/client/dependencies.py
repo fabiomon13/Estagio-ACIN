@@ -1,10 +1,9 @@
 # backend/app/modules/client/dependencies.py
-
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends, Header, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
 from app.db.dependencies import get_db
@@ -16,6 +15,9 @@ from app.modules.client.security import (
     hash_legacy_device_token,
 )
 
+
+DbSession = Annotated[Session, Depends(get_db)]
+
 DeviceTokenHeader = Annotated[
     str | None,
     Header(
@@ -26,7 +28,20 @@ DeviceTokenHeader = Annotated[
 ]
 
 
-# Find table by code
+def table_not_found() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Table not found",
+    )
+
+
+def active_session_not_found() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="This table does not have an active session",
+    )
+
+
 def find_table(
     table_code: str,
     db: Session,
@@ -34,10 +49,7 @@ def find_table(
     try:
         normalized_code = str(UUID(table_code.strip()))
     except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Table not found",
-        ) from None
+        raise table_not_found() from None
 
     table = db.scalar(
         select(RestaurantTable).where(
@@ -46,21 +58,20 @@ def find_table(
     )
 
     if table is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Table not found",
-        )
+        raise table_not_found()
 
     return table
 
-# Find active session for a table
+
 def find_active_session(
     table_id: int,
     db: Session,
     *,
     lock: bool = False,
 ) -> DiningSession:
-    query = select(DiningSession).where(
+    query: Select[tuple[DiningSession]] = select(
+        DiningSession
+    ).where(
         DiningSession.table_id == table_id,
         DiningSession.is_active.is_(True),
     )
@@ -71,38 +82,46 @@ def find_active_session(
     dining_session = db.scalar(query)
 
     if dining_session is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="This table does not have an active session",
-        )
+        raise active_session_not_found()
 
     return dining_session
 
-# Require current guest based on device token and table code
-def require_current_guest(
+
+def require_table(
     table_code: str,
-    db: Annotated[Session, Depends(get_db)],
+    db: DbSession,
+) -> RestaurantTable:
+    return find_table(table_code, db)
+
+
+CurrentTable = Annotated[
+    RestaurantTable,
+    Depends(require_table),
+]
+
+
+def require_active_session(
+    table: CurrentTable,
+    db: DbSession,
+) -> DiningSession:
+    return find_active_session(table.id, db)
+
+
+CurrentDiningSession = Annotated[
+    DiningSession,
+    Depends(require_active_session),
+]
+
+
+def require_current_guest(
+    dining_session: CurrentDiningSession,
+    db: DbSession,
     device_token: DeviceTokenHeader = None,
 ) -> Guest:
-    if (
-        device_token is None
-        or not 32 <= len(device_token) <= 128
-    ):
+    if device_token is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid client token",
-        )
-
-    table = find_table(table_code, db)
-    dining_session = find_active_session(table.id, db)
-
-    if (
-        not dining_session.is_approved
-        or dining_session.waiter_id is None
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="The session has not been approved yet",
         )
 
     token_hashes = (
@@ -123,7 +142,18 @@ def require_current_guest(
             detail="Invalid client token",
         )
 
+    # Check if the session is approved and has a waiter assigned
+    if (
+        not dining_session.is_approved
+        or dining_session.waiter_id is None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The session has not been approved yet",
+        )
+
     return guest
+
 
 CurrentGuest = Annotated[
     Guest,

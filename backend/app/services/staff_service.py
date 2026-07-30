@@ -23,6 +23,7 @@ from app.models.service_request_type import ServiceRequestType
 from app.models.service_request_status import ServiceRequestStatus
 from app.models.staff import Staff
 from app.models.staff_role import StaffRole
+from app.core.roles import StaffRoleEnum, staff_role
 import random
 
 READY_ORDER_ITEM_ALIAS = "ready"
@@ -196,7 +197,7 @@ def approve_session(db: Session, session_id: int, approved_by_staff_id: int) -> 
         "waiter_active_tables_after_assignment": current_load + 1,
             }
 
-def mark_item_as_served(db: Session, item_id: int) -> dict:
+def mark_item_as_served(db: Session, item_id: int, current_staff) -> dict:
     """
     Updates a specific order item's status to 'served'[cite: 1].
     Raises an HTTP 404 error if the order item is not found, or an HTTP 400 error if the item is not currently in a 'ready' state[cite: 1].
@@ -209,6 +210,19 @@ def mark_item_as_served(db: Session, item_id: int) -> dict:
     ready_status = get_order_item_status_by_alias(db, READY_ORDER_ITEM_ALIAS)
     served_status = get_order_item_status_by_alias(db, SERVED_ORDER_ITEM_ALIAS)
 
+    owning_session = (
+        db.query(DiningSession)
+        .join(Guest, Guest.session_id == DiningSession.id)
+        .join(Order, Order.guest_id == Guest.id)
+        .join(OrderItem, OrderItem.order_id == Order.id)
+        .filter(OrderItem.id == item_id)
+        .first()
+    )
+    if not owning_session:
+        raise HTTPException(status_code=404, detail="Owning session not found")
+
+    _ensure_session_owner_or_admin(owning_session, current_staff)
+
     if order_item.status_id != ready_status.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -217,7 +231,6 @@ def mark_item_as_served(db: Session, item_id: int) -> dict:
 
     order_item.status_id = served_status.id
     db.commit()
-
     db.refresh(order_item)
 
     return {
@@ -228,7 +241,7 @@ def mark_item_as_served(db: Session, item_id: int) -> dict:
     }
 
 
-def resolve_service_request(db: Session, request_id: int) -> dict:
+def resolve_service_request(db: Session, request_id: int, current_staff) -> dict:
     """
     Marks a service request as resolved and sets resolved_at in UTC.
     Raises 404 if request does not exist.
@@ -236,6 +249,7 @@ def resolve_service_request(db: Session, request_id: int) -> dict:
     """
     service_request = (
         db.query(ServiceRequest)
+        .options(joinedload(ServiceRequest.dining_session))
         .filter(ServiceRequest.id == request_id)
         .first()
     )
@@ -245,6 +259,8 @@ def resolve_service_request(db: Session, request_id: int) -> dict:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Service request not found.",
         )
+
+    _ensure_session_owner_or_admin(service_request.dining_session, current_staff)
 
     if service_request.resolved_at is not None:
         raise HTTPException(
@@ -289,7 +305,7 @@ def set_menu_item_availability(
 
     return menu_item
  
-def deactivate_session(db: Session, session_id: int) -> dict:
+def deactivate_session(db: Session, session_id: int, current_staff) -> dict:
     """
     Deactivates a dining session and sets its end time to the current UTC time[cite: 1].
     Raises an HTTP 404 error if the session is not found, or an HTTP 409 error if the session is already marked inactive[cite: 1].
@@ -299,11 +315,14 @@ def deactivate_session(db: Session, session_id: int) -> dict:
     if session is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dining session not found.")
 
+    _ensure_session_owner_or_admin(session, current_staff)
+
     if not session.is_active:
         raise HTTPException(status_code= 409, detail="Dining session is already inactive.")
 
     session.is_active = False
     session.end_time = datetime.now(timezone.utc)
+    session.waiter_id = None
     db.commit()
     db.refresh(session)
 
@@ -314,30 +333,39 @@ def deactivate_session(db: Session, session_id: int) -> dict:
         }
 
 
-def list_open_service_requests(db: Session, limit: int = 50, offset: int = 0):
-    results = (
+def list_open_service_requests(db: Session, current_staff: Staff, limit: int = 50, offset: int = 0):
+
+    query = (
         db.query(ServiceRequest)
         .join(ServiceRequest.dining_session)
         .join(ServiceRequest.status)
-        .options(joinedload(ServiceRequest.dining_session).joinedload(DiningSession.restaurant_table),
-                 joinedload(ServiceRequest.status),
-                 )
-                 .filter(DiningSession.is_active == True, 
-                         ServiceRequest.resolved_at.is_(None), 
-                         func.lower(ServiceRequestStatus.alias) == PENDING_SERVICE_REQUEST_ALIAS)
-                         )\
-    .order_by(ServiceRequest.created_at.asc())\
-    .limit(limit)\
-    .offset(offset)\
-    .all()
+        .options(
+            joinedload(ServiceRequest.dining_session).joinedload(DiningSession.restaurant_table),
+            joinedload(ServiceRequest.status),
+        )
+        .filter(
+            DiningSession.is_active == True, 
+            ServiceRequest.resolved_at.is_(None), 
+            func.lower(ServiceRequestStatus.alias) == PENDING_SERVICE_REQUEST_ALIAS
+        )
+    )
 
+    if staff_role(current_staff) != StaffRoleEnum.ADMIN:
+        query = query.filter(DiningSession.waiter_id == current_staff.id)
+
+    results = (
+        query.order_by(ServiceRequest.created_at.asc())
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
 
     items = []
     for r in results:
         items.append({
             "id": r.id,
             "type_id": r.type_id,
-            "type_name": r.type,
+            "type": r.type,
             "table_session_id": r.session_id,
             "is_high_priority": getattr(r, "is_high_priority", False),
             "created_at": r.created_at,
@@ -481,3 +509,14 @@ def associate_staff_to_tables(db: Session) -> tuple[Staff, int]:
     chosen_waiter = next(w for w in waiters if w.id == chosen_id)
 
     return chosen_waiter, min_load
+
+
+def _ensure_session_owner_or_admin(session: DiningSession, current_staff) -> None:
+    if staff_role(current_staff) == StaffRoleEnum.ADMIN:
+        return
+
+    if session.waiter_id != current_staff.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only interact with your own assigned tables.",
+        )
