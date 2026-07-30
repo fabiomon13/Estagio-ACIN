@@ -197,6 +197,34 @@ class MenuItemPage(ResponseSchema):
     limit: int = Field(ge=1)
     offset: int = Field(ge=0)
 
+# Schema for menu filters
+class MenuFilters(BaseModel):
+    search: str | None = Field(
+        default=None,
+        max_length=100,
+    )
+    category_id: int | None = Field(
+        default=None,
+        gt=0,
+    )
+    is_available: bool | None = None
+    tag: str | None = Field(
+        default=None,
+        max_length=100,
+    )
+    buffet_id: int | None = Field(
+        default=None,
+        gt=0,
+    )
+    limit: int = Field(
+        default=50,
+        ge=1,
+        le=100,
+    )
+    offset: int = Field(
+        default=0,
+        ge=0,
+    )
 
 # Schema for creating an order item
 # item_id: int (greater than 0)
@@ -253,7 +281,7 @@ class OrderCreate(RequestSchema):
 
         if total_quantity > 100:
             raise ValueError(
-                "A quantidade total não pode exceder 100"
+                "The total quantity cannot exceed 100"
             )
 
         return self

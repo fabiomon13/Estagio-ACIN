@@ -22,13 +22,13 @@ def seed_dining_session() -> None:
 
         if restaurant_table is None:
             raise RuntimeError(
-                f"Mesa {DEFAULT_TABLE_NUMBER} não encontrada. "
-                "Corre o seeder restaurant_tables primeiro."
+                f"The table {DEFAULT_TABLE_NUMBER} was not found. "
+                "Run the restaurant_tables seeder first."
             )
 
         if DEFAULT_NUM_CLIENTS > restaurant_table.max_capacity:
             raise RuntimeError(
-                "O número de clientes ultrapassa a capacidade da mesa."
+                f"The number of clients ({DEFAULT_NUM_CLIENTS}) exceeds the table's capacity ({restaurant_table.max_capacity})."
             )
 
         existing_session = session.scalar(
@@ -39,7 +39,7 @@ def seed_dining_session() -> None:
         )
 
         if existing_session is not None:
-            print(f"A mesa {DEFAULT_TABLE_NUMBER} já tem uma sessão ativa.")
+            print(f"The table {DEFAULT_TABLE_NUMBER} already has an active session.")
             return
 
         dining_session = DiningSession(
@@ -53,8 +53,8 @@ def seed_dining_session() -> None:
         session.commit()
 
         print(
-            f"Sessão criada para a mesa {DEFAULT_TABLE_NUMBER} "
-            f"com {DEFAULT_NUM_CLIENTS} clientes."
+            f"Session created for table {DEFAULT_TABLE_NUMBER} "
+            f"with {DEFAULT_NUM_CLIENTS} clients."
         )
 
 

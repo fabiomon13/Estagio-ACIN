@@ -28,8 +28,8 @@ def seed_guests() -> None:
 
         if restaurant_table is None:
             raise RuntimeError(
-                f"Mesa {DEFAULT_TABLE_NUMBER} não encontrada. "
-                "Corre o seeder restaurant_tables primeiro."
+                f"The table {DEFAULT_TABLE_NUMBER} was not found. "
+                "Run the restaurant_tables seeder first."
             )
 
         dining_session = session.scalar(
@@ -41,8 +41,8 @@ def seed_guests() -> None:
 
         if dining_session is None:
             raise RuntimeError(
-                f"A mesa {DEFAULT_TABLE_NUMBER} não tem uma sessão ativa. "
-                "Corre o seeder dining_sessions primeiro."
+                f"The table {DEFAULT_TABLE_NUMBER} does not have an active session. "
+                "Run the dining_sessions seeder first."
             )
 
         buffet = session.scalar(
@@ -53,8 +53,8 @@ def seed_guests() -> None:
 
         if buffet is None:
             raise RuntimeError(
-                f"Buffet '{DEFAULT_BUFFET_ALIAS}' não encontrado. "
-                "Corre o seeder buffets primeiro."
+                f"Buffet '{DEFAULT_BUFFET_ALIAS}' not found. "
+                "Run the buffets seeder first."
             )
 
         guest_data = [
