@@ -1,6 +1,7 @@
 # Shared fixtures for backend tests.
 
 import itertools
+import uuid
 from datetime import datetime, timezone
 
 import pytest
@@ -103,7 +104,7 @@ def client(db_session):
 def order_item_statuses(db_session) -> dict[str, OrderItemStatus]:
     """Create order item statuses."""
     names = ["Pending", "Preparing", "Ready", "Cancelled", "Served", "Returned"]
-    statuses = {name: OrderItemStatus(name=name) for name in names}
+    statuses = {name: OrderItemStatus(name=name, alias=name.lower()) for name in names}
     db_session.add_all(statuses.values())
     db_session.commit()
     return statuses
@@ -113,7 +114,7 @@ def order_item_statuses(db_session) -> dict[str, OrderItemStatus]:
 def staff_roles(db_session) -> dict[str, StaffRole]:
     """Create staff roles."""
     names = ["Admin", "Waiter", "Chef"]
-    roles = {name: StaffRole(name=name) for name in names}
+    roles = {name: StaffRole(name=name, alias=name.lower()) for name in names}
     db_session.add_all(roles.values())
     db_session.commit()
     return roles
@@ -200,19 +201,24 @@ def make_menu_item(db_session):
     """Create a menu item with required data."""
 
     def _make(station: Station | None = None) -> MenuItem:
-        category = Category(name=_unique("Test Category"))
-        db_session.add(category)
-        db_session.commit()
-
         if station is None:
-            station = Station(name=_unique("Test Station"))
+            station = Station(name=_unique("Test Station"), alias=_unique("test-station"))
             db_session.add(station)
             db_session.commit()
+
+        category = Category(
+            name=_unique("Test Category"),
+            alias=_unique("test-category"),
+            default_station_id=station.id,
+        )
+        db_session.add(category)
+        db_session.commit()
 
         menu_item = MenuItem(
             category_id=category.id,
             station_id=station.id,
             name=_unique("Test Dish"),
+            alias=_unique("test-dish"),
             base_price=10,
             base_preparation_time=5,
         )
@@ -233,6 +239,7 @@ def make_order(db_session, make_guest):
         order = Order(
             guest_id=(guest or make_guest()).id,
             round_number=round_number,
+            client_request_id=str(uuid.uuid4()),
             created_at=created_at or datetime.now(timezone.utc),
         )
         db_session.add(order)
