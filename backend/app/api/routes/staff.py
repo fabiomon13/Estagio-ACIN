@@ -47,7 +47,7 @@ def approve_session(session_id: int, db: Session = Depends(get_db), approver: St
     dependencies=[Depends(require_role(StaffRoleEnum.WAITER))]
     )
 def deactivate_session(session_id: int, db: Session = Depends(get_db), current_staff: Staff = Depends(get_current_staff),):
-    return staff_service.deactivate_session(db, session_id)
+    return staff_service.deactivate_session(db, session_id, current_staff)
 
 
 # Services
@@ -57,7 +57,7 @@ def deactivate_session(session_id: int, db: Session = Depends(get_db), current_s
     dependencies=[Depends(require_role(StaffRoleEnum.WAITER))]
 )
 def mark_item_as_served(item_id: int, db: Session = Depends(get_db), current_staff: Staff = Depends(get_current_staff)):
-    return staff_service.mark_item_as_served(db, item_id)
+    return staff_service.mark_item_as_served(db, item_id, current_staff)
 
 
 @router.patch(
@@ -66,15 +66,17 @@ def mark_item_as_served(item_id: int, db: Session = Depends(get_db), current_sta
     dependencies=[Depends(require_role(StaffRoleEnum.WAITER))]
 )
 def resolve_request(request_id: int, db: Session = Depends(get_db), current_staff: Staff = Depends(get_current_staff)):
-    return staff_service.resolve_service_request(db, request_id)
+    return staff_service.resolve_service_request(db, request_id, current_staff)
+
 
 @router.get("/requests", tags=["Staff - Services"], dependencies=[Depends(require_role(StaffRoleEnum.WAITER))])
-def list_staff_requests(db: Session = Depends(get_db), limit: int = 50, offset: int = 0):
+def list_staff_requests(db: Session = Depends(get_db), current_staff: Staff = Depends(get_current_staff), limit: int = 50, offset: int = 0):
     """
     Returns open (pending) service requests for staff dashboard.
     """
-    requests = staff_service.list_open_service_requests(db, limit=limit, offset=offset)
+    requests = staff_service.list_open_service_requests(db, current_staff,limit=limit, offset=offset)
     return {"success": True, "count": len(requests), "items": requests}
+
 
 @router.get("/sessions/{session_id}", tags=["Staff - Table management"], dependencies=[Depends(require_role(StaffRoleEnum.WAITER))])
 def get_staff_session(session_id: int, db: Session = Depends(get_db)):
@@ -86,12 +88,14 @@ def get_staff_session(session_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
     return {"success": True, "session": session}
 
+
 @router.get("/requests/{request_id}", tags=["Staff - Services"], dependencies=[Depends(require_role(StaffRoleEnum.WAITER))])
 def get_staff_request(request_id: int, db: Session = Depends(get_db)):
     item = staff_service.get_service_request_detail(db, request_id)
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service request not found")
     return {"success": True, "request": item}
+
 
 @router.get("/sessions", tags=["Staff - Table management"], dependencies=[Depends(require_role(StaffRoleEnum.WAITER))])
 def list_staff_sessions(
