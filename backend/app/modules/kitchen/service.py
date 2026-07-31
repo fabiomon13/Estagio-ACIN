@@ -7,6 +7,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session, joinedload, selectinload
 
+from app.models.category import Category
 from app.models.dining_session import DiningSession
 from app.models.guest import Guest
 from app.models.menu_item import MenuItem
@@ -47,6 +48,10 @@ def get_active_tickets(db: Session) -> list[KitchenTicketOut]:
                 selectinload(Order.items)
                 .joinedload(OrderItem.menu_item)
                 .joinedload(MenuItem.station),
+                selectinload(Order.items)
+                .joinedload(OrderItem.menu_item)
+                .joinedload(MenuItem.category)
+                .joinedload(Category.default_station),
                 selectinload(Order.items)
                 .joinedload(OrderItem.menu_item)
                 .selectinload(MenuItem.tag_links)
@@ -107,14 +112,15 @@ def _build_ticket(order: Order, guest_numbers: dict[int, int]) -> KitchenTicketO
 
 
 def _build_item(item: OrderItem) -> KitchenOrderItemOut:
+    station = item.menu_item.effective_station
     return KitchenOrderItemOut(
         order_item_id=item.id,
         menu_item_name=item.menu_item.name,
         quantity=item.quantity,
         notes=item.notes,
         tags=sorted(link.tag.name for link in item.menu_item.tag_links),
-        station_id=item.menu_item.station_id,
-        station=item.menu_item.station.name,
+        station_id=station.id,
+        station=station.name,
         status=item.status.name,
         created_at=item.created_at,
     )
@@ -136,6 +142,9 @@ def update_item_status(db: Session, order_item_id: int, new_status: str) -> Kitc
         options=[
             joinedload(OrderItem.status),
             joinedload(OrderItem.menu_item).joinedload(MenuItem.station),
+            joinedload(OrderItem.menu_item)
+            .joinedload(MenuItem.category)
+            .joinedload(Category.default_station),
             joinedload(OrderItem.menu_item)
             .selectinload(MenuItem.tag_links)
             .joinedload(TagItem.tag),

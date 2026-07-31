@@ -2,7 +2,7 @@
 
 This document explains the Kitchen module's backend: what the two endpoints do, how a "ticket" is defined, and how to run and extend the test suite. If you're building the kitchen frontend, or adding a related endpoint (e.g. the waiter's "mark as served" or the client's "cancel item"), read this first.
 
-**Scope:** this is the first of several planned sub-projects for the Kitchen Display board. It covers reading active tickets and advancing an item through `Pending → Preparing → Ready`. It does **not** cover: the frontend UI, real-time updates (v1 uses polling, built on top of this later), cancelling an item (client/waiter side), or marking an item `Served` (waiter side).
+**Scope:** this is the first of several planned sub-projects for the Kitchen Display board. It covers reading active tickets and advancing an item through `Pending → Preparing → Ready`. It does **not** cover: cancelling an item (client/waiter side), or marking an item `Served` (waiter side). The frontend that consumes these endpoints (polling, the ticket board, optimistic updates) is documented separately in `docs/kitchen-frontend.md`.
 
 ## The short version
 
@@ -116,4 +116,4 @@ Test files, one per concern:
 - Cancelling an item — belongs to the client/waiter side. An item can only be cancelled while still `Pending`.
 - Marking an item `Served` — belongs to the waiter side.
 - A `Returned → Preparing` "send it back to the kitchen" flow — `Returned` is treated as terminal for now; nothing currently defines what should happen to a returned dish.
-- Everything frontend: the ticket board UI, elapsed-time highlighting, station filter, search, notifications, sound settings.
+- The frontend's ticket board (columns, polling, optimistic updates, elapsed-time/urgency) is now built — see `docs/kitchen-frontend.md`. Still out of scope on the frontend: station filter, search, notifications, sound settings, and any special visual treatment for `Returned`.

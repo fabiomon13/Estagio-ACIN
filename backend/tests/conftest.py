@@ -200,7 +200,7 @@ def make_guest(db_session, make_session):
 def make_menu_item(db_session):
     """Create a menu item with required data."""
 
-    def _make(station: Station | None = None) -> MenuItem:
+    def _make(station: Station | None = None, has_own_station: bool = True) -> MenuItem:
         if station is None:
             station = Station(name=_unique("Test Station"), alias=_unique("test-station"))
             db_session.add(station)
@@ -216,7 +216,7 @@ def make_menu_item(db_session):
 
         menu_item = MenuItem(
             category_id=category.id,
-            station_id=station.id,
+            station_id=station.id if has_own_station else None,
             name=_unique("Test Dish"),
             alias=_unique("test-dish"),
             base_price=10,

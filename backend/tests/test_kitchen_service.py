@@ -143,6 +143,23 @@ def test_tickets_ordered_oldest_first(
     ]
 
 
+# An item with no station of its own inherits its category's default station.
+def test_item_without_own_station_falls_back_to_category_default(
+    db_session,
+    order_item_statuses,
+    make_menu_item,
+    make_order_item,
+):
+    menu_item = make_menu_item(has_own_station=False)
+    expected_station_name = menu_item.category.default_station.name
+
+    make_order_item(menu_item=menu_item, status_name="Pending")
+
+    tickets = service.get_active_tickets(db_session)
+
+    assert tickets[0].items[0].station == expected_station_name
+
+
 # Items inside a ticket are returned oldest first.
 def test_items_within_ticket_ordered_oldest_first(
     db_session,
