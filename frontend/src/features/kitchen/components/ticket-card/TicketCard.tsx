@@ -64,7 +64,6 @@ export default function TicketCard({
         {fragment.items.map((item) => {
           const nextStatus = NEXT_STATUS[item.status];
           const allergenTags = item.tags.filter(isAllergenTag);
-          const dietaryTags = item.tags.filter((tag) => !isAllergenTag(tag));
 
           return (
             <div key={item.order_item_id} className="flex items-start justify-between gap-3">
@@ -76,15 +75,10 @@ export default function TicketCard({
 
                   {item.notes && <p className="text-xs italic text-content-subtle">{item.notes}</p>}
 
-                  {(allergenTags.length > 0 || dietaryTags.length > 0) && (
+                  {allergenTags.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {allergenTags.map((tag) => (
                         <Badge key={tag} size="sm" variant="danger">
-                          {tag}
-                        </Badge>
-                      ))}
-                      {dietaryTags.map((tag) => (
-                        <Badge key={tag} size="sm" variant="info">
                           {tag}
                         </Badge>
                       ))}

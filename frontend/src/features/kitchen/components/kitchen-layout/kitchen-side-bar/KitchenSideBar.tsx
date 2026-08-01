@@ -44,6 +44,7 @@ export default function KitchenSideBar({
             type="button"
             onClick={onToggle}
             aria-label={isOpen ? 'Recolher menu' : 'Expandir menu'}
+            className="cursor-pointer"
           >
             <CompactLogo size={30} className={compactLogoStyles} />
           </button>

@@ -1,12 +1,12 @@
 import type { TicketUrgency } from './TicketCard.types';
 
 export const ticketCardStyles = {
-  card: 'flex w-full flex-col rounded-3xl bg-surface-raised px-4 py-5',
+  card: 'flex w-full flex-col rounded-xl bg-surface-raised px-4 py-5',
 
   border: {
     normal: '',
-    warning: 'border-2 border-warning/80',
-    danger: 'border-2 border-danger/80',
+    warning: 'border-l-6 border-warning/80',
+    danger: 'border-l-6 border-danger/80',
   } satisfies Record<TicketUrgency, string>,
 
   allergenBanner: [

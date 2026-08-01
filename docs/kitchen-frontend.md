@@ -2,13 +2,7 @@
 
 This document explains how the kitchen's live ticket board works on the frontend: how data gets from the backend to the screen, how it's split into columns, how status updates are sent, and how the pieces fit together. If you're extending the board (filters, search, notifications) or swapping polling for websockets, read this first.
 
-Design rationale and the full decision history live in two specs (read in order):
-- `docs/superpowers/specs/2026-07-30-kitchen-board-live-data-design.md` — the original live-data wiring (polling, optimistic updates, the hook split).
-- `docs/superpowers/specs/2026-07-30-kitchen-board-item-centric-design.md` — the item-centric column redesign (why a round can appear as more than one card at once).
-
-Each has an implementation plan next to it. This doc is the practical "how does this work" reference; the specs are the "why was it built this way" reference.
-
-**Scope:** this covers getting real tickets onto the board, splitting them into per-status fragments, sorting by urgency, updating an item's status, and the cancellation toast. It does **not** cover: station filter, search, the fuller notification system (sound/badges), `KitchenHistoryPage`/`KitchenSettingsPage` content, or any special treatment for the `Returned` item status (all deferred — see the specs).
+**Scope:** this covers getting real tickets onto the board, splitting them into per-status fragments, sorting by urgency, updating an item's status, and the cancellation toast. It does **not** cover: station filter, search, the fuller notification system (sound/badges), `KitchenHistoryPage`/`KitchenSettingsPage` content, or any special treatment for the `Returned` item status.
 
 ## The short version
 
@@ -48,7 +42,7 @@ export type TicketFragment = {
 
 `groupTicketsByColumn` walks every ticket and, for each of the three active statuses (`Pending`/`Preparing`/`Ready`), collects the items in that ticket matching that status into one fragment. A round with 3 items in 3 different active statuses produces **3 separate fragments**, one per column — never the same item in two places, never a card whose button contradicts the column it's sitting in. Items sharing a status within the same round stay together in one fragment (not split further).
 
-This replaced an earlier ticket-centric model (a whole round moved into one column, chosen by priority across its items) specifically because that model could show a round sitting in "Preparing" while one of its own items still displayed a "Preparar" button — see the item-centric spec for the two other designs that were considered and rejected before this one.
+This replaced an earlier ticket-centric model (a whole round moved into one column, chosen by priority across its items) specifically because that model could show a round sitting in "Preparing" while one of its own items still displayed a "Preparar" button.
 
 Within a column, `sortTicketsByUrgency` orders fragments: urgency descending (danger, warning, normal) → oldest `created_at` first → `order_id` ascending as a final tie-breaker (keeps ordering stable across polls, no jitter). **Ordering is entirely per-column** — there's no cross-column priority; each of the three lists is sorted independently.
 
