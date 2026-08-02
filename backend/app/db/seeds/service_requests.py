@@ -24,8 +24,8 @@ def seed_service_requests() -> None:
         )
         if restaurant_table is None:
             raise RuntimeError(
-                f"Mesa {DEFAULT_TABLE_NUMBER} não encontrada. "
-                "Corre o seeder restaurant_tables primeiro."
+                f"The table {DEFAULT_TABLE_NUMBER} was not found. "
+                "Run the restaurant_tables seeder first."
             )
 
         dining_session = session.scalar(
@@ -36,8 +36,8 @@ def seed_service_requests() -> None:
         )
         if dining_session is None:
             raise RuntimeError(
-                f"A mesa {DEFAULT_TABLE_NUMBER} não tem uma sessão ativa. "
-                "Corre o seeder dining_sessions primeiro."
+                f"The table {DEFAULT_TABLE_NUMBER} does not have an active session. "
+                "Run the dining_sessions seeder first."
             )
 
         pending_status = session.scalar(
@@ -47,8 +47,8 @@ def seed_service_requests() -> None:
         )
         if pending_status is None:
             raise RuntimeError(
-                f"Estado '{DEFAULT_STATUS_ALIAS}' não encontrado. "
-                "Corre o seeder service_request_statuses primeiro."
+                f"Status '{DEFAULT_STATUS_ALIAS}' not found. "
+                "Run the service_request_statuses seeder first."
             )
 
         request_types = session.scalars(
@@ -56,8 +56,8 @@ def seed_service_requests() -> None:
         ).all()
         if not request_types:
             raise RuntimeError(
-                "Não existem tipos de pedido. "
-                "Corre o seeder service_request_types primeiro."
+                "There are no service request types. "
+                "Run the service_request_types seeder first."
             )
 
         existing_type_ids = set(
@@ -82,8 +82,8 @@ def seed_service_requests() -> None:
         session.commit()
 
         print(
-            f"{len(new_requests)} pedidos de assistência adicionados "
-            f"à mesa {DEFAULT_TABLE_NUMBER}."
+            f"{len(new_requests)} service requests added "
+            f"to table {DEFAULT_TABLE_NUMBER}."
         )
 
 

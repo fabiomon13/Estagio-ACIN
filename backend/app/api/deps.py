@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.roles import StaffRoleEnum, staff_role
 from app.core.security import decode_access_token
-from app.db.session import get_db
+from app.db.dependencies import get_db
 from app.models.staff import Staff
 
 ACCESS_TOKEN_COOKIE_NAME = "access_token"
