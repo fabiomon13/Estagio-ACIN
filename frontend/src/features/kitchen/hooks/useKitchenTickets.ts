@@ -8,6 +8,9 @@ import type {
   KitchenTicket,
 } from '../types/kitchen.types';
 import { useKitchenTicketsFeed } from './useKitchenTicketsFeed';
+import { useKitchenNotifications } from '../components/kitchen-notification/useKitchenNotifications';
+import { detectNotificationEvents } from '../utils/detectNotificationEvents';
+import type { NotificationDetectionState } from '../utils/detectNotificationEvents';
 
 export type UseKitchenTickets = {
   tickets: KitchenTicket[];
@@ -133,6 +136,26 @@ export function useKitchenTickets(): UseKitchenTickets {
 
     setTickets(applyPendingOptimisticStatuses(feed.tickets, pendingOptimisticStatusRef.current));
   }, [feed.tickets, showToast]);
+
+  const { notify } = useKitchenNotifications();
+  const notificationStateRef = useRef<NotificationDetectionState | null>(null);
+
+  useEffect(() => {
+    // Skip the transient tickets=[] render before the first fetch resolves --
+    // otherwise it "consumes" the isFirstRun guard against an empty
+    // seenTicketKeys set, making every ticket in the real first snapshot
+    // look new.
+    if (feed.isLoading) return;
+
+    const { events, nextState } = detectNotificationEvents(
+      feed.tickets,
+      notificationStateRef.current,
+      new Date(),
+    );
+
+    notificationStateRef.current = nextState;
+    events.forEach((event) => notify(event));
+  }, [feed.tickets, feed.isLoading, notify]);
 
   const updateStatus = useCallback(
     (orderItemId: number, nextStatus: KitchenPatchableStatus) => {

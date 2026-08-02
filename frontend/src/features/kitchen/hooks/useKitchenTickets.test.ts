@@ -14,6 +14,11 @@ vi.mock('../../../components/ui/toast/useToast', () => ({
   useToast: () => ({ showToast: showToastMock }),
 }));
 
+const notifyMock = vi.fn();
+vi.mock('../components/kitchen-notification/useKitchenNotifications', () => ({
+  useKitchenNotifications: () => ({ notify: notifyMock }),
+}));
+
 function makeTicket(
   itemStatus: 'Pending' | 'Preparing' | 'Ready' | 'Cancelled' = 'Pending',
 ): KitchenTicket {
@@ -275,5 +280,82 @@ describe('useKitchenTickets', () => {
     feedTickets.current = [makeTicket('Cancelled')]; // new array reference, same status
     rerender();
     expect(showToastMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls notify with a new-order event when a ticket not seen before appears on a later poll', () => {
+    const feedTickets = { current: [makeTicket('Pending')] };
+    vi.mocked(useKitchenTicketsFeed).mockImplementation(() => ({
+      tickets: feedTickets.current,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    }));
+
+    const { rerender } = renderHook(() => useKitchenTickets());
+
+    const secondTicket: KitchenTicket = {
+      ...makeTicket('Pending'),
+      order_id: 2,
+      table_number: 9,
+    };
+    feedTickets.current = [feedTickets.current[0], secondTicket];
+    rerender();
+
+    expect(notifyMock).toHaveBeenCalledWith({
+      type: 'new-order',
+      message: 'Novo pedido — Mesa 9',
+    });
+  });
+
+  it('does not call notify for tickets already on the board on first mount', () => {
+    mockFeed([makeTicket('Pending')]);
+
+    renderHook(() => useKitchenTickets());
+
+    expect(notifyMock).not.toHaveBeenCalled();
+  });
+
+  it('does not fire new-order for tickets already on the board when the initial fetch resolves (loading -> loaded)', () => {
+    const feedState = { current: { tickets: [] as KitchenTicket[], isLoading: true } };
+    vi.mocked(useKitchenTicketsFeed).mockImplementation(() => ({
+      tickets: feedState.current.tickets,
+      isLoading: feedState.current.isLoading,
+      error: null,
+      refetch: vi.fn(),
+    }));
+
+    const { rerender } = renderHook(() => useKitchenTickets());
+
+    // Simulates the initial fetch resolving: tickets go from [] to real
+    // data, isLoading flips to false -- this used to fire new-order for
+    // every ticket already on the board, since the empty first render had
+    // already "consumed" the isFirstRun guard against a still-empty set.
+    feedState.current = { tickets: [makeTicket('Pending')], isLoading: false };
+    rerender();
+
+    expect(notifyMock).not.toHaveBeenCalled();
+  });
+
+  it('still fires the cancellation toast independently of the new notify effect', () => {
+    const feedTickets = { current: [makeTicket('Pending')] };
+    vi.mocked(useKitchenTicketsFeed).mockImplementation(() => ({
+      tickets: feedTickets.current,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    }));
+
+    const { rerender } = renderHook(() => useKitchenTickets());
+
+    feedTickets.current = [makeTicket('Cancelled')];
+    rerender();
+
+    expect(showToastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: 'danger', title: 'Pedido cancelado' }),
+    );
+    // The cancellation path uses the old Toast, not the new notify().
+    expect(notifyMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining('cancel') }),
+    );
   });
 });

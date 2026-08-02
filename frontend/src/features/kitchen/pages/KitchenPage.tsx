@@ -8,9 +8,6 @@ import SearchInput from '../../../components/ui/search-input/SearchInput';
 import Dropdown from '../../../components/ui/dropdown/Dropdown';
 import { getStationColor, STATION_NAMES } from '../../../utils/getStationColor';
 import { useNow } from '../../../hooks/useNow';
-import KitchenNotification from '../components/kitchen-notification/KitchenNotification';
-import Button from '../../../components/ui/button/Button';
-import { PlusIcon } from '../../../components/icons';
 
 const dateFormatter = new Intl.DateTimeFormat('pt-PT', {
   weekday: 'long',
@@ -38,7 +35,6 @@ export function KitchenPage() {
   const { tickets, isLoading, updateStatus } = useKitchenTickets();
   const [search, setSearch] = useState('');
   const [stationFilter, setStationFilter] = useState(ALL_STATIONS_VALUE);
-  const [showTestNotification, setShowTestNotification] = useState(false);
   const columns = groupTicketsByColumn(tickets);
   const now = useNow();
 
@@ -70,13 +66,6 @@ export function KitchenPage() {
               placeholder="Todas as estações"
             />
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setShowTestNotification((prev) => !prev)}
-          >
-            Testar notificação
-          </Button>
         </div>
         <div className="text-right">
           <h1 className="text-content text-2xl">{timeFormatter.format(now)}</h1>
@@ -85,16 +74,6 @@ export function KitchenPage() {
           </span>
         </div>
       </header>
-      {showTestNotification && (
-        <div className="fixed right-5 top-5 z-50 w-96 animate-toast-in">
-          <KitchenNotification
-            variant="info"
-            message="Nova ronda na mesa 5"
-            icon={<PlusIcon size={16} />}
-            onDismiss={() => setShowTestNotification(false)}
-          />
-        </div>
-      )}
       <section className=" flex items-start gap-4 w-full">
         <KitchenColumn
           title="Novos"
