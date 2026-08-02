@@ -39,6 +39,7 @@ The app is available at `http://localhost:5173`.
 - [Staff authentication & authorization](docs/auth.md) — how login/roles work, and how to use them in new endpoints/pages.
 - [Autenticação de Staff — explicação simples](docs/auth-simples.md) — versão simplificada em português.
 - [Typography](docs/typography.md) — which font goes where, and how to size/weight it correctly.
+- [Kitchen backend — tickets & item status](docs/kitchen-backend.md) — the `/api/kitchen` endpoints, how a ticket is defined, and how the backend test suite works.
 
 ## Structure
 
