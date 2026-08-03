@@ -33,3 +33,5 @@ export const approveSession = (sessionId: number) =>
   apiFetch(`/staff/sessions/${sessionId}/approve`, { method: 'POST' });
 export const deactivateSession = (sessionId: number) =>
   apiFetch(`/staff/sessions/${sessionId}/deactivate`, { method: 'PATCH' });
+export const resolveRequest = (requestId: number) =>
+  apiFetch(`/staff/requests/${requestId}/resolve`, { method: 'PATCH' });

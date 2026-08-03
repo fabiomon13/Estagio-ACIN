@@ -25,6 +25,7 @@ from app.models.staff import Staff
 from app.models.staff_role import StaffRole
 from app.core.roles import StaffRoleEnum, staff_role
 import random
+from app.models.restaurant_table import RestaurantTable
 
 READY_ORDER_ITEM_ALIAS = "ready"
 SERVED_ORDER_ITEM_ALIAS = "served"
@@ -78,8 +79,12 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
     Calculates occupied tables, guest counts, and table totals for active sessions[cite: 1].
     Also compiles lists of ready-to-serve items and open service requests for the dashboard response[cite: 1].
     """
-    active_sessions = db.query(DiningSession).options(
-        joinedload(DiningSession.restaurant_table)).filter(DiningSession.is_active == True).all()
+    active_sessions = (
+        db.query(DiningSession)
+        .options(joinedload(DiningSession.restaurant_table))
+        .filter(DiningSession.is_active == True)
+        .all()
+    )
 
     occupied_tables = len(active_sessions)
     guest_count = sum(session.num_clients for session in active_sessions)
@@ -87,50 +92,71 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
     tables_data = []
     ready_to_serve_table = []
 
-    for session in active_sessions:
+    # NEW: load all restaurant tables and map current active session by table_id
+    all_tables = db.query(RestaurantTable).order_by(RestaurantTable.table_number).all()
+    active_session_by_table = {s.table_id: s for s in active_sessions}
+
+    for table in all_tables:
+        session = active_session_by_table.get(table.id)
+
+        # No active session => keep table visible as inactive
+        if session is None:
+            tables_data.append(
+                StaffDashboardTable(
+                    session_id=None,
+                    table_number=table.table_number,
+                    guest_count=0,
+                    state=StaffTableState.INACTIVE,
+                    started_at=None,
+                    ready_item_count=0,
+                    total="$0.00",
+                )
+            )
+            continue
+
         state = StaffTableState.ACTIVE if session.is_approved else StaffTableState.AWAITING_APPROVAL
 
-        ready_status = get_order_item_status_by_alias(db, READY_ORDER_ITEM_ALIAS)
+        total_amount = (
+            db.query(func.sum(OrderItem.unit_price_at_order * OrderItem.quantity))
+            .join(Order, Order.id == OrderItem.order_id)
+            .filter(Order.guest_id == session.id)
+            .scalar()
+            or 0.0
+        )
 
-        # Calculate table total
-        total_amount = db.query(func.sum(OrderItem.unit_price_at_order * OrderItem.quantity))\
-            .join(Order, Order.id == OrderItem.order_id)\
-            .join(Guest, Guest.id == Order.guest_id)\
-            .filter(Guest.session_id == session.id)\
-            .scalar() or 0.0
+        ready_items = (
+            db.query(OrderItem)
+            .join(Order, Order.id == OrderItem.order_id)
+            .join(Guest, Guest.id == Order.guest_id)
+            .filter(Guest.session_id == session.id, OrderItem.status_id == 3)
+            .all()
+        )
 
-        # Count ready items for summary
-        ready_items = db.query(OrderItem).join(Order, Order.id == OrderItem.order_id).join(Guest, Guest.id == Order.guest_id).filter(
-                    Guest.session_id == session.id, OrderItem.status_id == ready_status.id).all()
-
-        
         tables_data.append(
             StaffDashboardTable(
                 session_id=session.id,
-                table_number=session.restaurant_table.table_number if session.restaurant_table else None,
+                table_number=table.table_number,
                 guest_count=session.num_clients,
                 state=state,
                 started_at=session.start_time,
                 ready_item_count=len(ready_items),
-                total=f"${total_amount:.2f}"
+                total=f"${total_amount:.2f}",
             )
         )
-
 
         if ready_items:
             items_payload = [
                 StaffReadyItem(
                     id=item.id,
                     name=item.menu_item.name if item.menu_item else "Unknown Item",
-                    quantity=item.quantity
-                ) 
+                    quantity=item.quantity,
+                )
                 for item in ready_items
             ]
-
             ready_to_serve_table.append(
                 StaffReadyTable(
-                    table_number=session.restaurant_table.table_number if session.restaurant_table else None,
-                    items=items_payload
+                    table_number=table.table_number,
+                    items=items_payload,
                 )
             )
 
