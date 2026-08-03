@@ -37,7 +37,7 @@ const TABS = [
 
 export function KitchenLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const { staff } = useAuth();
+  const { staff, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -59,7 +59,7 @@ export function KitchenLayout() {
         profile={{
           name: staff?.name ?? '',
           role: staff?.role ?? 'chef',
-          onClick: () => {},
+          onClick: () => logout(),
         }}
       />
 

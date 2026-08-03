@@ -14,7 +14,6 @@ from app.core.config import settings
 from app.core.security import create_access_token, hash_password
 from app.db.base import Base
 from app.db.dependencies import get_db as get_db_dependencies
-from app.db.session import get_db as get_db_session
 from app.main import app
 from app.models.category import Category
 from app.models.dining_session import DiningSession
@@ -87,7 +86,6 @@ def client(db_session):
         yield db_session
 
     app.dependency_overrides[get_db_dependencies] = _override_get_db
-    app.dependency_overrides[get_db_session] = _override_get_db
 
     with TestClient(app) as test_client:
         yield test_client

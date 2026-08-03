@@ -2,7 +2,7 @@
 
 This document explains how the kitchen's live ticket board works on the frontend: how data gets from the backend to the screen, how it's split into columns, how status updates are sent, and how the pieces fit together. If you're extending the board (filters, search, notifications) or swapping polling for websockets, read this first.
 
-**Scope:** this covers getting real tickets onto the board, splitting them into per-status fragments, sorting by urgency, updating an item's status, and the cancellation toast. It does **not** cover: station filter, search, the fuller notification system (sound/badges), `KitchenHistoryPage`/`KitchenSettingsPage` content, or any special treatment for the `Returned` item status.
+**Scope:** this covers getting real tickets onto the board, splitting them into per-status fragments, sorting by urgency, updating an item's status, the cancellation toast, and the real-time notification system (new order / item waiting too long, with sound and settings). It does **not** cover: station filter, search, `KitchenHistoryPage` content, or any special treatment for the `Returned` item status.
 
 ## The short version
 
@@ -24,6 +24,11 @@ This document explains how the kitchen's live ticket board works on the frontend
 | `frontend/src/features/kitchen/components/ticket-card/TicketCard.tsx` | Renders one fragment — a compact header (table/round/guest), an allergen banner scoped to *this fragment's* items, and each item with its own action button. |
 | `frontend/src/features/kitchen/components/kitchen-column/KitchenColumn.tsx` | Renders a column's title + its `TicketCard`s (one per fragment), computing `elapsedMinutes`/`urgency` per fragment. |
 | `frontend/src/features/kitchen/pages/KitchenPage.tsx` | Composes the three columns. Intentionally minimal — no styling/layout polish beyond the 3-column row. |
+| `frontend/src/features/kitchen/types/notification.types.ts` | `KitchenNotificationType` (`'new-order' \| 'ready-too-long'`), `NotificationPreferences`. |
+| `frontend/src/features/kitchen/utils/detectNotificationEvents.ts` | Pure, tested — the poll-snapshot-comparison logic that decides when a notification fires. |
+| `frontend/src/features/kitchen/utils/notificationPreferences.ts` | `localStorage` read/write for notification settings, with safe defaults. |
+| `frontend/src/features/kitchen/utils/playNotificationSound.ts` | The notification beep — synthesized with the Web Audio API, no audio assets. |
+| `frontend/src/features/kitchen/components/kitchen-notification/` | `KitchenNotification` (presentational card) + `KitchenNotificationContext`/`useKitchenNotifications` (the `notify()` hook) + `KitchenNotificationProvider` (queue, sound, auto-dismiss, mounted globally in `App.tsx`). |
 
 ## Column bucketing: item-centric, not ticket-centric
 
@@ -56,9 +61,26 @@ None of the three columns can ever contain one of these — `groupTicketsByColum
 |---|---|
 | `Served` | Vanishes from the board immediately. No toast, no lingering card — kitchen has nothing left to do with it. |
 | `Returned` | Same as `Served`. Not a built feature, just the natural consequence of not being one of the three active statuses. |
-| `Cancelled` | Vanishes from the board too (there's no dismiss-button UI anymore — that whole mechanism was removed), but `useKitchenTickets` fires a toast the moment it detects the transition, so cancellations aren't silently invisible while the fuller notification system and order history remain unbuilt. |
+| `Cancelled` | Vanishes from the board too (there's no dismiss-button UI anymore — that whole mechanism was removed), but `useKitchenTickets` fires a toast the moment it detects the transition — deliberately kept on this toast rather than folded into the notification system below (see "Real-time notifications"). |
 
 The item still exists in the API response right up until it's excluded at the grouping step (the backend always returns every item of a round, regardless of status) — that's what makes the cancellation toast possible: `useKitchenTickets` sees the item with its name and table number one last time before it disappears.
+
+## Real-time notifications
+
+A separate system from the cancellation toast above — floating alerts, with sound, for two events: **a new order arriving**, and **a `Ready` item that's been waiting too long to be served**. Cancellation was evaluated for inclusion here during design and deliberately kept out — it stays on the `useToast` primitive, untouched.
+
+**Detection** (`detectNotificationEvents.ts`, pure function, unit tested) reuses the same poll-snapshot-comparison technique the cancellation toast already uses, generalized for two more transitions:
+
+- `new-order` — a ticket (`order_id:round_number`) not present in the previous snapshot. Suppressed on the very first snapshot processed (nothing about a ticket already on the board when the page loaded should count as "new").
+- `ready-too-long` — an item observed sitting in `Ready` for at least `READY_TOO_LONG_THRESHOLD_MS` (currently 1 minute), fires once per stretch of waiting (won't repeat every poll while it's still `Ready`). The backend doesn't expose a "became-ready-at" timestamp, so this is tracked client-side from the moment the item is *first observed* as `Ready` — an item already `Ready` before the page loaded only fires after another full threshold's worth of waiting past that observation, not from whenever it actually became ready.
+
+**Display and queueing** (`KitchenNotificationProvider`) is mounted once, globally, in `App.tsx` — next to `ToastProvider`, same pattern. It owns the notification queue (multiple alerts stack, newest at the bottom), a floating stack fixed top-right, auto-dismiss after `DISMISS_AFTER_MS` (5s, no exit animation — entry only, via the existing `animate-toast-in` utility), and sound. Mounting it globally rather than only inside `KitchenPage` was a simplicity call, not a scope change: detection still only happens where `useKitchenTickets` runs (inside `KitchenPage`), so notifications are still only *triggered* while the Pedidos tab is open — mounting the display globally just means an already-queued alert keeps counting down if the chef navigates away before it dismisses, same as `Toast` already behaves.
+
+**Sound** (`playNotificationSound.ts`) is synthesized with the Web Audio API — several inharmonic partials at decreasing gain/decay plus a short filtered-noise "strike" transient, approximating a bell rather than a flat oscillator beep. No audio assets, no new dependency.
+
+**Preferences** (`notificationPreferences.ts`) persist to `localStorage` under `kitchen.notificationPreferences` — a master on/off, a sound on/off, and a per-type toggle, all editable from `KitchenSettingsPage`. `KitchenNotificationProvider.notify()` reads preferences fresh from `localStorage` on every call rather than caching them at mount, so a toggle change takes effect on the very next event, no reload needed. This is per-device, not per-user — there's no backend or auth-scoped settings concept in the app yet, and a shared kitchen screen doesn't really want per-account preferences anyway.
+
+**Known gotcha, already fixed once:** the detection `useEffect` in `useKitchenTickets.ts` guards on `feed.isLoading`. `feed.tickets` starts at `[]` before the first poll resolves; without that guard, the effect ran once against that transient empty array (consuming the "first snapshot, don't fire" protection against a still-empty `seenTicketKeys` set) and then again against the real data — so every ticket already on the board fired `new-order` on every page refresh. If you're touching this effect, don't drop that guard.
 
 ## Why polling lives in its own hook
 
@@ -101,14 +123,16 @@ Notes if you're extending the hook tests:
 - Both hook test files call `vi.clearAllMocks()` in `beforeEach` — `vi.mock(...)`-based automocks keep call counts and queued `mockResolvedValueOnce`/`mockRejectedValueOnce` implementations across tests otherwise, which silently breaks assertions in later tests in the same file.
 - `useKitchenTickets`'s tests mock `useKitchenTicketsFeed` directly (`vi.mock('./useKitchenTicketsFeed')`) rather than going through a real polling cycle — it's tested as a pure consumer of whatever the feed hands it. Simulate a poll landing mid-mutation by mutating the mock's returned `tickets` array and calling `rerender()` from `renderHook`.
 - `getTicketColumn.test.ts` covers the fragment-splitting rules directly: same-round-different-status → separate fragments, same-round-same-status → one fragment, terminal items excluded from every column, a round with only terminal items produces no fragments anywhere.
+- `detectNotificationEvents.test.ts` covers the notification-detection rules: first-run suppression for `new-order`, one-shot firing for `ready-too-long`, no immediate fire for an item already `Ready` before it was first observed, tracking cleared once an item leaves `Ready`.
+- `notificationPreferences.test.ts` covers the `localStorage` read/write: all-enabled defaults when nothing is stored, round-tripping a saved value, falling back to defaults on corrupted JSON, filling in missing fields from a partial stored object.
+- `useKitchenTickets.test.ts` also covers the new notification effect (mocks `useKitchenNotifications` the same way it mocks `useToast`): fires `notify` for a genuinely new ticket, doesn't fire for tickets already on the board on first mount (including through the `isLoading` → loaded transition), and confirms the cancellation toast keeps firing independently of it.
 
-`TicketCard`/`KitchenColumn`/`KitchenPage` have no dedicated unit tests (composition of already-tested pieces) — verify visually in the browser. `backend/app/db/seeds/order_items.py` (`python -m app.db.seeds.order_items`) seeds realistic multi-table, multi-status, multi-allergen test data for exactly this purpose — see that file's own docstring for what it covers and `--reset` to clear just its own data.
+`TicketCard`/`KitchenColumn`/`KitchenPage`/`KitchenNotification`/`KitchenNotificationProvider`/`KitchenSettingsPage` have no dedicated unit tests (presentational, or composition of already-tested pieces) — verify visually in the browser. `backend/app/db/seeds/order_items.py` (`python -m app.db.seeds.order_items`) seeds realistic multi-table, multi-status, multi-allergen test data for exactly this purpose — see that file's own docstring for what it covers and `--reset` to clear just its own data.
 
 ## What's explicitly out of scope (not built yet)
 
 - Station filter, search.
-- Notifications / sound toggle (the cancellation toast reuses the existing `useToast` primitive — it is not this system).
-- Real content for `KitchenHistoryPage` / `KitchenSettingsPage`.
+- Real content for `KitchenHistoryPage` (`KitchenSettingsPage` now has real content — the notification preferences described above — but nothing beyond that).
 - Any special visual treatment for the `Returned` item status (it's simply never shown, same as `Served`).
 - Buffet-aware urgency thresholds — `Guest.buffet_id` exists on the backend but isn't exposed on `KitchenTicketOut` yet.
 - Board layout/styling polish beyond the 3-column row.
