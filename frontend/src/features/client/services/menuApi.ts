@@ -53,12 +53,28 @@ export type DiningSession = {
   approved_at: string | null;
 };
 
+export type Buffet = {
+  id: number;
+  name: string;
+  alias: string;
+  price: string;
+  waste_charge: string;
+};
+
 export function getMenu(): Promise<MenuPage> {
   return apiFetch<MenuPage>('/client/menu-items?is_available=true&limit=100');
 }
 
 export function getCategories(): Promise<Category[]> {
   return apiFetch<Category[]>('/client/categories');
+}
+
+export function getBuffets(): Promise<Buffet[]> {
+  return apiFetch<Buffet[]>('/client/buffets');
+}
+
+export function getBuffetItems(buffetId: number): Promise<MenuItem[]> {
+  return apiFetch<MenuItem[]>(`/client/buffets/${buffetId}/items`);
 }
 
 export function getTable(tableCode: string): Promise<Table> {

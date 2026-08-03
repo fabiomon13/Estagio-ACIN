@@ -30,6 +30,21 @@ export function createGuest(tableCode: string, deviceToken: string): Promise<Gue
   });
 }
 
+export function updateGuestBuffet(
+  tableCode: string,
+  deviceToken: string,
+  buffetId: number | null,
+): Promise<Guest> {
+  return apiFetch<Guest>(`/client/tables/${encodeURIComponent(tableCode)}/guests/me/buffet`, {
+    method: 'PATCH',
+    headers: {
+      ...deviceTokenHeaders(deviceToken),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ buffet_id: buffetId }),
+  });
+}
+
 const pendingGuestRequests = new Map<string, Promise<Guest>>();
 
 export function ensureGuest(tableCode: string, deviceToken: string): Promise<Guest> {
