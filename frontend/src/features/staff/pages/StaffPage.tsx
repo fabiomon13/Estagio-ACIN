@@ -14,10 +14,33 @@ import {
 
 const POLL_MS = 10000;
 
-function minsSince(date: string | null) {
+function formatTimeSince(date: string | number | Date | null) {
   if (!date) return null;
   const ms = Date.now() - new Date(date).getTime();
-  return Math.max(0, Math.floor(ms / 60000));
+  const totalMins = Math.max(0, Math.floor(ms / 60000));
+
+  const hours = Math.floor(totalMins / 60);
+  const minutes = totalMins % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  return `${minutes} min`;
+}
+
+function translateState(state: string) {
+  switch (state) {
+    case 'active':
+      return 'Ativa';
+    case 'awaiting_approval':
+      return 'Aprovação Pendente';
+    case 'inactive':
+      return 'Inativa';
+    case 'payment_requested':
+      return 'Pagamento Solicitado';
+    default:
+      return state;
+  }
 }
 
 function tableBorder(state: string) {
@@ -53,6 +76,7 @@ export function StaffPage() {
   } | null>(null);
   const [approvalActionFor, setApprovalActionFor] = useState<number | null>(null); // session_id
   const [confirmSolveForTable, setConfirmSolveForTable] = useState<number | null>(null);
+  const [confirmingPaymentForTable, setConfirmingPaymentForTable] = useState<number | null>(null);
   const [kitchenOpen, setKitchenOpen] = useState(true);
 
   const load = async () => {
@@ -143,30 +167,46 @@ export function StaffPage() {
     return map;
   }, [data]);
 
+  const paymentRequestByTable = useMemo(() => {
+    const map = new Map();
+
+    for (const r of data?.requests ?? []) {
+      const t = String(r.type ?? '')
+        .trim()
+        .toLowerCase();
+      if (t !== 'payment_request') continue;
+
+      const tableNumber = Number(r.table_number);
+      const current = map.get(tableNumber);
+
+      if (!current || new Date(r.created_at).getTime() > new Date(current.created_at).getTime()) {
+        map.set(tableNumber, { id: r.id, created_at: r.created_at });
+      }
+    }
+
+    return map;
+  }, [data]);
+
+  const paymentRequestCount = paymentRequestByTable.size;
+
   const waiterReadyToServe = useMemo(() => {
     const rows = data?.ready_to_serve ?? [];
 
     return rows
       .filter((group) => {
         const table = tablesView.find((t) => t.table_number === group.table_number);
-        const belongsToWaiter = !table?.waiter_name || table.waiter_name === staff?.name;
+
+        const tableWaiter = table?.waiter_name?.trim().toLowerCase();
+        const currentWaiter = staff?.name?.trim().toLowerCase();
+
+        const belongsToWaiter = !tableWaiter || tableWaiter === currentWaiter;
         if (!belongsToWaiter) return false;
 
-        // only show if every item in that group is really ready
-        return (
-          (group.items ?? []).length > 0 &&
-          group.items.every((item: any) => {
-            const s = String(item.status ?? item.state ?? '').toLowerCase();
-            return s === 'ready' || s === 'pronto';
-          })
-        );
+        return (group.items ?? []).length > 0;
       })
       .map((group) => ({
         ...group,
-        items: (group.items ?? []).filter((item: any) => {
-          const s = String(item.status ?? item.state ?? '').toLowerCase();
-          return s === 'ready' || s === 'pronto';
-        }),
+        items: group.items ?? [],
       }));
   }, [data, tablesView, staff?.name]);
 
@@ -213,19 +253,33 @@ export function StaffPage() {
     }
   };
 
+  const onResolvePayment = async (requestId: number, tableNumber: number, sessionId: number) => {
+    try {
+      await resolveRequest(requestId);
+
+      await deactivateSession(sessionId);
+
+      showToast({
+        variant: 'success',
+        title: `Pagamento concluído e mesa ${tableNumber} desativada`,
+      });
+      setConfirmingPaymentForTable(null);
+      await load();
+    } catch {
+      showToast({ variant: 'danger', title: 'Não foi possível concluir o pagamento' });
+    }
+  };
+
   const onMarkDelivered = async (group: {
     table_number: number;
     items: Array<{ id: number; status?: string; state?: string }>;
   }) => {
-    const readyItems = group.items.filter((item) => {
-      const s = String(item.status ?? item.state ?? '').toLowerCase();
-      return s === 'ready' || s === 'pronto';
-    });
+    const readyItems = group.items ?? [];
 
-    if (readyItems.length === 0 || readyItems.length !== group.items.length) {
+    if (readyItems.length === 0) {
       showToast({
         variant: 'warning',
-        title: `Mesa ${group.table_number} ainda não está pronta para entrega`,
+        title: `Mesa ${group.table_number} não tem itens para entrega`,
       });
       return;
     }
@@ -259,24 +313,32 @@ export function StaffPage() {
         }`}
       >
         <div>
-          <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4 mb-5">
-            <div className="rounded-2xl border border-danger bg-surface-raised p-4">
-              <p className="text-content-muted">Necessitam de Assistência</p>
-              <p className="text-3xl font-bold text-danger">{assistanceCount}</p>
+          <section className="grid grid-cols-5 gap-2 md:gap-3 mb-5">
+            <div className="rounded-2xl border border-danger bg-surface-raised p-3">
+              <p className="text-xs md:text-sm text-content-muted truncate">Assistência</p>
+              <p className="text-2xl font-bold text-danger">{assistanceCount}</p>
             </div>
-            <div className="rounded-2xl border border-warning bg-surface-raised p-4">
-              <p className="text-content-muted">Pedidos de Aprovação</p>
-              <p className="text-3xl font-bold text-warning">{approvalRequests}</p>
+
+            <div className="rounded-2xl border border-warning bg-surface-raised p-3">
+              <p className="text-xs md:text-sm text-content-muted truncate">Aprovação</p>
+              <p className="text-2xl font-bold text-warning">{approvalRequests}</p>
             </div>
-            <div className="rounded-2xl border border-success bg-surface-raised p-4">
-              <p className="text-content-muted">Pedidos em curso</p>
-              <p className="text-3xl font-bold text-success">
+
+            <div className="rounded-2xl border border-info bg-surface-raised p-3">
+              <p className="text-xs md:text-sm text-content-muted truncate">Pagamento</p>
+              <p className="text-2xl font-bold text-info">{paymentRequestCount}</p>
+            </div>
+
+            <div className="rounded-2xl border border-success bg-surface-raised p-3">
+              <p className="text-xs md:text-sm text-content-muted truncate">Em curso</p>
+              <p className="text-2xl font-bold text-success">
                 {data?.summary.occupied_tables ?? 0}
               </p>
             </div>
-            <div className="rounded-2xl border border-info bg-surface-raised p-4">
-              <p className="text-content-muted">Clientes na Sala</p>
-              <p className="text-3xl font-bold text-info">{data?.summary.guest_count ?? 0}</p>
+
+            <div className="rounded-2xl border border-pink-500 bg-surface-raised p-3">
+              <p className="text-xs md:text-sm text-content-muted truncate">Clientes</p>
+              <p className="text-2xl font-bold text-pink-500">{data?.summary.guest_count ?? 0}</p>
             </div>
           </section>
 
@@ -292,6 +354,9 @@ export function StaffPage() {
                 const assistanceReq = assistanceRequestByTable.get(table.table_number);
                 const hasAssistance = Boolean(assistanceReq);
 
+                const paymentReq = paymentRequestByTable.get(table.table_number);
+                const hasPaymentReq = Boolean(paymentReq);
+
                 return (
                   <article
                     id={`table-${table.table_number}`}
@@ -299,7 +364,9 @@ export function StaffPage() {
                     className={`rounded-3xl border-2 p-4 ${
                       hasUrgentAssistance
                         ? 'border-danger bg-danger/10 shadow-[0_0_0_1px_var(--color-danger)]'
-                        : `${tableBorder(table.state)} bg-surface-raised`
+                        : hasPaymentReq
+                          ? 'border-info bg-info/10 shadow-[0_0_0_1px_var(--color-info)]'
+                          : `${tableBorder(table.state)} bg-surface-raised`
                     }`}
                   >
                     <p className="text-content-muted">Mesa</p>
@@ -312,7 +379,7 @@ export function StaffPage() {
                     </p>
 
                     <div className="mt-3 flex items-center justify-between text-content-muted text-sm">
-                      <span>{minsSince(table.started_at) ?? 0} min</span>
+                      <span>{formatTimeSince(table.started_at) ?? 0}</span>
                       <span>{table.guest_count} pax</span>
                     </div>
 
@@ -326,7 +393,7 @@ export function StaffPage() {
                               : 'default'
                         }
                       >
-                        {table.state}
+                        {translateState(table.state)}
                       </Badge>
                       <span className="text-content-muted text-sm">{table.total}</span>
                     </div>
@@ -468,6 +535,56 @@ export function StaffPage() {
                                 }
                               >
                                 Resolvido
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {hasPaymentReq && !hasAssistance && (
+                      <div className="mt-4 rounded-2xl border border-info bg-info/10 p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-info">Pagamento solicitado</p>
+                            <p className="text-xs text-info/70">
+                              Toque para confirmar o recebimento
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            className="bg-info text-white hover:opacity-90 border-0"
+                            onClick={() => setConfirmingPaymentForTable(table.table_number)}
+                          >
+                            Fechar Conta
+                          </Button>
+                        </div>
+
+                        {confirmingPaymentForTable === table.table_number && (
+                          <div className="mt-3 rounded-xl border border-border-strong bg-surface p-3 shadow-sm">
+                            <p className="text-sm text-content-muted mb-3">
+                              Confirmar pagamento e desativar a mesa?
+                            </p>
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setConfirmingPaymentForTable(null)}
+                              >
+                                Cancelar
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="bg-info text-white hover:opacity-90 border-0"
+                                onClick={() =>
+                                  void onResolvePayment(
+                                    paymentReq.id,
+                                    table.table_number,
+                                    table.session_id!,
+                                  )
+                                }
+                              >
+                                Confirmar Pago
                               </Button>
                             </div>
                           </div>

@@ -79,6 +79,9 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
     Calculates occupied tables, guest counts, and table totals for active sessions[cite: 1].
     Also compiles lists of ready-to-serve items and open service requests for the dashboard response[cite: 1].
     """
+
+    ready_status = get_order_item_status_by_alias(db, READY_ORDER_ITEM_ALIAS)
+
     active_sessions = (
         db.query(DiningSession)
         .options(joinedload(DiningSession.restaurant_table))
@@ -110,7 +113,8 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
                     started_at=None,
                     ready_item_count=0,
                     total="$0.00",
-                    waiter_name=None
+                    waiter_name=None,
+                    waiter_id=None  
                 )
             )
             continue
@@ -129,7 +133,7 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
             db.query(OrderItem)
             .join(Order, Order.id == OrderItem.order_id)
             .join(Guest, Guest.id == Order.guest_id)
-            .filter(Guest.session_id == session.id, OrderItem.status_id == 3)
+            .filter(Guest.session_id == session.id, OrderItem.status_id == ready_status.id)
             .all()
         )
 
@@ -142,7 +146,8 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
                 started_at=session.start_time,
                 ready_item_count=len(ready_items),
                 total=f"${total_amount:.2f}",
-                waiter_name=session.waiter.name if session.waiter else None
+                waiter_name=session.waiter.name if session.waiter else None,
+                waiter_id=session.waiter.id if session.waiter else None
             )
         )
 
@@ -189,7 +194,7 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
     return StaffDashboard(
         summary=summary,
         tables=tables_data,
-        ready_to_serve = ready_to_serve_table,
+        ready_to_serve=ready_to_serve_table,
         requests=requests_data,
     )
 
