@@ -358,4 +358,22 @@ describe('useKitchenTickets', () => {
       expect.objectContaining({ message: expect.stringContaining('cancel') }),
     );
   });
+
+  it('fires ready-too-long from the passage of time alone, with no new ticket data arriving', () => {
+    vi.useFakeTimers();
+    try {
+      mockFeed([makeTicket('Ready')]);
+
+      renderHook(() => useKitchenTickets());
+      expect(notifyMock).not.toHaveBeenCalled();
+
+      act(() => {
+        vi.advanceTimersByTime(70_000); // past the 1-minute threshold; feed.tickets never changes
+      });
+
+      expect(notifyMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'ready-too-long' }));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

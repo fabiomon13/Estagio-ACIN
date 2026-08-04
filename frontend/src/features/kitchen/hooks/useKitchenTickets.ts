@@ -61,6 +61,12 @@ function buildStatusMap(tickets: KitchenTicket[]): Map<number, KitchenItemStatus
   return map;
 }
 
+// Heartbeat for time-based notification checks (e.g. "ready too long"), which
+// don't depend on new data arriving -- without this, they'd only be
+// re-evaluated when a WebSocket message or the (now much slower) backup poll
+// happens to land, instead of staying tied to the wall clock.
+const NOTIFICATION_CHECK_INTERVAL_MS = 10_000;
+
 // Terminal statuses share a rank -- none should be overwritten by a pending optimistic update.
 const STATUS_RANK: Record<KitchenItemStatus, number> = {
   Pending: 0,
@@ -140,7 +146,7 @@ export function useKitchenTickets(): UseKitchenTickets {
   const { notify } = useKitchenNotifications();
   const notificationStateRef = useRef<NotificationDetectionState | null>(null);
 
-  useEffect(() => {
+  const runNotificationDetection = useCallback(() => {
     // Skip the transient tickets=[] render before the first fetch resolves --
     // otherwise it "consumes" the isFirstRun guard against an empty
     // seenTicketKeys set, making every ticket in the real first snapshot
@@ -156,6 +162,18 @@ export function useKitchenTickets(): UseKitchenTickets {
     notificationStateRef.current = nextState;
     events.forEach((event) => notify(event));
   }, [feed.tickets, feed.isLoading, notify]);
+
+  // Runs whenever a new snapshot arrives (WebSocket push or backup poll)...
+  useEffect(() => {
+    runNotificationDetection();
+  }, [runNotificationDetection]);
+
+  // ...and also on its own timer, so a purely time-based check like "ready
+  // too long" still fires promptly even if nothing else changes in between.
+  useEffect(() => {
+    const intervalId = setInterval(runNotificationDetection, NOTIFICATION_CHECK_INTERVAL_MS);
+    return () => clearInterval(intervalId);
+  }, [runNotificationDetection]);
 
   const updateStatus = useCallback(
     (orderItemId: number, nextStatus: KitchenPatchableStatus) => {

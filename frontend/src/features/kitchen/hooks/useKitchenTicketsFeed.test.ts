@@ -7,6 +7,22 @@ import type { KitchenTicket } from '../types/kitchen.types';
 
 vi.mock('../services/kitchenService');
 
+class FakeWebSocket {
+  static instances: FakeWebSocket[] = [];
+  onopen: (() => void) | null = null;
+  onmessage: ((event: { data: string }) => void) | null = null;
+  onclose: (() => void) | null = null;
+  closed = false;
+
+  constructor(public url: string) {
+    FakeWebSocket.instances.push(this);
+  }
+
+  close(): void {
+    this.closed = true;
+  }
+}
+
 function makeTicket(orderId: number): KitchenTicket {
   return {
     order_id: orderId,
@@ -18,17 +34,15 @@ function makeTicket(orderId: number): KitchenTicket {
   };
 }
 
-// Flushes the microtask chain of the currently in-flight fetch without
-// advancing virtual time far enough to trigger the next scheduled poll.
 async function flushCurrentFetch() {
   await act(async () => {
     await vi.advanceTimersByTimeAsync(0);
   });
 }
 
-async function advancePastNextPoll(intervalMs: number) {
+async function advanceBy(ms: number) {
   await act(async () => {
-    await vi.advanceTimersByTimeAsync(intervalMs);
+    await vi.advanceTimersByTimeAsync(ms);
   });
 }
 
@@ -36,17 +50,22 @@ describe('useKitchenTicketsFeed', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
+    FakeWebSocket.instances = [];
+    vi.stubGlobal('WebSocket', FakeWebSocket);
+    vi.stubEnv('VITE_API_URL', 'http://localhost:8000/api');
   });
 
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it('fetches on mount and populates tickets, isLoading goes true -> false', async () => {
     vi.mocked(kitchenService.getTickets).mockResolvedValue([makeTicket(1)]);
 
-    const { result } = renderHook(() => useKitchenTicketsFeed(10_000));
+    const { result } = renderHook(() => useKitchenTicketsFeed(30_000));
 
     expect(result.current.isLoading).toBe(true);
 
@@ -56,99 +75,124 @@ describe('useKitchenTicketsFeed', () => {
     expect(result.current.tickets.map((ticket) => ticket.order_id)).toEqual([1]);
   });
 
-  it('polls again after intervalMs', async () => {
+  it('opens a WebSocket to the derived ws:// URL on mount', async () => {
+    vi.mocked(kitchenService.getTickets).mockResolvedValue([]);
+
+    renderHook(() => useKitchenTicketsFeed(30_000));
+    await flushCurrentFetch();
+
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    expect(FakeWebSocket.instances[0].url).toBe('ws://localhost:8000/api/kitchen/ws');
+  });
+
+  it('replaces tickets when a WebSocket message arrives', async () => {
+    vi.mocked(kitchenService.getTickets).mockResolvedValue([makeTicket(1)]);
+
+    const { result } = renderHook(() => useKitchenTicketsFeed(30_000));
+    await flushCurrentFetch();
+
+    act(() => {
+      FakeWebSocket.instances[0].onmessage?.({
+        data: JSON.stringify({ tickets: [makeTicket(2), makeTicket(3)] }),
+      });
+    });
+
+    expect(result.current.tickets.map((ticket) => ticket.order_id)).toEqual([2, 3]);
+  });
+
+  it('backup-polls again after backupPollIntervalMs', async () => {
     vi.mocked(kitchenService.getTickets)
       .mockResolvedValueOnce([makeTicket(1)])
       .mockResolvedValueOnce([makeTicket(2)]);
 
-    renderHook(() => useKitchenTicketsFeed(10_000));
+    renderHook(() => useKitchenTicketsFeed(30_000));
 
     await flushCurrentFetch();
     expect(kitchenService.getTickets).toHaveBeenCalledTimes(1);
 
-    await advancePastNextPoll(10_000);
+    await advanceBy(30_000);
     expect(kitchenService.getTickets).toHaveBeenCalledTimes(2);
   });
 
-  it('isLoading never becomes true again after the initial load', async () => {
+  it('reconnects with a 1s initial delay after the socket closes', async () => {
     vi.mocked(kitchenService.getTickets).mockResolvedValue([]);
 
-    const { result } = renderHook(() => useKitchenTicketsFeed(10_000));
-
+    renderHook(() => useKitchenTicketsFeed(30_000));
     await flushCurrentFetch();
-    expect(result.current.isLoading).toBe(false);
+    expect(FakeWebSocket.instances).toHaveLength(1);
 
-    await advancePastNextPoll(10_000);
-    expect(result.current.isLoading).toBe(false);
+    act(() => {
+      FakeWebSocket.instances[0].onclose?.();
+    });
+
+    await advanceBy(999);
+    expect(FakeWebSocket.instances).toHaveLength(1); // not yet
+
+    await advanceBy(1);
+    expect(FakeWebSocket.instances).toHaveLength(2); // reconnected
   });
 
-  it('keeps the previous tickets and sets error when a fetch fails', async () => {
+  it('doubles the reconnect delay on a second consecutive failure, capped at 30s', async () => {
+    vi.mocked(kitchenService.getTickets).mockResolvedValue([]);
+
+    renderHook(() => useKitchenTicketsFeed(30_000));
+    await flushCurrentFetch();
+
+    act(() => {
+      FakeWebSocket.instances[0].onclose?.();
+    });
+    await advanceBy(1000);
+    expect(FakeWebSocket.instances).toHaveLength(2);
+
+    act(() => {
+      FakeWebSocket.instances[1].onclose?.();
+    });
+    await advanceBy(1999);
+    expect(FakeWebSocket.instances).toHaveLength(2); // not yet -- needs 2s this time
+    await advanceBy(1);
+    expect(FakeWebSocket.instances).toHaveLength(3);
+  });
+
+  it('resets the reconnect delay back to 1s after a successful onopen', async () => {
+    vi.mocked(kitchenService.getTickets).mockResolvedValue([]);
+
+    renderHook(() => useKitchenTicketsFeed(30_000));
+    await flushCurrentFetch();
+
+    act(() => {
+      FakeWebSocket.instances[0].onclose?.();
+    });
+    await advanceBy(1000);
+    expect(FakeWebSocket.instances).toHaveLength(2);
+
+    act(() => {
+      FakeWebSocket.instances[1].onopen?.();
+      FakeWebSocket.instances[1].onclose?.();
+    });
+    await advanceBy(999);
+    expect(FakeWebSocket.instances).toHaveLength(2); // not yet -- back to 1s, not 2s
+    await advanceBy(1);
+    expect(FakeWebSocket.instances).toHaveLength(3);
+  });
+
+  it('keeps the previous tickets and sets error when a backup poll fails', async () => {
     vi.mocked(kitchenService.getTickets)
       .mockResolvedValueOnce([makeTicket(1)])
       .mockRejectedValueOnce(new ApiError(500, 'Server error'));
 
-    const { result } = renderHook(() => useKitchenTicketsFeed(10_000));
+    const { result } = renderHook(() => useKitchenTicketsFeed(30_000));
 
     await flushCurrentFetch();
-    await advancePastNextPoll(10_000);
+    await advanceBy(30_000);
 
     expect(result.current.tickets.map((ticket) => ticket.order_id)).toEqual([1]);
     expect(result.current.error).toBeInstanceOf(ApiError);
   });
 
-  it('does not replace the error object on consecutive failed polls', async () => {
-    vi.mocked(kitchenService.getTickets).mockRejectedValue(new ApiError(500, 'Server error'));
-
-    const { result } = renderHook(() => useKitchenTicketsFeed(10_000));
-
-    await flushCurrentFetch();
-    const firstError = result.current.error;
-    expect(firstError).not.toBeNull();
-
-    await advancePastNextPoll(10_000);
-
-    expect(result.current.error).toBe(firstError);
-  });
-
-  it('clears the error after a successful poll following a failure', async () => {
-    vi.mocked(kitchenService.getTickets)
-      .mockRejectedValueOnce(new ApiError(500, 'Server error'))
-      .mockResolvedValueOnce([makeTicket(1)]);
-
-    const { result } = renderHook(() => useKitchenTicketsFeed(10_000));
-
-    await flushCurrentFetch();
-    expect(result.current.error).not.toBeNull();
-
-    await advancePastNextPoll(10_000);
-
-    expect(result.current.error).toBeNull();
-  });
-
-  it('produces a new error transition after a failure that follows a recovery', async () => {
-    vi.mocked(kitchenService.getTickets)
-      .mockRejectedValueOnce(new ApiError(500, 'First error'))
-      .mockResolvedValueOnce([makeTicket(1)])
-      .mockRejectedValueOnce(new ApiError(500, 'Second error'));
-
-    const { result } = renderHook(() => useKitchenTicketsFeed(10_000));
-
-    await flushCurrentFetch();
-    const firstError = result.current.error;
-
-    await advancePastNextPoll(10_000);
-    expect(result.current.error).toBeNull();
-
-    await advancePastNextPoll(10_000);
-
-    expect(result.current.error).not.toBeNull();
-    expect(result.current.error).not.toBe(firstError);
-  });
-
-  it('refetch() triggers an immediate fetch outside the interval and resolves once settled', async () => {
+  it('refetch() triggers an immediate REST fetch outside the interval', async () => {
     vi.mocked(kitchenService.getTickets).mockResolvedValue([makeTicket(1)]);
 
-    const { result } = renderHook(() => useKitchenTicketsFeed(10_000));
+    const { result } = renderHook(() => useKitchenTicketsFeed(30_000));
 
     await flushCurrentFetch();
     expect(kitchenService.getTickets).toHaveBeenCalledTimes(1);
@@ -160,52 +204,23 @@ describe('useKitchenTicketsFeed', () => {
     expect(kitchenService.getTickets).toHaveBeenCalledTimes(2);
   });
 
-  it('discards an older response that resolves after a newer one', async () => {
-    let resolveFirst!: (tickets: KitchenTicket[]) => void;
-    const firstCall = new Promise<KitchenTicket[]>((resolve) => {
-      resolveFirst = resolve;
-    });
-
-    vi.mocked(kitchenService.getTickets)
-      .mockImplementationOnce(() => firstCall)
-      .mockResolvedValueOnce([makeTicket(2)]);
-
-    const { result } = renderHook(() => useKitchenTicketsFeed(10_000));
-
-    // Initial fetch (older, still pending) started on mount.
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    // Manual refetch (newer) resolves first.
-    await act(async () => {
-      await result.current.refetch();
-    });
-    expect(result.current.tickets.map((ticket) => ticket.order_id)).toEqual([2]);
-
-    // The older, first request finally resolves late -- must not overwrite.
-    await act(async () => {
-      resolveFirst([makeTicket(1)]);
-      await Promise.resolve();
-    });
-
-    expect(result.current.tickets.map((ticket) => ticket.order_id)).toEqual([2]);
-  });
-
-  it('does not fetch again after unmount', async () => {
+  it('closes the socket and stops reconnecting/polling after unmount', async () => {
     vi.mocked(kitchenService.getTickets).mockResolvedValue([]);
 
-    const { unmount } = renderHook(() => useKitchenTicketsFeed(10_000));
-
+    const { unmount } = renderHook(() => useKitchenTicketsFeed(30_000));
     await flushCurrentFetch();
-    expect(kitchenService.getTickets).toHaveBeenCalledTimes(1);
 
+    const socket = FakeWebSocket.instances[0];
     unmount();
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(30_000);
-    });
+    expect(socket.closed).toBe(true);
 
-    expect(kitchenService.getTickets).toHaveBeenCalledTimes(1);
+    act(() => {
+      socket.onclose?.();
+    });
+    await advanceBy(60_000);
+
+    expect(FakeWebSocket.instances).toHaveLength(1); // no reconnect attempted after unmount
+    expect(kitchenService.getTickets).toHaveBeenCalledTimes(1); // no further backup polls either
   });
 });

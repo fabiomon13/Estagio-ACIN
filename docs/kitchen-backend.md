@@ -112,7 +112,7 @@ Test files, one per concern:
 
 ## What's out of scope here (see the roadmap in the design doc)
 
-- WebSockets (v1 is polling from the frontend; these endpoint contracts don't change when that's added later).
+- ~~WebSockets~~ — added since this doc was written; see `docs/websockets.md`. The REST endpoint contracts above didn't change.
 - Cancelling an item — belongs to the client/waiter side. An item can only be cancelled while still `Pending`.
 - Marking an item `Served` — belongs to the waiter side.
 - A `Returned → Preparing` "send it back to the kitchen" flow — `Returned` is treated as terminal for now; nothing currently defines what should happen to a returned dish.

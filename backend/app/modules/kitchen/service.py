@@ -16,6 +16,7 @@ from app.models.order_item import OrderItem
 from app.models.order_item_status import OrderItemStatus
 from app.models.tag_item import TagItem
 from app.modules.kitchen.schemas import KitchenOrderItemOut, KitchenTicketOut
+from app.modules.kitchen.websocket import KITCHEN_TOPIC, connection_manager
 
 # An item is "active" while it's in one of these statuses. Served/Cancelled/Returned are terminal: once
 # every item on a ticket is terminal, the ticket drops off the board 
@@ -186,4 +187,17 @@ def update_item_status(db: Session, order_item_id: int, new_status: str) -> Kitc
     db.commit()
     db.refresh(item)
 
+    broadcast_active_tickets(db)
+
     return _build_item(item)
+
+
+def broadcast_active_tickets(db: Session) -> None:
+    """Pushes a fresh board snapshot to every connected kitchen client. Called
+    after any commit that can change what the board shows -- an item's status
+    changing, or a new order arriving from the client module."""
+    tickets = get_active_tickets(db)
+    connection_manager.broadcast(
+        KITCHEN_TOPIC,
+        {"tickets": [ticket.model_dump(mode="json") for ticket in tickets]},  # full snapshot, not a diff
+    )
