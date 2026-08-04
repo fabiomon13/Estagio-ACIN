@@ -31,6 +31,7 @@ class StaffDashboardTable(BaseModel):
     started_at: datetime | None = None
     ready_item_count: int
     total: str
+    waiter_name: str | None = None
 
 #Define the data model for an item that is ready to be served to a table
 class StaffReadyItem(BaseModel):
