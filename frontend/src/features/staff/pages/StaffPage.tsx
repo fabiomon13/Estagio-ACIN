@@ -8,6 +8,7 @@ import {
   deactivateSession,
   getStaffDashboard,
   resolveRequest,
+  markItemAsServed,
   type StaffDashboard,
 } from '../api/staffApi';
 
@@ -52,6 +53,7 @@ export function StaffPage() {
   } | null>(null);
   const [approvalActionFor, setApprovalActionFor] = useState<number | null>(null); // session_id
   const [confirmSolveForTable, setConfirmSolveForTable] = useState<number | null>(null);
+  const [kitchenOpen, setKitchenOpen] = useState(true);
 
   const load = async () => {
     try {
@@ -82,17 +84,6 @@ export function StaffPage() {
       showToast({ variant: 'danger', title: 'Erro ao carregar dashboard' });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const onSolveAssistance = async (requestId: number, tableNumber: number) => {
-    try {
-      await resolveRequest(requestId);
-      showToast({ variant: 'success', title: `Assistência da mesa ${tableNumber} resolvida` });
-      setConfirmSolveForTable(null);
-      await load();
-    } catch {
-      showToast({ variant: 'danger', title: 'Não foi possível resolver assistência' });
     }
   };
 
@@ -152,6 +143,33 @@ export function StaffPage() {
     return map;
   }, [data]);
 
+  const waiterReadyToServe = useMemo(() => {
+    const rows = data?.ready_to_serve ?? [];
+
+    return rows
+      .filter((group) => {
+        const table = tablesView.find((t) => t.table_number === group.table_number);
+        const belongsToWaiter = !table?.waiter_name || table.waiter_name === staff?.name;
+        if (!belongsToWaiter) return false;
+
+        // only show if every item in that group is really ready
+        return (
+          (group.items ?? []).length > 0 &&
+          group.items.every((item: any) => {
+            const s = String(item.status ?? item.state ?? '').toLowerCase();
+            return s === 'ready' || s === 'pronto';
+          })
+        );
+      })
+      .map((group) => ({
+        ...group,
+        items: (group.items ?? []).filter((item: any) => {
+          const s = String(item.status ?? item.state ?? '').toLowerCase();
+          return s === 'ready' || s === 'pronto';
+        }),
+      }));
+  }, [data, tablesView, staff?.name]);
+
   const onApprove = async (sessionId: number, tableNumber: number) => {
     try {
       await approveSession(sessionId);
@@ -184,6 +202,43 @@ export function StaffPage() {
     }
   };
 
+  const onSolveAssistance = async (requestId: number, tableNumber: number) => {
+    try {
+      await resolveRequest(requestId);
+      showToast({ variant: 'success', title: `Assistência da mesa ${tableNumber} resolvida` });
+      setConfirmSolveForTable(null);
+      await load();
+    } catch {
+      showToast({ variant: 'danger', title: 'Não foi possível resolver assistência' });
+    }
+  };
+
+  const onMarkDelivered = async (group: {
+    table_number: number;
+    items: Array<{ id: number; status?: string; state?: string }>;
+  }) => {
+    const readyItems = group.items.filter((item) => {
+      const s = String(item.status ?? item.state ?? '').toLowerCase();
+      return s === 'ready' || s === 'pronto';
+    });
+
+    if (readyItems.length === 0 || readyItems.length !== group.items.length) {
+      showToast({
+        variant: 'warning',
+        title: `Mesa ${group.table_number} ainda não está pronta para entrega`,
+      });
+      return;
+    }
+
+    try {
+      await Promise.all(readyItems.map((item) => markItemAsServed(item.id)));
+      showToast({ variant: 'success', title: `Mesa ${group.table_number} entregue` });
+      await load();
+    } catch {
+      showToast({ variant: 'danger', title: 'Não foi possível marcar como entregue' });
+    }
+  };
+
   if (loading) return <div className="p-6 text-content-muted">A carregar...</div>;
 
   return (
@@ -198,213 +253,308 @@ export function StaffPage() {
         </div>
       </header>
 
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4 mb-5">
-        <div className="rounded-2xl border border-danger bg-surface-raised p-4">
-          <p className="text-content-muted">Necessitam de Assistência</p>
-          <p className="text-3xl font-bold text-danger">{assistanceCount}</p>
-        </div>
-        <div className="rounded-2xl border border-warning bg-surface-raised p-4">
-          <p className="text-content-muted">Pedidos de Aprovação</p>
-          <p className="text-3xl font-bold text-warning">{approvalRequests}</p>
-        </div>
-        <div className="rounded-2xl border border-success bg-surface-raised p-4">
-          <p className="text-content-muted">Pedidos em curso</p>
-          <p className="text-3xl font-bold text-success">{data?.summary.occupied_tables ?? 0}</p>
-        </div>
-        <div className="rounded-2xl border border-info bg-surface-raised p-4">
-          <p className="text-content-muted">Clientes na Sala</p>
-          <p className="text-3xl font-bold text-info">{data?.summary.guest_count ?? 0}</p>
-        </div>
-      </section>
+      <div
+        className={`grid grid-cols-1 gap-4 transition-all duration-300 ${
+          kitchenOpen ? 'xl:grid-cols-[3fr_1.2fr]' : 'xl:grid-cols-[1fr_40px]'
+        }`}
+      >
+        <div>
+          <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4 mb-5">
+            <div className="rounded-2xl border border-danger bg-surface-raised p-4">
+              <p className="text-content-muted">Necessitam de Assistência</p>
+              <p className="text-3xl font-bold text-danger">{assistanceCount}</p>
+            </div>
+            <div className="rounded-2xl border border-warning bg-surface-raised p-4">
+              <p className="text-content-muted">Pedidos de Aprovação</p>
+              <p className="text-3xl font-bold text-warning">{approvalRequests}</p>
+            </div>
+            <div className="rounded-2xl border border-success bg-surface-raised p-4">
+              <p className="text-content-muted">Pedidos em curso</p>
+              <p className="text-3xl font-bold text-success">
+                {data?.summary.occupied_tables ?? 0}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-info bg-surface-raised p-4">
+              <p className="text-content-muted">Clientes na Sala</p>
+              <p className="text-3xl font-bold text-info">{data?.summary.guest_count ?? 0}</p>
+            </div>
+          </section>
 
-      <section className="rounded-2xl border border-border bg-surface p-4">
-        <h2 className="text-3xl font-semibold">Planta da Sala</h2>
-        <p className="text-content-muted mb-4">Toque numa mesa para ver os detalhes ou atender</p>
+          <section className="rounded-2xl border border-border bg-surface p-4">
+            <h2 className="text-3xl font-semibold">Planta da Sala</h2>
+            <p className="text-content-muted mb-4">
+              Toque numa mesa para ver os detalhes ou atender
+            </p>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {tablesView.map((table) => {
-            const hasUrgentAssistance = assistanceTables.has(table.table_number);
-            const assistanceReq = assistanceRequestByTable.get(table.table_number);
-            const hasAssistance = Boolean(assistanceReq);
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {tablesView.map((table) => {
+                const hasUrgentAssistance = assistanceTables.has(table.table_number);
+                const assistanceReq = assistanceRequestByTable.get(table.table_number);
+                const hasAssistance = Boolean(assistanceReq);
 
-            return (
-              <article
-                key={table.session_id}
-                className={`rounded-3xl border-2 p-4 ${
-                  hasUrgentAssistance
-                    ? 'border-danger bg-danger/10 shadow-[0_0_0_1px_var(--color-danger)]'
-                    : `${tableBorder(table.state)} bg-surface-raised`
-                }`}
-              >
-                <p className="text-content-muted">Mesa</p>
-                <p className="text-5xl font-bold leading-none">
-                  {String(table.table_number).padStart(2, '0')}
-                </p>
-
-                <div className="mt-3 flex items-center justify-between text-content-muted text-sm">
-                  <span>{minsSince(table.started_at) ?? 0} min</span>
-                  <span>{table.guest_count} pax</span>
-                </div>
-
-                <div className="mt-3 flex items-center justify-between">
-                  <Badge
-                    variant={
-                      table.state === 'active'
-                        ? 'success'
-                        : table.state === 'awaiting_approval'
-                          ? 'warning'
-                          : 'default'
-                    }
+                return (
+                  <article
+                    id={`table-${table.table_number}`}
+                    key={table.table_number}
+                    className={`rounded-3xl border-2 p-4 ${
+                      hasUrgentAssistance
+                        ? 'border-danger bg-danger/10 shadow-[0_0_0_1px_var(--color-danger)]'
+                        : `${tableBorder(table.state)} bg-surface-raised`
+                    }`}
                   >
-                    {table.state}
-                  </Badge>
-                  <span className="text-content-muted text-sm">{table.total}</span>
-                </div>
+                    <p className="text-content-muted">Mesa</p>
+                    <p className="text-5xl font-bold leading-none">
+                      {String(table.table_number).padStart(2, '0')}
+                    </p>
 
-                {table.state === 'awaiting_approval' && (
-                  <div className="mt-4 rounded-2xl border-2 border-warning bg-warning/10 p-3">
-                    <p className="text-sm font-semibold text-warning mb-2">Pedido de Aprovação</p>
+                    <p className="text-sm text-content-muted mt-1">
+                      Garçom: {table.waiter_name ?? 'Não atribuído'}
+                    </p>
 
-                    {/* Big noticeable button, but local to the table card */}
-                    <Button
-                      className="w-full"
-                      size="sm"
-                      onClick={() => setApprovalActionFor(table.session_id!)}
-                    >
-                      Aprovar mesa {String(table.table_number).padStart(2, '0')}
-                    </Button>
+                    <div className="mt-3 flex items-center justify-between text-content-muted text-sm">
+                      <span>{minsSince(table.started_at) ?? 0} min</span>
+                      <span>{table.guest_count} pax</span>
+                    </div>
 
-                    {/* Inline confirm/reject panel for this table only */}
-                    {approvalActionFor === table.session_id && (
-                      <div className="mt-3 rounded-xl border border-border-strong bg-surface p-3">
-                        <p className="text-sm text-content-muted mb-3">
-                          O cliente está à espera de aprovação.
+                    <div className="mt-3 flex items-center justify-between">
+                      <Badge
+                        variant={
+                          table.state === 'active'
+                            ? 'success'
+                            : table.state === 'awaiting_approval'
+                              ? 'warning'
+                              : 'default'
+                        }
+                      >
+                        {table.state}
+                      </Badge>
+                      <span className="text-content-muted text-sm">{table.total}</span>
+                    </div>
+
+                    {table.state === 'awaiting_approval' && (
+                      <div className="mt-4 rounded-2xl border-2 border-warning bg-warning/10 p-3">
+                        <p className="text-sm font-semibold text-warning mb-2">
+                          Pedido de Aprovação
                         </p>
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              void onRejectApproval(table.session_id!, table.table_number)
-                            }
-                          >
-                            Recusar
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={async () => {
-                              await onApprove(table.session_id!, table.table_number);
-                              setApprovalActionFor(null);
-                            }}
-                          >
-                            Aprovar
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
 
-                <div className="mt-4 flex gap-2">
-                  {table.state === 'active' && (
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() =>
-                        setConfirmingDeactivate({
-                          sessionId: table.session_id!,
-                          tableNumber: table.table_number,
-                        })
-                      }
-                    >
-                      Desativar
-                    </Button>
-                  )}
-                </div>
-
-                {table.state !== 'inactive' &&
-                  confirmingDeactivate?.sessionId === table.session_id && (
-                    <div className="mt-4 rounded-2xl border border-border-strong bg-surface p-4">
-                      <h3 className="text-lg font-semibold text-content">
-                        Confirmar desativação da mesa?
-                      </h3>
-                      <p className="mt-1 text-sm text-content-muted">
-                        Podes cancelar se foi um clique acidental. Depois de desativar, a mesa fica
-                        inativa.
-                      </p>
-
-                      <div className="mt-4 flex justify-end gap-2">
+                        {/* Big noticeable button, but local to the table card */}
                         <Button
+                          className="w-full"
                           size="sm"
-                          variant="ghost"
-                          onClick={() => setConfirmingDeactivate(null)}
+                          onClick={() => setApprovalActionFor(table.session_id!)}
                         >
-                          Cancelar
+                          Aprovar mesa {String(table.table_number).padStart(2, '0')}
                         </Button>
 
+                        {/* Inline confirm/reject panel for this table only */}
+                        {approvalActionFor === table.session_id && (
+                          <div className="mt-3 rounded-xl border border-border-strong bg-surface p-3">
+                            <p className="text-sm text-content-muted mb-3">
+                              O cliente está à espera de aprovação.
+                            </p>
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  void onRejectApproval(table.session_id!, table.table_number)
+                                }
+                              >
+                                Recusar
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={async () => {
+                                  await onApprove(table.session_id!, table.table_number);
+                                  setApprovalActionFor(null);
+                                }}
+                              >
+                                Aprovar
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="mt-4 flex gap-2">
+                      {table.state === 'active' && (
                         <Button
                           size="sm"
                           variant="danger"
-                          onClick={async () => {
-                            await onDeactivate(table.session_id!, table.table_number);
-                            setConfirmingDeactivate(null);
-                          }}
+                          onClick={() =>
+                            setConfirmingDeactivate({
+                              sessionId: table.session_id!,
+                              tableNumber: table.table_number,
+                            })
+                          }
                         >
-                          Confirmar
+                          Desativar
                         </Button>
-                      </div>
+                      )}
                     </div>
-                  )}
 
-                {hasAssistance && (
-                  <div className="mt-4 rounded-2xl border border-danger bg-danger/10 p-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-semibold text-danger">Assistência urgente</p>
-                        <p className="text-xs text-content-muted">Toque para confirmar resolução</p>
+                    {table.state !== 'inactive' &&
+                      confirmingDeactivate?.sessionId === table.session_id && (
+                        <div className="mt-4 rounded-2xl border border-border-strong bg-surface p-4">
+                          <h3 className="text-lg font-semibold text-content">
+                            Confirmar desativação da mesa?
+                          </h3>
+                          <p className="mt-1 text-sm text-content-muted">
+                            Podes cancelar se foi um clique acidental. Depois de desativar, a mesa
+                            fica inativa.
+                          </p>
+
+                          <div className="mt-4 flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setConfirmingDeactivate(null)}
+                            >
+                              Cancelar
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              onClick={async () => {
+                                await onDeactivate(table.session_id!, table.table_number);
+                                setConfirmingDeactivate(null);
+                              }}
+                            >
+                              Confirmar
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                    {hasAssistance && (
+                      <div className="mt-4 rounded-2xl border border-danger bg-danger/10 p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-danger">Assistência urgente</p>
+                            <p className="text-xs text-content-muted">
+                              Toque para confirmar resolução
+                            </p>
+                          </div>
+
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => setConfirmSolveForTable(table.table_number)}
+                          >
+                            Resolver
+                          </Button>
+                        </div>
+
+                        {confirmSolveForTable === table.table_number && (
+                          <div className="mt-3 rounded-xl border border-border-strong bg-surface p-3">
+                            <p className="text-sm text-content-muted mb-3">
+                              Confirmar estado da assistência?
+                            </p>
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setConfirmSolveForTable(null)}
+                              >
+                                Não resolvido
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="bg-success text-white hover:opacity-90"
+                                onClick={() =>
+                                  void onSolveAssistance(assistanceReq!.id, table.table_number)
+                                }
+                              >
+                                Resolvido
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+
+        <aside
+          className={`relative justify-self-end transition-all duration-300 overflow-hidden ${
+            kitchenOpen ? 'xl:w-full' : 'xl:w-10'
+          }`}
+        >
+          <button
+            type="button"
+            onClick={() => setKitchenOpen((v) => !v)}
+            className="hidden xl:flex fixed right-2 top-1/2 -translate-y-1/2 z-50 h-60 w-12 items-center justify-center rounded-full border border-white/10 bg-[#1b2430] text-white/80 shadow-[0_4px_16px_rgba(0,0,0,0.35)] hover:text-white"
+            aria-label={kitchenOpen ? 'Fechar painel da cozinha' : 'Abrir painel da cozinha'}
+          >
+            {kitchenOpen ? '›' : '‹'}
+          </button>
+
+          <div
+            className={`h-full transition-all duration-300 ${
+              kitchenOpen
+                ? 'opacity-100 translate-x-0'
+                : 'opacity-0 translate-x-4 pointer-events-none'
+            }`}
+          >
+            <div className="rounded-2xl border border-border bg-surface p-4 h-fit xl:sticky xl:top-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Cozinha</h3>
+                <Badge variant="danger">{waiterReadyToServe.length}</Badge>
+              </div>
+
+              <p className="text-xs text-content-muted mb-3">Pronto para Entrega</p>
+
+              <div className="space-y-3 max-h-[70vh] overflow-auto pr-1">
+                {waiterReadyToServe.length === 0 ? (
+                  <div className="rounded-xl border border-border bg-surface-raised p-3 text-sm text-content-muted">
+                    Sem itens prontos no momento.
+                  </div>
+                ) : (
+                  waiterReadyToServe.map((group) => (
+                    <div
+                      key={group.table_number}
+                      className="rounded-2xl border border-danger bg-danger/10 p-3"
+                    >
+                      <p className="text-xs text-content-muted">Entregar</p>
+                      <p className="text-2xl font-bold leading-none mb-2">
+                        Mesa {String(group.table_number).padStart(2, '0')}
+                      </p>
+
+                      <div className="space-y-1 mb-3">
+                        {group.items.map((item) => (
+                          <p key={item.id} className="text-sm">
+                            {item.quantity}x {item.name}
+                          </p>
+                        ))}
                       </div>
 
                       <Button
-                        size="sm"
+                        className="w-full"
                         variant="danger"
-                        onClick={() => setConfirmSolveForTable(table.table_number)}
+                        onClick={() => void onMarkDelivered(group)}
                       >
-                        Resolver
+                        Entregue →
                       </Button>
                     </div>
-
-                    {confirmSolveForTable === table.table_number && (
-                      <div className="mt-3 rounded-xl border border-border-strong bg-surface p-3">
-                        <p className="text-sm text-content-muted mb-3">
-                          Confirmar estado da assistência?
-                        </p>
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setConfirmSolveForTable(null)}
-                          >
-                            Não resolvido
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="bg-success text-white hover:opacity-90"
-                            onClick={() =>
-                              void onSolveAssistance(assistanceReq!.id, table.table_number)
-                            }
-                          >
-                            Resolvido
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  ))
                 )}
-              </article>
-            );
-          })}
-        </div>
-      </section>
+              </div>
+            </div>
+          </div>
+
+          {!kitchenOpen && (
+            <div className="hidden xl:flex h-[70vh] w-10 items-center justify-center rounded-2xl border border-border bg-surface text-content-muted">
+              Coz.
+            </div>
+          )}
+        </aside>
+      </div>
     </div>
   );
 }

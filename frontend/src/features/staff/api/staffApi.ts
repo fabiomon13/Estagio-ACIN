@@ -14,6 +14,7 @@ export type StaffDashboard = {
     started_at: string | null;
     ready_item_count: number;
     total: string;
+    waiter_name?: string | null;
   }>;
   ready_to_serve: Array<{
     table_number: number;
@@ -35,3 +36,5 @@ export const deactivateSession = (sessionId: number) =>
   apiFetch(`/staff/sessions/${sessionId}/deactivate`, { method: 'PATCH' });
 export const resolveRequest = (requestId: number) =>
   apiFetch(`/staff/requests/${requestId}/resolve`, { method: 'PATCH' });
+export const markItemAsServed = (itemId: number) =>
+  apiFetch(`/staff/orders/items/${itemId}/serve`, { method: 'PATCH' });

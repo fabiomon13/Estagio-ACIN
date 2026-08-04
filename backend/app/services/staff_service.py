@@ -110,6 +110,7 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
                     started_at=None,
                     ready_item_count=0,
                     total="$0.00",
+                    waiter_name=None
                 )
             )
             continue
@@ -141,6 +142,7 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
                 started_at=session.start_time,
                 ready_item_count=len(ready_items),
                 total=f"${total_amount:.2f}",
+                waiter_name=session.waiter.name if session.waiter else None
             )
         )
 
