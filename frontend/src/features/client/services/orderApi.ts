@@ -1,77 +1,132 @@
-import { apiFetch } from '../../../services/api/client';
+// frontend/src/features/client/services/orderApi.ts
 
-export type OrderStatus = {
+import { apiFetch } from '../../../services/api/client';
+import { buildClientTablePath, createDeviceHeaders } from './clientRequest';
+
+export type OrderStatusAlias =
+  'pending' | 'preparing' | 'ready' | 'served' | 'cancelled' | 'returned';
+
+export type OrderStatus = Readonly<{
+  id: number;
+  name: string;
+  alias: OrderStatusAlias;
+}>;
+
+export type OrderMenuItem = Readonly<{
   id: number;
   name: string;
   alias: string;
-};
+  photo_url: string | null;
+}>;
 
-export type OrderItem = {
+export type OrderItem = Readonly<{
   id: number;
   item_id: number;
   status_id: number;
   quantity: number;
   notes: string | null;
   unit_price_at_order: string;
-  menu_item: {
-    id: number;
-    name: string;
-    alias: string;
-    photo_url: string | null;
-  };
+  menu_item: OrderMenuItem;
   status: OrderStatus;
   created_at: string;
   updated_at: string;
-};
+}>;
 
-export type ClientOrder = {
+export type ClientOrder = Readonly<{
   id: number;
   guest_id: number;
   round_number: number;
   client_request_id: string;
   created_at: string;
-  items: OrderItem[];
-};
+  items: readonly OrderItem[];
+}>;
 
-function deviceHeaders(deviceToken: string): HeadersInit {
-  return { 'X-Device-Token': deviceToken };
+export type OrderId = ClientOrder['id'];
+export type OrderItemId = OrderItem['id'];
+
+export type CreateOrderItemInput = Readonly<{
+  itemId: number;
+  quantity: number;
+  notes?: string | null;
+}>;
+
+export type CreateOrderInput = Readonly<{
+  clientRequestId: string;
+  items: readonly CreateOrderItemInput[];
+}>;
+
+export type OrderRequestOptions = Readonly<{
+  signal?: AbortSignal;
+}>;
+
+function buildOrdersPath(tableCode: string): string {
+  return `${buildClientTablePath(tableCode)}/orders`;
 }
 
-export function getOrders(tableCode: string, deviceToken: string): Promise<ClientOrder[]> {
-  return apiFetch<ClientOrder[]>(`/client/tables/${encodeURIComponent(tableCode)}/orders`, {
-    headers: deviceHeaders(deviceToken),
+function buildOrderItemPath(tableCode: string, orderId: OrderId, orderItemId: OrderItemId): string {
+  return `${buildOrdersPath(tableCode)}/${orderId}/items/${orderItemId}`;
+}
+
+export function getOrders(
+  tableCode: string,
+  deviceToken: string,
+  options: OrderRequestOptions = {},
+): Promise<ClientOrder[]> {
+  return apiFetch<ClientOrder[]>(buildOrdersPath(tableCode), {
+    headers: createDeviceHeaders(deviceToken),
+    signal: options.signal,
   });
 }
 
 export function createOrder(
   tableCode: string,
   deviceToken: string,
-  items: Array<{ item_id: number; quantity: number; notes: string | null }>,
+  input: CreateOrderInput,
+  options: OrderRequestOptions = {},
 ): Promise<ClientOrder> {
-  return apiFetch<ClientOrder>(`/client/tables/${encodeURIComponent(tableCode)}/orders`, {
+  validateCreateOrderInput(input);
+  return apiFetch<ClientOrder>(buildOrdersPath(tableCode), {
     method: 'POST',
-    headers: {
-      ...deviceHeaders(deviceToken),
-      'Content-Type': 'application/json',
-    },
+    headers: createDeviceHeaders(deviceToken, true),
+    signal: options.signal,
     body: JSON.stringify({
-      client_request_id: crypto.randomUUID(),
-      items,
+      client_request_id: input.clientRequestId,
+      items: input.items.map((item) => ({
+        item_id: item.itemId,
+        quantity: item.quantity,
+        notes: item.notes ?? null,
+      })),
     }),
   });
 }
 
+function validateCreateOrderInput(input: CreateOrderInput): void {
+  if (!input.clientRequestId.trim()) {
+    throw new TypeError('A client request ID is required.');
+  }
+  if (input.items.length === 0) {
+    throw new TypeError('An order must contain at least one item.');
+  }
+  for (const item of input.items) {
+    if (!Number.isInteger(item.itemId) || item.itemId <= 0) {
+      throw new TypeError('Order items must have a valid item ID.');
+    }
+    if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+      throw new TypeError('Order item quantities must be positive integers.');
+    }
+  }
+}
+
 export function cancelOrderItem(
   tableCode: string,
-  orderId: number,
-  itemId: number,
+  orderId: OrderId,
+  orderItemId: OrderItemId,
   deviceToken: string,
+  options: OrderRequestOptions = {},
 ): Promise<OrderItem> {
-  return apiFetch<OrderItem>(
-    `/client/tables/${encodeURIComponent(tableCode)}/orders/${orderId}/items/${itemId}/cancel`,
-    {
-      method: 'PATCH',
-      headers: deviceHeaders(deviceToken),
-    },
-  );
+  return apiFetch<OrderItem>(`${buildOrderItemPath(tableCode, orderId, orderItemId)}/cancel`, {
+    method: 'PATCH',
+    headers: createDeviceHeaders(deviceToken),
+    signal: options.signal,
+  });
 }

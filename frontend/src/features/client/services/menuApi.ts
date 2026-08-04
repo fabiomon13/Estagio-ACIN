@@ -1,4 +1,5 @@
 import { apiFetch } from '../../../services/api/client';
+import { buildClientTablePath } from './clientRequest';
 
 export type Category = {
   id: number;
@@ -27,11 +28,21 @@ export type MenuItem = {
   tags: MenuTag[];
 };
 
-type MenuPage = {
+export type MenuPage = {
   items: MenuItem[];
   total: number;
   limit: number;
   offset: number;
+};
+
+export type MenuQuery = {
+  limit?: number;
+  offset?: number;
+  signal?: AbortSignal;
+};
+
+export type MenuRequestOptions = {
+  signal?: AbortSignal;
 };
 
 export type Table = {
@@ -61,32 +72,60 @@ export type Buffet = {
   waste_charge: string;
 };
 
-export function getMenu(): Promise<MenuPage> {
-  return apiFetch<MenuPage>('/client/menu-items?is_available=true&limit=100');
+export async function getMenu({
+  limit = 100,
+  offset = 0,
+  signal,
+}: MenuQuery = {}): Promise<MenuPage> {
+  const firstPage = await getMenuPage(limit, offset, signal);
+  const items = [...firstPage.items];
+
+  while (items.length < firstPage.total - offset) {
+    const nextPage = await getMenuPage(limit, offset + items.length, signal);
+    if (nextPage.items.length === 0) break;
+    items.push(...nextPage.items);
+  }
+
+  return { ...firstPage, items, limit: items.length };
 }
 
-export function getCategories(): Promise<Category[]> {
-  return apiFetch<Category[]>('/client/categories');
+function getMenuPage(limit: number, offset: number, signal?: AbortSignal): Promise<MenuPage> {
+  const query = new URLSearchParams({
+    is_available: 'true',
+    limit: String(limit),
+    offset: String(offset),
+  });
+  return apiFetch<MenuPage>(`/client/menu-items?${query}`, { signal });
 }
 
-export function getBuffets(): Promise<Buffet[]> {
-  return apiFetch<Buffet[]>('/client/buffets');
+export function getCategories(options: MenuRequestOptions = {}): Promise<Category[]> {
+  return apiFetch<Category[]>('/client/categories', options);
 }
 
-export function getBuffetItems(buffetId: number): Promise<MenuItem[]> {
-  return apiFetch<MenuItem[]>(`/client/buffets/${buffetId}/items`);
+export function getBuffets(options: MenuRequestOptions = {}): Promise<Buffet[]> {
+  return apiFetch<Buffet[]>('/client/buffets', options);
 }
 
-export function getTable(tableCode: string): Promise<Table> {
-  return apiFetch<Table>(`/client/tables/${encodeURIComponent(tableCode)}`);
+export function getBuffetItems(
+  buffetId: number,
+  options: MenuRequestOptions = {},
+): Promise<MenuItem[]> {
+  return apiFetch<MenuItem[]>(`/client/buffets/${buffetId}/items`, options);
 }
 
-export function getActiveSession(tableCode: string): Promise<DiningSession> {
-  return apiFetch<DiningSession>(`/client/tables/${encodeURIComponent(tableCode)}/session`);
+export function getTable(tableCode: string, options: MenuRequestOptions = {}): Promise<Table> {
+  return apiFetch<Table>(buildClientTablePath(tableCode), options);
+}
+
+export function getActiveSession(
+  tableCode: string,
+  options: MenuRequestOptions = {},
+): Promise<DiningSession> {
+  return apiFetch<DiningSession>(`${buildClientTablePath(tableCode)}/session`, options);
 }
 
 export function createSession(tableCode: string, numClients: number): Promise<DiningSession> {
-  return apiFetch<DiningSession>(`/client/tables/${encodeURIComponent(tableCode)}/session`, {
+  return apiFetch<DiningSession>(`${buildClientTablePath(tableCode)}/session`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ num_clients: numClients }),
