@@ -1,9 +1,11 @@
 from fastapi import Depends, HTTPException, Request, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
+from starlette.concurrency import run_in_threadpool
 
 from app.core.roles import StaffRoleEnum, staff_role
 from app.core.security import decode_access_token
 from app.db.dependencies import get_db
+from app.db.session import SessionLocal
 from app.models.staff import Staff
 
 ACCESS_TOKEN_COOKIE_NAME = "access_token"
@@ -53,3 +55,26 @@ def require_exact_role(role: StaffRoleEnum):
         return staff
 
     return dependency
+
+
+def _load_staff_by_id(staff_id: int) -> Staff | None:
+    # eager-load staff_role -- this session closes before staff_role() runs
+    db = SessionLocal()
+    try:
+        return db.get(Staff, staff_id, options=[joinedload(Staff.staff_role)])
+    finally:
+        db.close()
+
+
+async def authenticate_staff_websocket(websocket) -> Staff | None:
+    """WS equivalent of get_current_staff() -- no request-scoped DB session to reuse here."""
+    token = websocket.cookies.get(ACCESS_TOKEN_COOKIE_NAME)
+    if token is None:
+        return None
+    staff_id = decode_access_token(token)
+    if staff_id is None:
+        return None
+    staff = await run_in_threadpool(_load_staff_by_id, staff_id)  # sync DB call, off the event loop
+    if staff is None or not staff.is_active:
+        return None
+    return staff

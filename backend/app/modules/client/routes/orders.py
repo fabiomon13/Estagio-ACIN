@@ -15,6 +15,7 @@ from app.modules.client.schemas import (
     OrderItemResponse,
     OrderResponse,
 )
+from app.modules.kitchen.service import broadcast_active_tickets
 
 
 router = APIRouter(tags=["Client - Orders"])
@@ -217,6 +218,8 @@ def create_order(
             status_code=status.HTTP_409_CONFLICT,
             detail="Não foi possível criar o pedido",
         ) from exc
+
+    broadcast_active_tickets(db)  # a new order can put a new ticket on the board
 
     return require_order_by_id(
         db=db,
