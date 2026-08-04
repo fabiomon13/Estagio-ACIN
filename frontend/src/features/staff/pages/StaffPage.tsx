@@ -313,7 +313,7 @@ export function StaffPage() {
         }`}
       >
         <div>
-          <section className="grid grid-cols-5 gap-2 md:gap-3 mb-5">
+          <section className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2 md:gap-3 mb-5">
             <div className="rounded-2xl border border-danger bg-surface-raised p-3">
               <p className="text-xs md:text-sm text-content-muted truncate">Assistência</p>
               <p className="text-2xl font-bold text-danger">{assistanceCount}</p>
