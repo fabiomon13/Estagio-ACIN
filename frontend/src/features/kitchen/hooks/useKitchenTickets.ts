@@ -195,9 +195,13 @@ export function useKitchenTickets(): UseKitchenTickets {
 
       setTickets((current) => setItemStatus(current, orderItemId, nextStatus));
 
-      kitchenService
-        .updateItemStatus(orderItemId, nextStatus)
-        .catch((err: unknown) => {
+      // Fire-and-forget: updateStatus itself must return immediately so the
+      // optimistic change above shows up right away, so this inner async
+      // function is declared and called without being awaited.
+      async function submitStatusUpdate() {
+        try {
+          await kitchenService.updateItemStatus(orderItemId, nextStatus);
+        } catch (err: unknown) {
           setTickets((current) =>
             revertItemStatusIfUnchanged(current, orderItemId, nextStatus, previousStatus),
           );
@@ -216,11 +220,13 @@ export function useKitchenTickets(): UseKitchenTickets {
               title: 'Não foi possível atualizar o estado do item.',
             });
           }
-        })
-        .finally(() => {
+        } finally {
           pendingItemIdsRef.current.delete(orderItemId);
           pendingOptimisticStatusRef.current.delete(orderItemId);
-        });
+        }
+      }
+
+      submitStatusUpdate();
     },
     [tickets, feed, showToast],
   );
