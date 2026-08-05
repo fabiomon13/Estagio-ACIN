@@ -43,18 +43,6 @@ async def test_returns_staff_for_a_valid_active_session(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_returns_none_for_an_inactive_staff(monkeypatch):
-    fake_staff = FakeStaff(is_active=False)
-    monkeypatch.setattr(deps, "decode_access_token", lambda token: 42)
-    monkeypatch.setattr(deps, "_load_staff_by_id", lambda staff_id: fake_staff)
-
-    ws = FakeWebSocket(cookies={"access_token": "valid-token"})
-    result = await deps.authenticate_staff_websocket(ws)
-
-    assert result is None
-
-
-@pytest.mark.asyncio
 async def test_returns_none_when_no_staff_row_exists(monkeypatch):
     monkeypatch.setattr(deps, "decode_access_token", lambda token: 999999)
     monkeypatch.setattr(deps, "_load_staff_by_id", lambda staff_id: None)

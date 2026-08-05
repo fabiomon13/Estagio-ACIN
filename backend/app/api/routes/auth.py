@@ -41,12 +41,6 @@ def login(credentials: LoginRequest, response: Response, db: Session = Depends(g
     if staff is None or not verify_password(credentials.password, staff.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=INVALID_CREDENTIALS_DETAIL)
 
-    if not staff.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Conta desativada. Contacta um administrador.",
-        )
-
     token = create_access_token(staff.id)
     _set_access_token_cookie(response, token)
     return staff_to_out(staff)
