@@ -24,8 +24,8 @@ export function MenuView({
   onRemove,
   isPreview = false,
 }: MenuViewProps) {
-  const firstCategory = stations[0]?.categories[0]?.category.id ?? null;
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(firstCategory);
+  const firstCategory = stations[0]?.categories[0]?.category.alias ?? null;
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(firstCategory);
   const rootRef = useRef<HTMLDivElement>(null);
   const navigationRef = useRef<HTMLElement>(null);
   const scrollLocked = useRef(false);
@@ -39,8 +39,8 @@ export function MenuView({
         const visible = entries
           .filter((entry) => entry.isIntersecting)
           .sort((a, b) => Math.abs(a.boundingClientRect.top) - Math.abs(b.boundingClientRect.top));
-        const categoryId = visible[0]?.target.getAttribute('data-menu-category');
-        if (categoryId) setSelectedCategory(Number(categoryId));
+        const categoryAlias = visible[0]?.target.getAttribute('data-menu-category');
+        if (categoryAlias) setSelectedCategory(categoryAlias);
       },
       { rootMargin: '-35% 0px -55% 0px' },
     );
@@ -54,17 +54,17 @@ export function MenuView({
 
     const centeringTimer = window.setTimeout(() => {
       navigationRef.current
-        ?.querySelector<HTMLElement>(`[data-category-id="${selectedCategory}"]`)
+        ?.querySelector<HTMLElement>(`[data-category-alias="${selectedCategory}"]`)
         ?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }, 160);
 
     return () => window.clearTimeout(centeringTimer);
   }, [isPreview, selectedCategory]);
 
-  function scrollToCategory(categoryId: number) {
+  function scrollToCategory(categoryAlias: string) {
     scrollLocked.current = true;
-    setSelectedCategory(categoryId);
-    document.getElementById(`menu-category-${categoryId}`)?.scrollIntoView({
+    setSelectedCategory(categoryAlias);
+    document.getElementById(`menu-category-${categoryAlias}`)?.scrollIntoView({
       behavior: 'smooth',
       block: 'start',
     });
@@ -107,7 +107,7 @@ export function MenuView({
           <div className="client-category-row scrollbar-none mx-auto flex max-w-lg gap-2 overflow-x-auto">
             {navigationStations.map((station) => {
               const isExpanded = station.categories.some(
-                ({ category }) => category.id === selectedCategory,
+                ({ category }) => category.alias === selectedCategory,
               );
 
               return station.categories.length > 1 ? (
@@ -119,7 +119,7 @@ export function MenuView({
                     type="button"
                     className={`client-category-button client-station-button ${isExpanded ? 'is-active' : ''}`}
                     aria-expanded={isExpanded}
-                    onClick={() => scrollToCategory(station.categories[0].category.id)}
+                    onClick={() => scrollToCategory(station.categories[0].category.alias)}
                   >
                     {station.name}
                   </button>
@@ -130,27 +130,27 @@ export function MenuView({
                   >
                     {station.categories.map(({ category }) => (
                       <CategoryButton
-                        key={category.id}
-                        categoryId={category.id}
+                        key={category.alias}
+                        categoryAlias={category.alias}
                         label={getCategoryConfig(category.alias, category.name).label}
-                        selected={selectedCategory === category.id}
-                        onClick={() => scrollToCategory(category.id)}
+                        selected={selectedCategory === category.alias}
+                        onClick={() => scrollToCategory(category.alias)}
                       />
                     ))}
                   </div>
                 </div>
               ) : (
                 <CategoryButton
-                  key={station.categories[0].category.id}
-                  categoryId={station.categories[0].category.id}
+                  key={station.categories[0].category.alias}
+                  categoryAlias={station.categories[0].category.alias}
                   label={
                     getCategoryConfig(
                       station.categories[0].category.alias,
                       station.categories[0].category.name,
                     ).label
                   }
-                  selected={selectedCategory === station.categories[0].category.id}
-                  onClick={() => scrollToCategory(station.categories[0].category.id)}
+                  selected={selectedCategory === station.categories[0].category.alias}
+                  onClick={() => scrollToCategory(station.categories[0].category.alias)}
                 />
               );
             })}
@@ -165,9 +165,9 @@ export function MenuView({
             )}
             {station.categories.map(({ category, items }) => (
               <section
-                key={category.id}
-                id={`menu-category-${category.id}`}
-                data-menu-category={category.id}
+                key={category.alias}
+                id={`menu-category-${category.alias}`}
+                data-menu-category={category.alias}
                 className="client-menu-section"
               >
                 <div className="mb-4 flex items-center gap-3">
@@ -185,7 +185,7 @@ export function MenuView({
                 <div className="client-menu-grid grid gap-3">
                   {items.map((item) => (
                     <ProductCard
-                      key={item.id}
+                      key={item.alias}
                       item={item}
                       quantity={cart[item.id] ?? 0}
                       onAdd={() => onAdd(item.id)}

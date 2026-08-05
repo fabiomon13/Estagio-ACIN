@@ -145,7 +145,7 @@ export function SelectionSheet({
           {items.map((item) => {
             const quantity = cart[item.id] ?? 0;
             return (
-              <article key={item.id} className="client-selection-item">
+              <article key={item.alias} className="client-selection-item">
                 <div className="client-selection-thumbnail" aria-hidden={!item.photo_url}>
                   {item.photo_url ? <img src={item.photo_url} alt="" /> : '🍽️'}
                 </div>

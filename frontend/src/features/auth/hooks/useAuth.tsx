@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { apiFetch } from '../../../services/api/client';
 
 export type StaffRole = 'admin' | 'waiter' | 'chef';
@@ -28,16 +29,24 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 // Provides authentication state and actions to the entire application
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  const isClientRoute = pathname.startsWith('/table/');
   const [staff, setStaff] = useState<AuthStaff | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Checks whether the user already has a valid session when the app loads
   useEffect(() => {
+    if (isClientRoute) {
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
     apiFetch<AuthStaff>('/auth/me')
       .then(setStaff)
       .catch(() => setStaff(null))
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [isClientRoute]);
 
   // Authenticates the user and stores the returned staff data
   const login = async (email: string, password: string): Promise<AuthStaff> => {

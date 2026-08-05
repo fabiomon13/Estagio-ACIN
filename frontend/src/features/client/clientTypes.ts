@@ -9,7 +9,7 @@ export type ClientView = (typeof CLIENT_VIEWS)[number];
 export type ClientSessionState = 'loading' | 'setup' | 'waiting' | 'ready' | 'error';
 
 export type MenuItemId = MenuItem['id'];
-export type CategoryId = Category['id'];
+export type CategoryAlias = Category['alias'];
 export type BuffetId = Buffet['id'];
 export type StationKey = string;
 
@@ -56,4 +56,4 @@ export type ClientData = Readonly<{
 
 export type MenuItemAction = (itemId: MenuItemId) => void;
 
-export type CategoryAction = (categoryId: CategoryId) => void;
+export type CategoryAction = (categoryAlias: CategoryAlias) => void;

@@ -113,7 +113,7 @@ export function ProductCard({
 
             return (
               <span
-                key={tag.id}
+                key={tag.alias}
                 title={tag.name}
                 className={`client-product-tag is-${tagConfiguration.type}`}
               >
@@ -174,7 +174,7 @@ export function ProductCard({
             className="client-product-details"
             role="dialog"
             aria-modal="true"
-            aria-labelledby={`product-details-title-${item.id}`}
+            aria-labelledby={`product-details-title-${item.alias}`}
           >
             <div className="client-product-details-image">
               {item.photo_url ? (
@@ -193,7 +193,7 @@ export function ProductCard({
             </div>
 
             <div className="client-product-details-content">
-              <h2 id={`product-details-title-${item.id}`}>{item.name}</h2>
+              <h2 id={`product-details-title-${item.alias}`}>{item.name}</h2>
               <p>{item.description ?? 'Description unavailable'}</p>
 
               {item.tags.length > 0 && (
@@ -201,7 +201,7 @@ export function ProductCard({
                   {item.tags.map((tag) => {
                     const configuration = getTagConfig(tag.alias, tag.name);
                     return (
-                      <span key={tag.id} className={`is-${configuration.type}`}>
+                      <span key={tag.alias} className={`is-${configuration.type}`}>
                         {configuration.label}
                       </span>
                     );
