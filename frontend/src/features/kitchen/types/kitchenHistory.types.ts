@@ -1,4 +1,4 @@
-// Frontend-only: what WE send. camelCase here, translated to the backend's
+// Frontend-only: what is send. camelCase here, translated to the backend's
 // snake_case query params
 export type KitchenHistoryFilters = {
   dateFrom: string; // YYYY-MM-DD
@@ -33,6 +33,8 @@ export type KitchenHistoryListResult = {
 // From the backend: matches KitchenHistorySummaryOut (GET /kitchen/history/summary).
 export type KitchenHistorySummary = {
   counts: Record<string, number>;
+  busiest_station: string | null;
+  peak_hour: number | null; // 0-23
 };
 
 // From the backend: matches KitchenHistoryFilterOptionOut.

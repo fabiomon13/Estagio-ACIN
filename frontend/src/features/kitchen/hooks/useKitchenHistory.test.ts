@@ -6,7 +6,7 @@ import { useKitchenHistory } from './useKitchenHistory';
 vi.mock('../services/kitchenHistoryService');
 
 const emptyFilterOptions = { items: [], stations: [] };
-const emptySummary = { counts: {} };
+const emptySummary = { counts: {}, busiest_station: null, peak_hour: null };
 
 function mockDefaults() {
   vi.mocked(kitchenHistoryService.getHistory).mockResolvedValue({ items: [], total_count: 0 });
