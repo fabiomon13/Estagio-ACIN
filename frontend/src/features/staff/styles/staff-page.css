@@ -23,3 +23,12 @@
     animation: none;
   }
 }
+
+.staff-scrollbar-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.staff-scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}

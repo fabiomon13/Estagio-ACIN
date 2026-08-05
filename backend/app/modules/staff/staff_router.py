@@ -22,7 +22,7 @@ router = APIRouter(prefix="/staff")
     dependencies=[Depends(require_role(StaffRoleEnum.WAITER))]
 )
 def get_staff_dashboard(db: Session = Depends(get_db), current_staff: Staff = Depends(get_current_staff),) -> StaffDashboard:
-    return staff_service.get_staff_dashboard(db)
+    return staff_service.get_staff_dashboard(db, current_staff)
 
 
 # Table management (approval + deactivation)

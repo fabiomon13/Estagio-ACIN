@@ -8,6 +8,7 @@ import { StaffReadyPanel } from '../components/StaffReadyPanel';
 import { StaffTableCard } from '../components/StaffTableCard';
 import { useStaffDashboardDerivedData } from '../hooks/useStaffDashboardDerivedData';
 import { useStaffReadyToServe } from '../hooks/useStaffReadyToServe';
+import { useStaffPreparingOrders } from '../hooks/useStaffPreparingOrders';
 import '../styles/staff-page.css';
 import {
   approveSession,
@@ -22,7 +23,9 @@ export function StaffPage() {
   const { showToast } = useToast();
   const { data, loading, tablesView, load } = useStaffDashboard();
 
-  const waiterReadyToServe = useStaffReadyToServe(data, tablesView, staff?.name);
+  const waiterReadyToServe = useStaffReadyToServe(data, tablesView, staff?.id);
+
+  const staffPreparingOrders = useStaffPreparingOrders(data, tablesView, staff?.id);
 
   const {
     assistanceTables,
@@ -131,15 +134,15 @@ export function StaffPage() {
   if (loading) return <div className="p-6 text-content-muted">A carregar...</div>;
 
   return (
-    <div className="staff-page min-h-screen bg-background text-content p-5">
+    <div className="staff-page min-h-screen bg-background p-5 text-content xl:flex xl:h-screen xl:flex-col xl:overflow-hidden">
       <StaffHeader staffName={staff?.name} onLogout={logout} />
 
       <div
-        className={`staff-page__dashboard-grid grid grid-cols-1 gap-4 transition-all duration-300 ${
+        className={`staff-page__dashboard-grid grid min-h-0 flex-1 grid-cols-1 gap-4 transition-all duration-300 ${
           kitchenOpen ? 'xl:grid-cols-[3fr_1.2fr]' : 'xl:grid-cols-[1fr_40px]'
         }`}
       >
-        <div>
+        <div className="staff-scrollbar-hidden min-h-0 overscroll-contain xl:overflow-y-auto">
           <StaffMetrics
             assistanceCount={assistanceCount}
             approvalRequests={approvalRequests}
@@ -209,6 +212,7 @@ export function StaffPage() {
 
         <StaffReadyPanel
           groups={waiterReadyToServe}
+          preparingGroups={staffPreparingOrders}
           kitchenOpen={kitchenOpen}
           onToggle={() => setKitchenOpen((isOpen) => !isOpen)}
           onDeliver={(group) => void onMarkDelivered(group)}

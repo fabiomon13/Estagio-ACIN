@@ -18,6 +18,7 @@ export type StaffDashboardTable = {
   ready_item_count: number;
   total: string;
   waiter_name?: string | null;
+  waiter_id?: number | null;
 };
 
 export type StaffReadyItem = {
@@ -35,8 +36,23 @@ export type StaffOpenRequest = {
   id: number;
   table_number: number;
   type: StaffRequestType;
-  priority: StaffPriority;
+  is_high_priority: boolean;
   created_at: string;
+};
+
+export type StaffPreparingItem = {
+  id: number;
+  name: string;
+  quantity: number;
+  status: 'preparing';
+  preparation_started_at: string;
+  estimated_ready_at: string;
+};
+
+export type StaffPreparingTable = {
+  table_number: number;
+  waiter_id: number;
+  items: StaffPreparingItem[];
 };
 
 export type StaffDashboard = {
@@ -44,4 +60,5 @@ export type StaffDashboard = {
   tables: StaffDashboardTable[];
   ready_to_serve: StaffReadyTable[];
   requests: StaffOpenRequest[];
+  preparing_orders: StaffPreparingTable[];
 };
