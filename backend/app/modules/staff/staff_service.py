@@ -10,7 +10,7 @@ from app.models.order_item_status import OrderItemStatus
 from app.models.guest import Guest
 from app.models.menu_item import MenuItem
 from app.models.service_request import ServiceRequest
-from app.schemas.staff.staff_contract import (
+from app.modules.staff.staff_contract import (
     StaffDashboard,
     StaffDashboardSummary,
     StaffDashboardTable,
