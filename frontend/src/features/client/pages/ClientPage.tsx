@@ -50,6 +50,9 @@ export function ClientPage() {
   const [shouldRenderCart, setShouldRenderCart] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [isNoBuffetConfirmationOpen, setIsNoBuffetConfirmationOpen] = useState(false);
+  const [serviceRequestConfirmation, setServiceRequestConfirmation] = useState<
+    'assistance' | 'payment_request' | null
+  >(null);
   const [floatingOrder, setFloatingOrder] = useState({
     isVisible: cart.cartCount > 0,
     count: cart.cartCount,
@@ -89,6 +92,15 @@ export function ClientPage() {
     () => (data.selectedBuffetId === null ? new Set<number>() : new Set(data.buffetItemIds)),
     [data.buffetItemIds, data.selectedBuffetId],
   );
+  const hasActiveOrder = useMemo(
+    () =>
+      orders.some((order) =>
+        order.items.some(
+          (item) => !['served', 'cancelled', 'returned'].includes(item.status.alias),
+        ),
+      ),
+    [orders],
+  );
   const closeCart = useCallback(() => setIsCartOpen(false), []);
 
   useEffect(() => {
@@ -122,6 +134,15 @@ export function ClientPage() {
   }
 
   function handleSubmitOrder() {
+    if (hasActiveOrder) {
+      showToast({
+        title: 'Please wait',
+        description: 'You can send another round after the current order has been served.',
+        variant: 'danger',
+      });
+      return;
+    }
+
     if (orders.length === 0 && data.selectedBuffetId === null) {
       setIsNoBuffetConfirmationOpen(true);
       return;
@@ -131,7 +152,7 @@ export function ClientPage() {
   }
 
   async function submitOrder() {
-    if (!tableCode || isSubmittingOrder || cart.cartCount === 0) return;
+    if (!tableCode || isSubmittingOrder || cart.cartCount === 0 || hasActiveOrder) return;
     setIsSubmittingOrder(true);
     try {
       const clientRequestId = pendingOrderRequestId.current ?? createUuid();
@@ -214,6 +235,23 @@ export function ClientPage() {
     }
   }
 
+  function handleServiceRequest(type: 'assistance' | 'payment_request') {
+    if (serviceRequests.activeRequests[type] !== undefined) {
+      void serviceRequests.toggleRequest(type);
+      return;
+    }
+
+    setServiceRequestConfirmation(type);
+  }
+
+  function confirmServiceRequest() {
+    if (serviceRequestConfirmation === null) return;
+
+    const type = serviceRequestConfirmation;
+    setServiceRequestConfirmation(null);
+    void serviceRequests.toggleRequest(type);
+  }
+
   if (!tableCode) return <ClientMessage message="Table code is missing." isError />;
   if (status === 'loading') return <ClientMessage message="Preparing the menu…" />;
   if (status === 'error')
@@ -260,7 +298,7 @@ export function ClientPage() {
         activeServiceRequests={serviceRequests.activeRequests}
         serviceRequestMessage={serviceRequests.pollingError}
         onChangeView={swipe.changeView}
-        onServiceRequest={serviceRequests.toggleRequest}
+        onServiceRequest={handleServiceRequest}
       />
       <main
         className="client-shell min-h-screen bg-[#080b10] pb-24 text-content"
@@ -352,6 +390,7 @@ export function ClientPage() {
             cart={cart.cart}
             buffetItemIds={chargedBuffetItemIds}
             isSubmitting={isSubmittingOrder}
+            hasActiveOrder={hasActiveOrder}
             isClosing={!isCartOpen}
             onAdd={cart.addToCart}
             onRemove={cart.removeFromCart}
@@ -399,6 +438,45 @@ export function ClientPage() {
                   }}
                 >
                   {isSubmittingOrder ? 'Sending…' : 'Send round'}
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+        {serviceRequestConfirmation && (
+          <div
+            className="client-buffet-modal-backdrop"
+            role="presentation"
+            onClick={() => setServiceRequestConfirmation(null)}
+          >
+            <section
+              className="client-buffet-modal"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="service-request-confirmation-title"
+              aria-describedby="service-request-confirmation-description"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <h2 id="service-request-confirmation-title">
+                {serviceRequestConfirmation === 'assistance'
+                  ? 'Call a member of staff?'
+                  : 'Request the bill?'}
+              </h2>
+              <p id="service-request-confirmation-description">
+                {serviceRequestConfirmation === 'assistance'
+                  ? 'A member of staff assigned to your table will be notified and come to assist you.'
+                  : 'The staff assigned to your table will be notified that you are ready to pay.'}
+              </p>
+              <div className="client-buffet-modal-actions">
+                <button
+                  type="button"
+                  className="is-secondary"
+                  onClick={() => setServiceRequestConfirmation(null)}
+                >
+                  Cancel
+                </button>
+                <button type="button" onClick={confirmServiceRequest}>
+                  Confirm
                 </button>
               </div>
             </section>
