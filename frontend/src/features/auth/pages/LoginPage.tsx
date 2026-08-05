@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 
 import { EyeIcon, EyeOffIcon } from '../../../components/icons';
 import LogoIcon from '../../../components/icons/Logo';
@@ -10,7 +10,7 @@ import { ApiError } from '../../../services/api/client';
 import { ROLE_HOME_ROUTE, useAuth } from '../hooks/useAuth';
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { staff, isLoading, login } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -18,6 +18,14 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
+  if (isLoading) {
+    return null;
+  }
+
+  if (staff !== null) {
+    return <Navigate to={ROLE_HOME_ROUTE[staff.role]} replace />;
+  }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -41,13 +49,11 @@ export function LoginPage() {
     <div className="grid min-h-dvh bg-background md:grid-cols-[2fr_3fr]">
       {/* Left column — desktop only */}
       <section className="relative hidden min-h-screen overflow-hidden bg-[#0b1118] md:block">
-        {/* Background gradient */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,84,94,0.10)_0%,rgba(29,23,29,0.95)_35%,rgba(11,17,24,1)_100%)]"
         />
 
-        {/* Content */}
         <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-xl flex-col px-10 py-8 lg:px-12">
           <LogoIcon className="w-52 lg:w-64" />
 
@@ -73,7 +79,6 @@ export function LoginPage() {
           className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--color-primary)_18%,var(--color-background))_0%,color-mix(in_srgb,var(--color-primary)_8%,var(--color-background))_28%,var(--color-background)_68%)] md:hidden"
         />
 
-        {/* Form content */}
         <div className="relative z-10 w-full max-w-md">
           <div className="mb-8">
             <p className="text-xs font-semibold tracking-widest text-primary uppercase">

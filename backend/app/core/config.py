@@ -3,11 +3,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     database_url: str
+    # Only used by backend/tests/conftest.py. Must point at a dedicated test database
+    test_database_url: str = ""
 
     frontend_url: str = "http://localhost:5173"
-    supabase_url: str = ""
-    supabase_anon_key: str = ""
-    supabase_service_role_key: str = ""
 
     jwt_secret_key: str
     device_token_secret: str | None = None

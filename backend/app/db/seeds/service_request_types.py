@@ -7,8 +7,8 @@ from app.models.service_request_type import ServiceRequestType
 
 
 DEFAULT_SERVICE_REQUEST_TYPES = [
-    ("Assistance", "assistance", False),
-    ("Payment Request", "payment_request", True),
+    ("Assistance", "assistance", True),
+    ("Payment Request", "payment_request", False),
 ]
 
 
