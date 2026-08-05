@@ -36,7 +36,11 @@ export function useKitchenHistory(): UseKitchenHistory {
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<KitchenHistoryItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [summary, setSummary] = useState<KitchenHistorySummary>({ counts: {} });
+  const [summary, setSummary] = useState<KitchenHistorySummary>({
+    counts: {},
+    busiest_station: null,
+    peak_hour: null,
+  });
   const [filterOptions, setFilterOptions] = useState<KitchenHistoryFilterOptions>({
     items: [],
     stations: [],
