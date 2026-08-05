@@ -107,7 +107,7 @@ export function ProductCard({
             {item.description ?? 'Description unavailable'}
           </p>
         </button>
-        <div className="mt-2 flex min-h-5 flex-wrap gap-1">
+        <div className="mb-3 mt-2 flex min-h-5 flex-wrap gap-1">
           {item.tags.slice(0, 2).map((tag) => {
             const tagConfiguration = getTagConfig(tag.alias, tag.name);
 
@@ -153,7 +153,7 @@ export function ProductCard({
           ) : (
             <button
               type="button"
-              onClick={onAdd}
+              onClick={openDetails}
               aria-label={`Add ${item.name}`}
               className="client-add-button mt-auto flex w-full items-center justify-center gap-1 rounded-xl bg-primary px-3 py-2.5 text-sm font-bold text-white transition active:bg-primary-active"
             >

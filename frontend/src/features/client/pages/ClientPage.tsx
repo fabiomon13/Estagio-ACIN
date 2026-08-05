@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 
 import { useToast } from '../../../components/ui/toast/useToast';
 import { ApiError } from '../../../services/api/client';
+import { createUuid } from '../../../utils/createUuid';
 import { BuffetView } from '../components/BuffetView';
 import { ClientHeader } from '../components/ClientHeader';
 import { ClientMessage } from '../components/ClientMessage';
@@ -48,6 +49,7 @@ export function ClientPage() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [shouldRenderCart, setShouldRenderCart] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [isNoBuffetConfirmationOpen, setIsNoBuffetConfirmationOpen] = useState(false);
   const [floatingOrder, setFloatingOrder] = useState({
     isVisible: cart.cartCount > 0,
     count: cart.cartCount,
@@ -119,11 +121,20 @@ export function ClientPage() {
     }
   }
 
-  async function handleSubmitOrder() {
+  function handleSubmitOrder() {
+    if (orders.length === 0 && data.selectedBuffetId === null) {
+      setIsNoBuffetConfirmationOpen(true);
+      return;
+    }
+
+    void submitOrder();
+  }
+
+  async function submitOrder() {
     if (!tableCode || isSubmittingOrder || cart.cartCount === 0) return;
     setIsSubmittingOrder(true);
     try {
-      const clientRequestId = pendingOrderRequestId.current ?? crypto.randomUUID();
+      const clientRequestId = pendingOrderRequestId.current ?? createUuid();
       pendingOrderRequestId.current = clientRequestId;
       const order = await createOrder(tableCode, getDeviceToken(), {
         clientRequestId,
@@ -348,6 +359,50 @@ export function ClientPage() {
             onClose={closeCart}
             onSubmit={handleSubmitOrder}
           />
+        )}
+        {isNoBuffetConfirmationOpen && (
+          <div
+            className="client-buffet-modal-backdrop"
+            role="presentation"
+            onClick={() => {
+              if (!isSubmittingOrder) setIsNoBuffetConfirmationOpen(false);
+            }}
+          >
+            <section
+              className="client-buffet-modal"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="no-buffet-confirmation-title"
+              aria-describedby="no-buffet-confirmation-description"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <h2 id="no-buffet-confirmation-title">Continue without a buffet?</h2>
+              <p id="no-buffet-confirmation-description">
+                After sending your first round, you will no longer be able to select a buffet for
+                this session. Do you want to continue?
+              </p>
+              <div className="client-buffet-modal-actions">
+                <button
+                  type="button"
+                  className="is-secondary"
+                  disabled={isSubmittingOrder}
+                  onClick={() => setIsNoBuffetConfirmationOpen(false)}
+                >
+                  Go back
+                </button>
+                <button
+                  type="button"
+                  disabled={isSubmittingOrder}
+                  onClick={() => {
+                    setIsNoBuffetConfirmationOpen(false);
+                    void submitOrder();
+                  }}
+                >
+                  {isSubmittingOrder ? 'Sending…' : 'Send round'}
+                </button>
+              </div>
+            </section>
+          </div>
         )}
       </main>
     </>

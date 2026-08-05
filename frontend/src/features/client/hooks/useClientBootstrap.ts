@@ -60,8 +60,10 @@ export function useClientBootstrap({
 
     const loadData = async () => {
       const token = getDeviceToken();
-      const [guest, nextCategories, menu, nextBuffets, orders] = await Promise.all([
-        ensureGuest(tableCode, token),
+      // A new device must be associated with the active session before any
+      // endpoint protected by X-Device-Token (such as orders) is requested.
+      const guest = await ensureGuest(tableCode, token);
+      const [nextCategories, menu, nextBuffets, orders] = await Promise.all([
         getCategories({ signal: controller.signal }),
         getMenu({ signal: controller.signal }),
         getBuffets({ signal: controller.signal }),

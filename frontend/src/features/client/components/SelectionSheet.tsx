@@ -104,7 +104,12 @@ export function SelectionSheet({
         }}
         onTouchStart={(event) => {
           const target = event.target instanceof Element ? event.target : null;
-          const canDrag = !target?.closest('.client-selection-items');
+          // Do not turn taps on controls into sheet-drag gestures. On touch
+          // devices even a tiny movement would call preventDefault below and
+          // cancel the button's click (notably the "Send round" action).
+          const canDrag = !target?.closest(
+            'button, a, input, select, textarea, .client-selection-items',
+          );
           sheetTouchStart.current = canDrag ? event.touches[0].clientY : null;
           setIsDraggingSheet(canDrag);
         }}
