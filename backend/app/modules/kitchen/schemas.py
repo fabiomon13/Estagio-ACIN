@@ -1,10 +1,10 @@
 # Pydantic schemas for the Kitchen module. These define the exact shape of
 # JSON that goes in and out of the kitchen endpoints
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
 
 class KitchenOrderItemOut(BaseModel):
@@ -41,3 +41,59 @@ class KitchenStatusUpdateRequest(BaseModel):
     Served (waiter's job) or Cancelled (client/waiter's job)."""
 
     status: Literal["Preparing", "Ready"]
+
+
+class KitchenHistoryBaseFilters(BaseModel):
+    """Shared filters for both /history and /history/summary. No `status`
+    here on purpose -- the summary endpoint reuses this base directly,
+    /history's own filters add `status` (and pagination) on top."""
+
+    date_from: date
+    date_to: date | None = None
+    table_number: int | None = None
+    item_id: int | None = None
+    station_id: int | None = None
+
+    @model_validator(mode="after")
+    def validate_date_range(self) -> "KitchenHistoryBaseFilters":
+        if self.date_to is not None and self.date_to < self.date_from:
+            raise ValueError("date_to não pode ser anterior a date_from")
+        return self
+
+
+class KitchenHistoryFilters(KitchenHistoryBaseFilters):
+    status: str | None = None
+    limit: int = Field(default=50, ge=1, le=100)
+    offset: int = Field(default=0, ge=0)
+
+
+class KitchenHistoryItemOut(BaseModel):
+    order_item_id: int
+    menu_item_name: str
+    table_number: int
+    round_number: int
+    quantity: int
+    station_id: int
+    station: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class KitchenHistoryListOut(BaseModel):
+    items: list[KitchenHistoryItemOut]
+    total_count: int
+
+
+class KitchenHistorySummaryOut(BaseModel):
+    counts: dict[str, int]
+
+
+class KitchenHistoryFilterOptionOut(BaseModel):
+    id: int
+    name: str
+
+
+class KitchenHistoryFilterOptionsOut(BaseModel):
+    items: list[KitchenHistoryFilterOptionOut]
+    stations: list[KitchenHistoryFilterOptionOut]
