@@ -321,7 +321,8 @@ def test_summary_reports_the_peak_hour(
     chef = make_staff(role_name="Chef")
     login_as(chef)
 
-    # 14h gets 2 items, 9h gets 1 -- 14 should win.
+    # 14h/14h45 UTC = 15h Lisbon (WEST, UTC+1 in August) gets 2 items,
+    # 9h UTC = 10h Lisbon gets 1 -- 15 should win.
     _make_dish_at_table(
         db_session, make_table, make_session, make_guest, make_order, make_order_item, make_menu_item,
         table_number=50, when=datetime(2026, 8, 4, 14, 10, tzinfo=timezone.utc),
@@ -338,7 +339,39 @@ def test_summary_reports_the_peak_hour(
     response = client.get("/api/kitchen/history/summary", params={"date_from": "2026-08-04"})
 
     assert response.status_code == 200
-    assert response.json()["peak_hour"] == 14
+    assert response.json()["peak_hour"] == 15
+
+
+def test_summary_peak_hour_breaks_ties_by_preferring_the_more_recent_hour(
+    client, login_as, make_staff, db_session,
+    order_item_statuses, staff_roles,
+    make_table, make_session, make_guest, make_order, make_order_item, make_menu_item,
+):
+    chef = make_staff(role_name="Chef")
+    login_as(chef)
+
+    # 10h and 12h Lisbon both get 2 items -- a tie. The more recent hour (12h) should win.
+    _make_dish_at_table(
+        db_session, make_table, make_session, make_guest, make_order, make_order_item, make_menu_item,
+        table_number=60, when=datetime(2026, 8, 4, 9, 0, tzinfo=timezone.utc),
+    )
+    _make_dish_at_table(
+        db_session, make_table, make_session, make_guest, make_order, make_order_item, make_menu_item,
+        table_number=61, when=datetime(2026, 8, 4, 9, 30, tzinfo=timezone.utc),
+    )
+    _make_dish_at_table(
+        db_session, make_table, make_session, make_guest, make_order, make_order_item, make_menu_item,
+        table_number=62, when=datetime(2026, 8, 4, 11, 0, tzinfo=timezone.utc),
+    )
+    _make_dish_at_table(
+        db_session, make_table, make_session, make_guest, make_order, make_order_item, make_menu_item,
+        table_number=63, when=datetime(2026, 8, 4, 11, 30, tzinfo=timezone.utc),
+    )
+
+    response = client.get("/api/kitchen/history/summary", params={"date_from": "2026-08-04"})
+
+    assert response.status_code == 200
+    assert response.json()["peak_hour"] == 12
 
 
 def test_summary_busiest_station_and_peak_hour_are_none_without_matches(
