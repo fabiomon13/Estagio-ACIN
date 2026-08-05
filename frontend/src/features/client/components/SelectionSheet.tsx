@@ -8,6 +8,7 @@ export type SelectionSheetProps = {
   cart: Record<number, number>;
   buffetItemIds: Set<number>;
   isSubmitting: boolean;
+  hasActiveOrder: boolean;
   isClosing?: boolean;
   onAdd: (itemId: number) => void;
   onRemove: (itemId: number) => void;
@@ -21,6 +22,7 @@ export function SelectionSheet({
   cart,
   buffetItemIds,
   isSubmitting,
+  hasActiveOrder,
   isClosing = false,
   onAdd,
   onRemove,
@@ -185,13 +187,18 @@ export function SelectionSheet({
           <span>Total</span>
           <strong>{formatPrice(total)}</strong>
         </div>
+        {hasActiveOrder && (
+          <p className="client-selection-order-warning" role="status">
+            Wait for the current order to be served before sending another round.
+          </p>
+        )}
         <button
           type="button"
           className="client-selection-submit"
-          disabled={isSubmitting || items.length === 0}
+          disabled={isSubmitting || hasActiveOrder || items.length === 0}
           onClick={onSubmit}
         >
-          {isSubmitting ? 'Sending…' : 'Send round'}
+          {isSubmitting ? 'Sending…' : hasActiveOrder ? 'Order in progress' : 'Send round'}
         </button>
       </section>
     </div>

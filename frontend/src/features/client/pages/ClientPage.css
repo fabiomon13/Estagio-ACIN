@@ -876,6 +876,17 @@ body:has(.client-shell) {
   font-size: 0.7rem;
 }
 
+.client-selection-order-warning {
+  margin: 0.75rem 0 0;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 45%, transparent);
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  padding: 0.7rem 0.8rem;
+  color: var(--color-primary);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
 .client-selection-submit {
   width: 100%;
   min-height: 3rem;
