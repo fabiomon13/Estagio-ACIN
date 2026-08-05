@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.deps import ACCESS_TOKEN_COOKIE_NAME, InvalidSessionError
 from app.api.router import api_router
+from app.core.config import settings
 from app.core.websocket_manager import connection_manager
 
 
