@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { ToastContext } from './ToastContext';
 import type { ToastData, ToastOptions } from './Toast.types';
 import Toast from './Toast';
+import { createUuid } from '../../../utils/createUuid';
 
 const DEFAULT_DURATION_MS = 4000;
 
@@ -21,7 +22,7 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
 
   const showToast = useCallback(
     (options: ToastOptions) => {
-      const id = crypto.randomUUID();
+      const id = createUuid();
       const duration = options.duration ?? DEFAULT_DURATION_MS;
 
       setToasts((current) => [...current, { ...options, id, closing: false }]);
@@ -35,7 +36,7 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ showToast }}>
       {children}
 
-      <div className="pointer-events-none fixed inset-x-4 bottom-4 z-50 flex flex-col gap-2 sm:inset-x-auto sm:right-4 sm:w-96">
+      <div className="pointer-events-none fixed inset-x-4 bottom-4 z-[9999] flex flex-col gap-2 sm:inset-x-auto sm:right-4 sm:w-96">
         {toasts.map((toast) => (
           <Toast key={toast.id} {...toast} onDismiss={dismissToast} onExited={removeToast} />
         ))}

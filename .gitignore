@@ -23,3 +23,11 @@ frontend/dist-ssr
 .vscode/*
 !.vscode/extensions.json
 .idea
+
+# Installed agent skills (personal, not part of the project)
+**/.claude/skills/
+**/.agents/
+**/skills-lock.json
+
+# Superpowers specs/plans (working docs, not part of the project)
+docs/superpowers/

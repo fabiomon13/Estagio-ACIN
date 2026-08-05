@@ -41,13 +41,20 @@
   --color-warning-soft: #3b2d18;
 
   --color-danger: #ff4a4a;
-  --color-danger-soft: #541717;
+  --color-danger-soft: #3a2025;
 
   --color-info: #4da3ff;
   --color-info-soft: #172d45;
 
   --color-purple: #a66cff;
   --color-purple-soft: #2c2143;
+
+  /* Kitchen station identity */
+  --color-station-blue: #3987e5;
+  --color-station-orange: #d95926;
+  --color-station-aqua: #199e70;
+  --color-station-yellow: #c98500;
+  --color-station-magenta: #d55181;
 
   /* Dialog motion */
   --animate-overlay-in: overlay-in 200ms ease-out forwards;
@@ -132,6 +139,8 @@
 
 :root {
   color-scheme: dark;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
