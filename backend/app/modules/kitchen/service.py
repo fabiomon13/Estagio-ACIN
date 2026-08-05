@@ -365,14 +365,22 @@ def _get_busiest_station(db: Session, filters: KitchenHistoryBaseFilters) -> str
 
 
 def _get_peak_hour(db: Session, filters: KitchenHistoryBaseFilters) -> int | None:
-    """The hour (0-23, by updated_at) with the most items."""
-    hour_expr = func.extract("hour", OrderItem.updated_at)
+    """The hour (0-23, Lisbon local time, by updated_at) with the most items.
+
+    The DB session runs in UTC, so updated_at is converted to Europe/Lisbon
+    before extracting the hour -- otherwise the result is off by the UTC
+    offset (0h or 1h depending on DST). Ties (equally busy hours) are broken
+    by preferring the more recent hour, since ORDER BY count alone leaves
+    ties in an arbitrary, unstable order.
+    """
+    local_updated_at = func.timezone("Europe/Lisbon", OrderItem.updated_at)
+    hour_expr = func.extract("hour", local_updated_at)
 
     query = (
         _build_history_query(filters)
         .with_only_columns(hour_expr)
         .group_by(hour_expr)
-        .order_by(func.count(OrderItem.id).desc())
+        .order_by(func.count(OrderItem.id).desc(), hour_expr.desc())
         .limit(1)
     )
     result = db.scalar(query)
