@@ -18,6 +18,8 @@ export function AppRouter() {
 
           <Route path="/table/:tableCode" element={<ClientPage />} />
 
+          {/*<Route path="/profile" element={<ProfilePage />} />*/}
+
           <Route path="/login" element={<LoginPage />} />
           <Route
             path="/kitchen"

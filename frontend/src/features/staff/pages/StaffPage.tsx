@@ -1,3 +1,5 @@
+import EmployeeProfileSidebar from '../../../components/ui/profile-modal/EmployeeProfileSidebar';
+
 export function StaffPage() {
-  return <h1>Staff</h1>;
+  return <EmployeeProfileSidebar isOpen={true} onClose={() => {}} />;
 }
