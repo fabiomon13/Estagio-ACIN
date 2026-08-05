@@ -4,6 +4,7 @@ type ClientNavigationProps = {
   activeView: ClientView;
   isDragging: boolean;
   indicatorPosition: number;
+  showBuffet: boolean;
   onChange: (view: ClientView) => void;
 };
 
@@ -17,16 +18,24 @@ export function ClientNavigation({
   activeView,
   isDragging,
   indicatorPosition,
+  showBuffet,
   onChange,
 }: ClientNavigationProps) {
+  const visibleNavigationItems = showBuffet
+    ? navigationItems
+    : navigationItems.filter(({ view }) => view !== 'buffet');
+  const activeVisibleIndex = visibleNavigationItems.findIndex(({ view }) => view === activeView);
   const boundedIndicatorPosition = Math.min(
-    Math.max(indicatorPosition, 0),
-    navigationItems.length - 1,
+    Math.max(showBuffet ? indicatorPosition : activeVisibleIndex, 0),
+    visibleNavigationItems.length - 1,
   );
 
   return (
-    <nav className="client-main-nav" aria-label="Customer navigation">
-      {navigationItems.map(({ view, icon, label }) => (
+    <nav
+      className={`client-main-nav${showBuffet ? '' : ' has-two-items'}`}
+      aria-label="Customer navigation"
+    >
+      {visibleNavigationItems.map(({ view, icon, label }) => (
         <button
           key={view}
           type="button"

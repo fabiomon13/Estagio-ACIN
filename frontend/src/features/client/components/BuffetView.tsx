@@ -17,6 +17,7 @@ type BuffetViewProps = {
   onRemove: (itemId: number) => void;
   onChoose: (buffetId: number | null) => Promise<void>;
   isSelected: boolean;
+  canSelectBuffet?: boolean;
   canCancelSelection: boolean;
   isPreview?: boolean;
 };
@@ -33,6 +34,7 @@ export function BuffetView({
   onRemove,
   onChoose,
   isSelected,
+  canSelectBuffet = true,
   canCancelSelection,
   isPreview = false,
 }: BuffetViewProps) {
@@ -63,7 +65,9 @@ export function BuffetView({
 
   const hasItems = useMemo(() => categories.some(({ items }) => items.length > 0), [categories]);
 
-  const isConfirmationOpen = confirmationAction !== null;
+  const visibleConfirmationAction =
+    !canSelectBuffet && confirmationAction === 'select' ? null : confirmationAction;
+  const isConfirmationOpen = visibleConfirmationAction !== null;
 
   useEffect(() => {
     if (!isSelected) {
@@ -204,6 +208,7 @@ export function BuffetView({
       await onChoose(buffetId);
       setConfirmationAction(null);
     } catch {
+      // The parent displays the request error to the customer.
     } finally {
       choosingLock.current = false;
       setIsChoosing(false);
@@ -223,9 +228,10 @@ export function BuffetView({
   }
 
   function confirmAction() {
-    if (!buffet || confirmationAction === null) return;
+    if (!buffet || visibleConfirmationAction === null) return;
+    if (visibleConfirmationAction === 'select' && !canSelectBuffet) return;
 
-    const buffetId = confirmationAction === 'cancel' ? null : buffet.id;
+    const buffetId = visibleConfirmationAction === 'cancel' ? null : buffet.id;
 
     void choose(buffetId);
   }
@@ -239,10 +245,12 @@ export function BuffetView({
   }
 
   const confirmationTitle =
-    confirmationAction === 'cancel' ? 'Cancel buffet selection?' : 'Confirm buffet selection?';
+    visibleConfirmationAction === 'cancel'
+      ? 'Cancel buffet selection?'
+      : 'Confirm buffet selection?';
 
   const confirmationDescription =
-    confirmationAction === 'cancel'
+    visibleConfirmationAction === 'cancel'
       ? 'The buffet will no longer be associated with your order.'
       : 'You can cancel your buffet selection until you send your first order to the kitchen.';
 
@@ -433,7 +441,7 @@ export function BuffetView({
         </p>
       )}
 
-      {shouldRenderSelectButton && !isPreview && (
+      {shouldRenderSelectButton && canSelectBuffet && !isPreview && (
         <button
           ref={selectButtonRef}
           type="button"
@@ -477,7 +485,7 @@ export function BuffetView({
               <button type="button" disabled={isChoosing} onClick={confirmAction}>
                 {isChoosing
                   ? 'Confirming…'
-                  : confirmationAction === 'cancel'
+                  : visibleConfirmationAction === 'cancel'
                     ? 'Cancel buffet'
                     : 'Confirm'}
               </button>

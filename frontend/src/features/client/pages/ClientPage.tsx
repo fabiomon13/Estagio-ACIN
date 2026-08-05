@@ -12,6 +12,7 @@ import { OrdersView } from '../components/OrdersView';
 import { SelectionSheet } from '../components/SelectionSheet';
 import { SessionSetup } from '../components/SessionSetup';
 import { SwipePreview } from '../components/SwipePreview';
+import { CLIENT_VIEWS } from '../clientTypes';
 import { useClientBootstrap } from '../hooks/useClientBootstrap';
 import { useClientCart } from '../hooks/useClientCart';
 import { useClientOrders } from '../hooks/useClientOrders';
@@ -24,6 +25,8 @@ import { cancelOrderItem, createOrder } from '../services/orderApi';
 import { getDeviceToken } from '../utils/deviceToken';
 
 import './ClientPage.css';
+
+const CLIENT_VIEWS_WITHOUT_BUFFET = ['menu', 'orders'] as const;
 
 export function ClientPage() {
   const { tableCode } = useParams<{ tableCode: string }>();
@@ -101,7 +104,23 @@ export function ClientPage() {
       ),
     [orders],
   );
+  const isBuffetSelectionLocked = useMemo(
+    () =>
+      data.selectedBuffetId === null &&
+      orders.some((order) =>
+        order.items.some((item) => ['preparing', 'ready', 'served'].includes(item.status.alias)),
+      ),
+    [data.selectedBuffetId, orders],
+  );
   const closeCart = useCallback(() => setIsCartOpen(false), []);
+  const { activeView, changeView, updateAvailableViews } = swipe;
+
+  useEffect(() => {
+    updateAvailableViews(isBuffetSelectionLocked ? CLIENT_VIEWS_WITHOUT_BUFFET : CLIENT_VIEWS);
+    if (isBuffetSelectionLocked && activeView === 'buffet') {
+      changeView('menu');
+    }
+  }, [activeView, changeView, isBuffetSelectionLocked, updateAvailableViews]);
 
   useEffect(() => {
     if (isCartOpen) {
@@ -211,6 +230,14 @@ export function ClientPage() {
 
   async function handleChooseBuffet(buffetId: number | null) {
     if (!tableCode) return;
+    if (buffetId !== null && isBuffetSelectionLocked) {
+      showToast({
+        title: 'Buffet unavailable',
+        description: 'The first order without buffet has already started being prepared.',
+        variant: 'danger',
+      });
+      return;
+    }
     try {
       const updatedGuest = await updateGuestBuffet(tableCode, getDeviceToken(), buffetId);
       if (updatedGuest.buffet_id === null) {
@@ -297,7 +324,10 @@ export function ClientPage() {
         pendingServiceRequest={serviceRequests.pendingRequest}
         activeServiceRequests={serviceRequests.activeRequests}
         serviceRequestMessage={serviceRequests.pollingError}
-        onChangeView={swipe.changeView}
+        showBuffet={!isBuffetSelectionLocked}
+        onChangeView={(view) => {
+          if (view !== 'buffet' || !isBuffetSelectionLocked) swipe.changeView(view);
+        }}
         onServiceRequest={handleServiceRequest}
       />
       <main
@@ -330,12 +360,13 @@ export function ClientPage() {
                 onRemove={cart.removeFromCart}
               />
             )}
-            {swipe.activeView === 'buffet' && (
+            {swipe.activeView === 'buffet' && !isBuffetSelectionLocked && (
               <BuffetView
                 buffet={selectedBuffet}
                 stations={data.buffetStations}
                 cart={cart.cart}
                 isSelected={data.selectedBuffetId === selectedBuffet?.id}
+                canSelectBuffet={!isBuffetSelectionLocked}
                 canCancelSelection={orders.length === 0}
                 onAdd={cart.addToCart}
                 onAddDetails={(itemId, quantity, notes) => {
@@ -354,22 +385,23 @@ export function ClientPage() {
               />
             )}
           </div>
-          {swipe.swipeTargetView && (
-            <SwipePreview
-              view={swipe.swipeTargetView}
-              dragOffset={swipe.viewDragOffset}
-              topOffset={swipe.previewTopOffset}
-              isDragging={swipe.isDraggingView}
-              isSettling={swipe.pendingView !== null}
-              menuStations={data.menuStations}
-              buffet={selectedBuffet}
-              buffetStations={data.buffetStations}
-              orders={orders}
-              cart={cart.cart}
-              isBuffetSelected={data.selectedBuffetId === selectedBuffet?.id}
-              canCancelBuffet={orders.length === 0}
-            />
-          )}
+          {swipe.swipeTargetView &&
+            !(swipe.swipeTargetView === 'buffet' && isBuffetSelectionLocked) && (
+              <SwipePreview
+                view={swipe.swipeTargetView}
+                dragOffset={swipe.viewDragOffset}
+                topOffset={swipe.previewTopOffset}
+                isDragging={swipe.isDraggingView}
+                isSettling={swipe.pendingView !== null}
+                menuStations={data.menuStations}
+                buffet={selectedBuffet}
+                buffetStations={data.buffetStations}
+                orders={orders}
+                cart={cart.cart}
+                isBuffetSelected={data.selectedBuffetId === selectedBuffet?.id}
+                canCancelBuffet={orders.length === 0}
+              />
+            )}
         </div>
         {floatingOrder.isVisible && (
           <button

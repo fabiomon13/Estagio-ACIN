@@ -4,6 +4,10 @@ import type { ClientOrder } from '../services/orderApi';
 
 const orderProgress = ['pending', 'preparing', 'ready', 'served'] as const;
 const orderProgressLabels = ['Received', 'Preparing', 'Ready', 'Served'];
+const orderTimeFormatter = new Intl.DateTimeFormat(undefined, {
+  hour: '2-digit',
+  minute: '2-digit',
+});
 
 type OrdersViewProps = {
   orders: ClientOrder[];
@@ -57,7 +61,10 @@ export function OrdersView({ orders, onCancel, refreshMessage }: OrdersViewProps
       ) : (
         visibleOrders.map((order) => (
           <section key={order.id} className="client-order-round">
-            <h1>Round {order.round_number}</h1>
+            <header className="client-order-round-heading">
+              <h1>Round {order.round_number}</h1>
+              <time dateTime={order.created_at}>{formatOrderTime(order.created_at)}</time>
+            </header>
             <div className="client-order-items">
               {order.items.map((item) => (
                 <OrderProgressCard
@@ -81,6 +88,11 @@ export function OrdersView({ orders, onCancel, refreshMessage }: OrdersViewProps
       )}
     </div>
   );
+}
+
+function formatOrderTime(createdAt: string): string {
+  const date = new Date(createdAt);
+  return Number.isNaN(date.getTime()) ? '' : orderTimeFormatter.format(date);
 }
 
 function OrderProgressCard({

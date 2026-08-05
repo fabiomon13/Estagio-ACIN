@@ -223,6 +223,10 @@ body:has(.client-shell) {
   isolation: isolate;
 }
 
+.client-main-nav.has-two-items {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .client-main-nav-item {
   position: relative;
   display: inline-flex;
@@ -253,6 +257,10 @@ body:has(.client-shell) {
   background: var(--color-primary);
   pointer-events: none;
   transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.client-main-nav.has-two-items .client-main-nav-indicator {
+  width: 50%;
 }
 
 .client-main-nav-indicator.is-dragging {
@@ -937,9 +945,24 @@ body:has(.client-shell) {
   margin-top: 1.75rem;
 }
 
-.client-order-round h1 {
-  margin: 0 0 0.8rem;
+.client-order-round-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.client-order-round-heading h1 {
+  margin: 0;
   font-size: 1.2rem;
+}
+
+.client-order-round-heading time {
+  color: var(--color-content-muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .client-order-items {
