@@ -87,6 +87,8 @@ class KitchenHistoryListOut(BaseModel):
 
 class KitchenHistorySummaryOut(BaseModel):
     counts: dict[str, int]
+    busiest_station: str | None
+    peak_hour: int | None  # 0-23, the hour with the most items (by updated_at)
 
 
 class KitchenHistoryFilterOptionOut(BaseModel):

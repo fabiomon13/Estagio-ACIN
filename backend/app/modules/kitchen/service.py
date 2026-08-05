@@ -7,7 +7,7 @@ from datetime import date, datetime, time, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy import and_, func, or_, select, update
-from sqlalchemy.orm import Session, joinedload, selectinload
+from sqlalchemy.orm import Session, aliased, joinedload, selectinload
 
 from app.models.category import Category
 from app.models.dining_session import DiningSession
@@ -332,7 +332,51 @@ def get_history_summary(db: Session, filters: KitchenHistoryBaseFilters) -> Kitc
     for name, count in db.execute(query).all():
         counts[name] = count
 
-    return KitchenHistorySummaryOut(counts=counts)
+    return KitchenHistorySummaryOut(
+        counts=counts,
+        busiest_station=_get_busiest_station(db, filters),
+        peak_hour=_get_peak_hour(db, filters),
+    )
+
+
+def _get_busiest_station(db: Session, filters: KitchenHistoryBaseFilters) -> str | None:
+    """The station name with the most items -- same effective_station fallback
+    (own station, else the dish's category default) as everywhere else, done
+    here via two aliased joins + COALESCE since we need the *name*, not just
+    an id to filter by."""
+    menu_item_station = aliased(Station)
+    category_default_station = aliased(Station)
+    effective_station_name = func.coalesce(menu_item_station.name, category_default_station.name)
+
+    query = (
+        _build_history_query(filters)
+        .join(menu_item_station, MenuItem.station_id == menu_item_station.id, isouter=True)
+        .join(
+            category_default_station,
+            Category.default_station_id == category_default_station.id,
+            isouter=True,
+        )
+        .with_only_columns(effective_station_name)
+        .group_by(effective_station_name)
+        .order_by(func.count(OrderItem.id).desc())
+        .limit(1)
+    )
+    return db.scalar(query)
+
+
+def _get_peak_hour(db: Session, filters: KitchenHistoryBaseFilters) -> int | None:
+    """The hour (0-23, by updated_at) with the most items."""
+    hour_expr = func.extract("hour", OrderItem.updated_at)
+
+    query = (
+        _build_history_query(filters)
+        .with_only_columns(hour_expr)
+        .group_by(hour_expr)
+        .order_by(func.count(OrderItem.id).desc())
+        .limit(1)
+    )
+    result = db.scalar(query)
+    return int(result) if result is not None else None
 
 
 def get_history_filter_options(db: Session) -> KitchenHistoryFilterOptionsOut:

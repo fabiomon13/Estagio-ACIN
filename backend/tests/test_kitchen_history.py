@@ -256,6 +256,105 @@ def test_summary_respects_table_filter(
     assert response.json()["counts"]["Served"] == 1
 
 
+def test_summary_reports_the_busiest_station(
+    client, login_as, make_staff, db_session,
+    order_item_statuses, staff_roles,
+    make_table, make_session, make_guest, make_order, make_order_item, make_menu_item,
+):
+    from app.models.station import Station
+
+    chef = make_staff(role_name="Chef")
+    login_as(chef)
+
+    when = datetime(2026, 8, 4, 12, 0, tzinfo=timezone.utc)
+    grill = Station(name="Grill Test", alias="grill-test-busiest")
+    wok = Station(name="Wok Test", alias="wok-test-busiest")
+    db_session.add_all([grill, wok])
+    db_session.commit()
+
+    # Grill gets 2 items, Wok gets 1 -- Grill should win.
+    _make_dish_at_table(
+        db_session, make_table, make_session, make_guest, make_order, make_order_item, make_menu_item,
+        table_number=40, station=grill, when=when,
+    )
+    _make_dish_at_table(
+        db_session, make_table, make_session, make_guest, make_order, make_order_item, make_menu_item,
+        table_number=41, station=grill, when=when,
+    )
+    _make_dish_at_table(
+        db_session, make_table, make_session, make_guest, make_order, make_order_item, make_menu_item,
+        table_number=42, station=wok, when=when,
+    )
+
+    response = client.get("/api/kitchen/history/summary", params={"date_from": "2026-08-04"})
+
+    assert response.status_code == 200
+    assert response.json()["busiest_station"] == "Grill Test"
+
+
+def test_summary_busiest_station_falls_back_to_category_default_station(
+    client, login_as, make_staff, db_session,
+    order_item_statuses, staff_roles,
+    make_table, make_session, make_guest, make_order, make_order_item, make_menu_item,
+):
+    chef = make_staff(role_name="Chef")
+    login_as(chef)
+
+    when = datetime(2026, 8, 4, 12, 0, tzinfo=timezone.utc)
+    _, dish, _ = _make_dish_at_table(
+        db_session, make_table, make_session, make_guest, make_order, make_order_item,
+        lambda **kwargs: make_menu_item(has_own_station=False, **kwargs),
+        table_number=43, when=when,
+    )
+
+    response = client.get("/api/kitchen/history/summary", params={"date_from": "2026-08-04"})
+
+    assert response.status_code == 200
+    assert response.json()["busiest_station"] == dish.category.default_station.name
+
+
+def test_summary_reports_the_peak_hour(
+    client, login_as, make_staff, db_session,
+    order_item_statuses, staff_roles,
+    make_table, make_session, make_guest, make_order, make_order_item, make_menu_item,
+):
+    chef = make_staff(role_name="Chef")
+    login_as(chef)
+
+    # 14h gets 2 items, 9h gets 1 -- 14 should win.
+    _make_dish_at_table(
+        db_session, make_table, make_session, make_guest, make_order, make_order_item, make_menu_item,
+        table_number=50, when=datetime(2026, 8, 4, 14, 10, tzinfo=timezone.utc),
+    )
+    _make_dish_at_table(
+        db_session, make_table, make_session, make_guest, make_order, make_order_item, make_menu_item,
+        table_number=51, when=datetime(2026, 8, 4, 14, 45, tzinfo=timezone.utc),
+    )
+    _make_dish_at_table(
+        db_session, make_table, make_session, make_guest, make_order, make_order_item, make_menu_item,
+        table_number=52, when=datetime(2026, 8, 4, 9, 0, tzinfo=timezone.utc),
+    )
+
+    response = client.get("/api/kitchen/history/summary", params={"date_from": "2026-08-04"})
+
+    assert response.status_code == 200
+    assert response.json()["peak_hour"] == 14
+
+
+def test_summary_busiest_station_and_peak_hour_are_none_without_matches(
+    client, login_as, make_staff, staff_roles,
+):
+    chef = make_staff(role_name="Chef")
+    login_as(chef)
+
+    response = client.get("/api/kitchen/history/summary", params={"date_from": "2026-08-04"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["busiest_station"] is None
+    assert body["peak_hour"] is None
+
+
 def test_filter_options_returns_the_full_dish_and_station_catalog(
     client, login_as, make_staff, db_session,
     staff_roles, make_menu_item,
