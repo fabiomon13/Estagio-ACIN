@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
 
 import Button from '../../../components/ui/button/Button';
 import type {
@@ -13,7 +13,13 @@ type StaffReadyPanelProps = {
   groups: StaffReadyTable[];
   preparingGroups: StaffPreparingTable[];
   kitchenOpen: boolean;
+  sidebarWidth: number;
+  minSidebarWidth: number;
+  maxSidebarWidth: number;
   onToggle: () => void;
+  onSidebarDragStart: () => void;
+  onSidebarDrag: (width: number) => void;
+  onSidebarDragEnd: (width: number) => void;
   onDeliver: (group: StaffReadyTable) => void;
 };
 
@@ -88,11 +94,66 @@ export function StaffReadyPanel({
   groups,
   preparingGroups,
   kitchenOpen,
+  sidebarWidth,
+  minSidebarWidth,
+  maxSidebarWidth,
   onToggle,
+  onSidebarDragStart,
+  onSidebarDrag,
+  onSidebarDragEnd,
   onDeliver,
 }: StaffReadyPanelProps) {
   const [activeTab, setActiveTab] = useState<KitchenTab>('ready');
   const [now, setNow] = useState(() => Date.now());
+
+  const dragStartX = useRef<number | null>(null);
+  const dragStartWidth = useRef(sidebarWidth);
+  const draggedWidth = useRef(sidebarWidth);
+
+  const sidebarProgress = (sidebarWidth - minSidebarWidth) / (maxSidebarWidth - minSidebarWidth);
+
+  const onSidebarPointerDown = (event: PointerEvent<HTMLElement>) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) {
+      return;
+    }
+
+    dragStartX.current = event.clientX;
+    dragStartWidth.current = sidebarWidth;
+    draggedWidth.current = sidebarWidth;
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+    onSidebarDragStart();
+  };
+
+  const onSidebarPointerMove = (event: PointerEvent<HTMLElement>) => {
+    if (dragStartX.current === null) {
+      return;
+    }
+
+    const movedLeftBy = dragStartX.current - event.clientX;
+
+    const nextWidth = Math.min(
+      maxSidebarWidth,
+      Math.max(minSidebarWidth, dragStartWidth.current + movedLeftBy),
+    );
+
+    draggedWidth.current = nextWidth;
+    onSidebarDrag(nextWidth);
+  };
+
+  const onSidebarPointerEnd = (event: PointerEvent<HTMLElement>) => {
+    if (dragStartX.current === null) {
+      return;
+    }
+
+    dragStartX.current = null;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    onSidebarDragEnd(draggedWidth.current);
+  };
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -108,23 +169,44 @@ export function StaffReadyPanel({
 
   return (
     <aside
-      className={`relative justify-self-end overflow-hidden transition-all duration-300 ${
-        kitchenOpen ? 'xl:w-full' : 'xl:w-10'
-      }`}
+      onPointerDown={onSidebarPointerDown}
+      onPointerMove={onSidebarPointerMove}
+      onPointerUp={onSidebarPointerEnd}
+      onPointerCancel={onSidebarPointerEnd}
+      className="relative min-w-0 overflow-visible touch-pan-y"
     >
       <button
         type="button"
         onClick={onToggle}
-        className="fixed right-2 top-1/2 z-50 hidden h-60 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-[#1b2430] text-white/80 shadow-[0_4px_16px_rgba(0,0,0,0.35)] hover:text-white xl:flex"
+        className="absolute left-0 top-1/2 z-50 hidden h-16 w-9 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border border-border bg-surface text-content-muted shadow-lg transition-all duration-300 hover:border-content-muted hover:bg-surface-raised hover:text-content xl:flex"
         aria-label={kitchenOpen ? 'Fechar cozinha' : 'Abrir cozinha'}
       >
-        {kitchenOpen ? '›' : '‹'}
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="h-5 w-5"
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d={kitchenOpen ? 'm9 18 6-6-6-6' : 'm15 18-6-6 6-6'}
+          />
+        </svg>
+
+        <span className="mt-1 h-1 w-1 rounded-full bg-current opacity-50" />
+        <span className="mt-1 h-1 w-1 rounded-full bg-current opacity-50" />
       </button>
 
       <div
-        className={`h-full transition-all duration-300 ${
-          kitchenOpen ? 'translate-x-0 opacity-100' : 'pointer-events-none translate-x-4 opacity-0'
-        }`}
+        className="h-full"
+        style={{
+          opacity: sidebarProgress,
+          transform: `translateX(${(1 - sidebarProgress) * 16}px)`,
+          pointerEvents: sidebarProgress > 0.95 ? 'auto' : 'none',
+        }}
       >
         <div className="rounded-2xl border border-border bg-surface p-4 xl:sticky xl:top-4">
           <div className="mb-4">
@@ -215,12 +297,6 @@ export function StaffReadyPanel({
           </div>
         </div>
       </div>
-
-      {!kitchenOpen && (
-        <div className="hidden h-[70vh] w-10 items-center justify-center rounded-2xl border border-border bg-surface text-content-muted xl:flex">
-          Coz.
-        </div>
-      )}
     </aside>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useToast } from '../../../components/ui/toast/useToast';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { useStaffDashboard } from '../hooks/useStaffDashboard';
@@ -46,7 +46,33 @@ export function StaffPage() {
 
   const [confirmingPaymentForTable, setConfirmingPaymentForTable] = useState<number | null>(null);
 
+  const CLOSED_SIDEBAR_WIDTH = 40;
+  const OPEN_SIDEBAR_WIDTH = 360;
   const [kitchenOpen, setKitchenOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(OPEN_SIDEBAR_WIDTH);
+  const [isSidebarDragging, setIsSidebarDragging] = useState(false);
+
+  const setKitchenOpenState = (isOpen: boolean) => {
+    setKitchenOpen(isOpen);
+    setSidebarWidth(isOpen ? OPEN_SIDEBAR_WIDTH : CLOSED_SIDEBAR_WIDTH);
+  };
+
+  const toggleKitchen = () => {
+    setKitchenOpenState(!kitchenOpen);
+  };
+
+  const onSidebarDrag = (nextWidth: number) => {
+    const clampedWidth = Math.min(OPEN_SIDEBAR_WIDTH, Math.max(CLOSED_SIDEBAR_WIDTH, nextWidth));
+
+    setSidebarWidth(clampedWidth);
+  };
+
+  const onSidebarDragEnd = (finalWidth: number) => {
+    const halfwayPoint = (CLOSED_SIDEBAR_WIDTH + OPEN_SIDEBAR_WIDTH) / 2;
+
+    setIsSidebarDragging(false);
+    setKitchenOpenState(finalWidth >= halfwayPoint);
+  };
 
   const onApprove = async (sessionId: number, tableNumber: number) => {
     try {
@@ -134,15 +160,20 @@ export function StaffPage() {
   if (loading) return <div className="p-6 text-content-muted">A carregar...</div>;
 
   return (
-    <div className="staff-page min-h-screen bg-background p-5 text-content xl:flex xl:h-screen xl:flex-col xl:overflow-hidden">
+    <div className="staff-page min-h-screen bg-background p-5 text-content xl:grid xl:h-dvh xl:min-h-0 xl:grid-rows-[auto_minmax(0,1fr)] xl:overflow-hidden">
       <StaffHeader staffName={staff?.name} onLogout={logout} />
 
       <div
-        className={`staff-page__dashboard-grid grid min-h-0 flex-1 grid-cols-1 gap-4 transition-all duration-300 ${
-          kitchenOpen ? 'xl:grid-cols-[3fr_1.2fr]' : 'xl:grid-cols-[1fr_40px]'
+        className={`staff-page__dashboard-grid grid min-h-0 grid-cols-1 gap-4 xl:overflow-hidden ${
+          isSidebarDragging ? '' : 'transition-[grid-template-columns] duration-300 ease-out'
         }`}
+        style={
+          {
+            '--staff-sidebar-width': `${sidebarWidth}px`,
+          } as CSSProperties
+        }
       >
-        <div className="staff-scrollbar-hidden min-h-0 overscroll-contain xl:overflow-y-auto">
+        <div className="staff-page__tables-scroll staff-scrollbar-hidden">
           <StaffMetrics
             assistanceCount={assistanceCount}
             approvalRequests={approvalRequests}
@@ -214,7 +245,13 @@ export function StaffPage() {
           groups={waiterReadyToServe}
           preparingGroups={staffPreparingOrders}
           kitchenOpen={kitchenOpen}
-          onToggle={() => setKitchenOpen((isOpen) => !isOpen)}
+          sidebarWidth={sidebarWidth}
+          minSidebarWidth={CLOSED_SIDEBAR_WIDTH}
+          maxSidebarWidth={OPEN_SIDEBAR_WIDTH}
+          onToggle={toggleKitchen}
+          onSidebarDragStart={() => setIsSidebarDragging(true)}
+          onSidebarDrag={onSidebarDrag}
+          onSidebarDragEnd={onSidebarDragEnd}
           onDeliver={(group) => void onMarkDelivered(group)}
         />
       </div>

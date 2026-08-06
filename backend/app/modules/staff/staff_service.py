@@ -167,7 +167,7 @@ def get_staff_dashboard(db: Session, current_staff: Staff) -> StaffDashboard:
             )
         )
 
-        if ready_items and session.waiter_id == current_staff.id:
+        if ready_items:
             items_payload = [
                 StaffReadyItem(
                     id=item.id,
@@ -183,7 +183,7 @@ def get_staff_dashboard(db: Session, current_staff: Staff) -> StaffDashboard:
                 )
             )
 
-        if preparing_items and session.waiter_id == current_staff.id:
+        if preparing_items:
             preparing_orders.append(
                 StaffPreparingTable(
                     table_number=table.table_number,

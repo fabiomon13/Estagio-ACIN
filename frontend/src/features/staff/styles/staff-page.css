@@ -32,3 +32,21 @@
 .staff-scrollbar-hidden::-webkit-scrollbar {
   display: none;
 }
+
+@media (min-width: 1280px) {
+  .staff-page__dashboard-grid {
+    grid-template-columns: minmax(0, 1fr) var(--staff-sidebar-width);
+  }
+  .staff-page__dashboard-grid {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .staff-page__tables-scroll {
+    height: calc(100dvh - 5.5rem);
+    min-height: 0;
+    overflow-y: scroll;
+    overscroll-behavior: contain;
+    padding-bottom: 2rem;
+  }
+}
