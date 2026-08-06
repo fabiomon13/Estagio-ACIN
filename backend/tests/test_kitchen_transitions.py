@@ -124,6 +124,37 @@ def test_broadcasts_the_active_tickets_after_a_successful_transition(
     )
 
 
+def test_transition_still_succeeds_even_if_the_broadcast_afterward_fails(
+    db_session,
+    order_item_statuses,
+    make_order_item,
+    monkeypatch,
+):
+    """The status change already committed by the time broadcast_active_tickets
+    runs -- a failure in that follow-up step must not turn an already-successful
+    write into a 500, and must not leave the DB change unpersisted."""
+    from app.modules.kitchen import websocket as kitchen_ws
+
+    def _broken_broadcast(topic, message):
+        raise RuntimeError("connection_manager is having a bad day")
+
+    monkeypatch.setattr(kitchen_ws.connection_manager, "broadcast", _broken_broadcast)
+
+    item = make_order_item(status_name="Pending")
+
+    updated = service.update_item_status(db_session, item.id, "Preparing")
+
+    assert updated.status == "Preparing"
+
+    # Re-fetch independently of the returned value, to prove the write
+    # itself really committed and isn't just reflected in a stale object.
+    db_session.expire_all()
+    from app.models.order_item import OrderItem
+
+    persisted = db_session.get(OrderItem, item.id)
+    assert persisted.status.name == "Preparing"
+
+
 def test_does_not_broadcast_on_a_failed_transition(
     db_session,
     order_item_statuses,
