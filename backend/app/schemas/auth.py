@@ -22,3 +22,8 @@ class StaffOut(BaseModel):
     email: str
     role: StaffRoleEnum
     photo_url: str | None
+    is_active: bool
+
+
+class UpdateShiftStatusRequest(BaseModel):
+    is_active: bool

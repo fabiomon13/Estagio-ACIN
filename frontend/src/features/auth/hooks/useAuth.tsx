@@ -10,6 +10,8 @@ export type AuthStaff = {
   name: string;
   email: string;
   role: StaffRole;
+  photo_url: string | null;
+  is_active: boolean;
 };
 
 export const ROLE_HOME_ROUTE: Record<StaffRole, string> = {
@@ -25,6 +27,7 @@ type AuthContextValue = {
   retryConnection: () => void;
   login: (email: string, password: string) => Promise<AuthStaff>;
   logout: () => Promise<void>;
+  updateShiftStatus: (isActive: boolean) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -88,9 +91,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStaff(null);
   };
 
+  // Toggles the current staff member's own shift status.
+  const updateShiftStatus = async (isActive: boolean): Promise<void> => {
+    const result = await apiFetch<AuthStaff>('/auth/me/shift', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_active: isActive }),
+    });
+    setStaff(result);
+  };
+
   return (
     <AuthContext.Provider
-      value={{ staff, isLoading, connectionError, retryConnection: checkSession, login, logout }}
+      value={{
+        staff,
+        isLoading,
+        connectionError,
+        retryConnection: checkSession,
+        login,
+        logout,
+        updateShiftStatus,
+      }}
     >
       {children}
     </AuthContext.Provider>
