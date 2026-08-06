@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import Badge from '../../../components/ui/badge/Badge';
 import Button from '../../../components/ui/button/Button';
 import type { StaffDashboardTable } from '../types/staff.types';
@@ -21,7 +23,6 @@ type StaffTableCardProps = {
   approvalActionFor: number | null;
   confirmingDeactivate: DeactivateConfirmation | null;
   confirmSolveForTable: number | null;
-  confirmingPaymentForTable: number | null;
 
   onStartApproval: (sessionId: number) => void;
   onApprove: (sessionId: number, tableNumber: number) => void;
@@ -35,9 +36,9 @@ type StaffTableCardProps = {
   onCancelSolveAssistance: () => void;
   onSolveAssistance: (requestId: number, tableNumber: number) => void;
 
-  onStartPayment: (tableNumber: number) => void;
-  onCancelPayment: () => void;
-  onResolvePayment: (requestId: number, tableNumber: number, sessionId: number) => void;
+  onStartPayment: (sessionId: number, tableNumber: number) => void;
+
+  onOpenDetails: (table: StaffDashboardTable) => void;
 };
 
 export function StaffTableCard({
@@ -48,7 +49,6 @@ export function StaffTableCard({
   approvalActionFor,
   confirmingDeactivate,
   confirmSolveForTable,
-  confirmingPaymentForTable,
   onStartApproval,
   onApprove,
   onRejectApproval,
@@ -59,8 +59,7 @@ export function StaffTableCard({
   onCancelSolveAssistance,
   onSolveAssistance,
   onStartPayment,
-  onCancelPayment,
-  onResolvePayment,
+  onOpenDetails,
 }: StaffTableCardProps) {
   const sessionId = table.session_id;
   const hasAssistance = Boolean(assistanceRequest);
@@ -69,7 +68,16 @@ export function StaffTableCard({
   return (
     <article
       id={`table-${table.table_number}`}
-      className={`rounded-3xl border-2 p-4 ${
+      onClick={(event) => {
+        const target = event.target as HTMLElement;
+
+        if (target.closest('button')) {
+          return;
+        }
+
+        onOpenDetails(table);
+      }}
+      className={`cursor-pointer rounded-3xl border-2 p-4 transition-opacity hover:opacity-90 ${
         hasUrgentAssistance
           ? 'border-danger bg-danger/10 shadow-[0_0_0_1px_var(--color-danger)]'
           : hasPaymentRequest
@@ -228,33 +236,11 @@ export function StaffTableCard({
             <Button
               size="sm"
               className="border-0 bg-info text-white hover:opacity-90"
-              onClick={() => onStartPayment(table.table_number)}
+              onClick={() => onStartPayment(sessionId, table.table_number)}
             >
-              Fechar Conta
+              Conta
             </Button>
           </div>
-
-          {confirmingPaymentForTable === table.table_number && (
-            <div className="mt-3 rounded-xl border border-border-strong bg-surface p-3 shadow-sm">
-              <p className="mb-3 text-sm text-content-muted">
-                Confirmar pagamento e desativar a mesa?
-              </p>
-
-              <div className="flex justify-end gap-2">
-                <Button size="sm" variant="ghost" onClick={onCancelPayment}>
-                  Cancelar
-                </Button>
-
-                <Button
-                  size="sm"
-                  className="border-0 bg-info text-white hover:opacity-90"
-                  onClick={() => onResolvePayment(paymentRequest.id, table.table_number, sessionId)}
-                >
-                  Confirmar Pago
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </article>
