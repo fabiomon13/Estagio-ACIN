@@ -14,8 +14,9 @@ class KitchenOrderItemOut(BaseModel):
     order_item_id: int
     menu_item_name: str
     quantity: int
-    notes: str | None 
+    notes: str | None
     tags: list[str]
+    matched_allergens: list[str]  # subset of `tags` the ordering guest actually declared
     station_id: int
     station: str
     status: str
