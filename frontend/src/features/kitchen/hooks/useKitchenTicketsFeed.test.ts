@@ -9,11 +9,17 @@ vi.mock('../services/kitchenService');
 
 class FakeWebSocket {
   static instances: FakeWebSocket[] = [];
+  static readonly CONNECTING = 0;
+  static readonly OPEN = 1;
+  static readonly CLOSING = 2;
+  static readonly CLOSED = 3;
+
   onopen: (() => void) | null = null;
   onmessage: ((event: { data: string }) => void) | null = null;
   onclose: (() => void) | null = null;
   closed = false;
   url: string;
+  readyState = FakeWebSocket.OPEN;
 
   constructor(url: string) {
     this.url = url;
@@ -22,7 +28,13 @@ class FakeWebSocket {
 
   close(): void {
     this.closed = true;
+    this.readyState = FakeWebSocket.CLOSED;
   }
+}
+
+function goVisible() {
+  Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+  document.dispatchEvent(new Event('visibilitychange'));
 }
 
 function makeTicket(orderId: number): KitchenTicket {
@@ -177,6 +189,92 @@ describe('useKitchenTicketsFeed', () => {
     expect(FakeWebSocket.instances).toHaveLength(3);
   });
 
+  it('force-reconnects a zombie socket when the tab regains visibility', async () => {
+    vi.mocked(kitchenService.getTickets).mockResolvedValue([]);
+
+    renderHook(() => useKitchenTicketsFeed(30_000));
+    await flushCurrentFetch();
+    expect(FakeWebSocket.instances).toHaveLength(1);
+
+    // Simulate a connection that died silently (laptop slept, network
+    // switched): readyState is no longer OPEN, but onclose never fired, so
+    // the normal backoff/reconnect loop never started.
+    FakeWebSocket.instances[0].readyState = FakeWebSocket.CLOSED;
+
+    goVisible();
+    await flushCurrentFetch();
+
+    // A fresh connection was opened immediately -- no waiting for onclose,
+    // no backoff delay.
+    expect(FakeWebSocket.instances).toHaveLength(2);
+  });
+
+  it('does not force a reconnect on visibility regain when the socket is genuinely still open', async () => {
+    vi.mocked(kitchenService.getTickets).mockResolvedValue([]);
+
+    renderHook(() => useKitchenTicketsFeed(30_000));
+    await flushCurrentFetch();
+    FakeWebSocket.instances[0].readyState = FakeWebSocket.OPEN;
+
+    goVisible();
+    await flushCurrentFetch();
+
+    expect(FakeWebSocket.instances).toHaveLength(1); // no reconnect needed
+  });
+
+  it('refetches immediately on visibility regain, as a catch-up safety net', async () => {
+    vi.mocked(kitchenService.getTickets).mockResolvedValue([]);
+
+    renderHook(() => useKitchenTicketsFeed(30_000));
+    await flushCurrentFetch();
+    expect(kitchenService.getTickets).toHaveBeenCalledTimes(1);
+    FakeWebSocket.instances[0].readyState = FakeWebSocket.OPEN; // healthy connection
+
+    goVisible();
+    await flushCurrentFetch();
+
+    // Still refetches even though the socket itself didn't need reconnecting.
+    expect(kitchenService.getTickets).toHaveBeenCalledTimes(2);
+  });
+
+  it('discards a stale poll response that resolves after a newer WebSocket message arrived', async () => {
+    vi.mocked(kitchenService.getTickets).mockResolvedValueOnce([makeTicket(1)]);
+
+    const { result } = renderHook(() => useKitchenTicketsFeed(30_000));
+    await flushCurrentFetch(); // initial mount fetch resolves with ticket 1
+
+    // The next backup poll won't resolve until we say so.
+    let resolveSlowPoll!: (tickets: KitchenTicket[]) => void;
+    vi.mocked(kitchenService.getTickets).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSlowPoll = resolve;
+        }),
+    );
+
+    // The 30s backup poll fires and starts (but is still in flight).
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+
+    // A real-time WebSocket update lands while that poll is still pending.
+    act(() => {
+      FakeWebSocket.instances[0].onmessage?.({
+        data: JSON.stringify({ tickets: [makeTicket(2)] }),
+      });
+    });
+    expect(result.current.tickets.map((ticket) => ticket.order_id)).toEqual([2]);
+
+    // The slow poll finally resolves -- with data captured BEFORE the WS update.
+    await act(async () => {
+      resolveSlowPoll([makeTicket(1)]);
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    // The stale response must not overwrite the newer, WS-pushed state.
+    expect(result.current.tickets.map((ticket) => ticket.order_id)).toEqual([2]);
+  });
+
   it('keeps the previous tickets and sets error when a backup poll fails', async () => {
     vi.mocked(kitchenService.getTickets)
       .mockResolvedValueOnce([makeTicket(1)])
@@ -224,5 +322,21 @@ describe('useKitchenTicketsFeed', () => {
 
     expect(FakeWebSocket.instances).toHaveLength(1); // no reconnect attempted after unmount
     expect(kitchenService.getTickets).toHaveBeenCalledTimes(1); // no further backup polls either
+  });
+
+  it('aborts the in-flight fetch on unmount instead of leaving it running', async () => {
+    let capturedSignal: AbortSignal | undefined;
+    vi.mocked(kitchenService.getTickets).mockImplementationOnce((signal?: AbortSignal) => {
+      capturedSignal = signal;
+      return new Promise(() => {}); // never resolves -- only the abort matters
+    });
+
+    const { unmount } = renderHook(() => useKitchenTicketsFeed(30_000));
+
+    expect(capturedSignal?.aborted).toBe(false);
+
+    unmount();
+
+    expect(capturedSignal?.aborted).toBe(true);
   });
 });
