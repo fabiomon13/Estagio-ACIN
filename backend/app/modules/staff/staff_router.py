@@ -1,17 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_role
-from app.core.roles import StaffRoleEnum
 from app.db.dependencies import get_db
-from app.models.staff import Staff
-from app.schemas.staff.staff_contract import (
-    MenuItemAvailabilityResponse,
-    MenuItemAvailabilityUpdate,
+from app.modules.staff.staff_contract import (
     StaffDashboard,
 )
-from app.services import staff_service
-from app import db
+from app.modules.staff import staff_service
 
 from app.api.deps import get_current_staff, require_role
 from app.core.roles import StaffRoleEnum
@@ -28,7 +22,7 @@ router = APIRouter(prefix="/staff")
     dependencies=[Depends(require_role(StaffRoleEnum.WAITER))]
 )
 def get_staff_dashboard(db: Session = Depends(get_db), current_staff: Staff = Depends(get_current_staff),) -> StaffDashboard:
-    return staff_service.get_staff_dashboard(db)
+    return staff_service.get_staff_dashboard(db, current_staff)
 
 
 # Table management (approval + deactivation)

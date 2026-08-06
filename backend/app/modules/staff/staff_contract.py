@@ -62,9 +62,25 @@ class StaffOpenRequest(BaseModel):
     is_high_priority: bool
     created_at: datetime
 
-#Define the overall data model for the staff dashboard
+
+class StaffPreparingItem(BaseModel):
+    id: int
+    name: str
+    quantity: int
+    status: str
+    preparation_started_at: datetime
+    estimated_ready_at: datetime
+
+
+class StaffPreparingTable(BaseModel):
+    table_number: int
+    waiter_id: int
+    items: list[StaffPreparingItem]
+
+
 class StaffDashboard(BaseModel):
     summary: StaffDashboardSummary
     tables: list[StaffDashboardTable]
     ready_to_serve: list[StaffReadyTable]
     requests: list[StaffOpenRequest]
+    preparing_orders: list[StaffPreparingTable]

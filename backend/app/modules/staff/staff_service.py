@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session, joinedload   
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from app.models.dining_session import DiningSession
 from app.models.order import Order
@@ -10,14 +10,16 @@ from app.models.order_item_status import OrderItemStatus
 from app.models.guest import Guest
 from app.models.menu_item import MenuItem
 from app.models.service_request import ServiceRequest
-from app.schemas.staff.staff_contract import (
+from app.modules.staff.staff_contract import (
     StaffDashboard,
     StaffDashboardSummary,
     StaffDashboardTable,
     StaffOpenRequest,
     StaffTableState,
     StaffReadyTable,
-    StaffReadyItem
+    StaffReadyItem,
+    StaffPreparingItem,
+    StaffPreparingTable,
 )
 from app.models.service_request_type import ServiceRequestType
 from app.models.service_request_status import ServiceRequestStatus
@@ -34,6 +36,7 @@ PAYMENT_REQUEST_TYPE = "payment_request"
 ASSISTANCE_REQUEST_TYPE = "assistance"
 
 PENDING_SERVICE_REQUEST_ALIAS = "pending"
+PREPARING_ORDER_ITEM_ALIAS = "preparing"
 RESOLVED_SERVICE_REQUEST_ALIAS = "resolved"
 
 def get_order_item_status_by_alias(db: Session, alias: str) -> OrderItemStatus:
@@ -73,7 +76,7 @@ def get_service_request_status_by_alias(db: Session, alias: str) -> ServiceReque
         raise HTTPException(status_code=500, detail=f"Service request status '{alias}' is not configured")
     return row
 
-def get_staff_dashboard(db: Session) -> StaffDashboard:
+def get_staff_dashboard(db: Session, current_staff: Staff) -> StaffDashboard:
     """
     Fetches and formats all data for the staff dashboard[cite: 1].
     Calculates occupied tables, guest counts, and table totals for active sessions[cite: 1].
@@ -81,6 +84,7 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
     """
 
     ready_status = get_order_item_status_by_alias(db, READY_ORDER_ITEM_ALIAS)
+    preparing_status = get_order_item_status_by_alias(db,PREPARING_ORDER_ITEM_ALIAS)
 
     active_sessions = (
         db.query(DiningSession)
@@ -94,6 +98,7 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
 
     tables_data = []
     ready_to_serve_table = []
+    preparing_orders = []
 
     # NEW: load all restaurant tables and map current active session by table_id
     all_tables = db.query(RestaurantTable).order_by(RestaurantTable.table_number).all()
@@ -137,6 +142,17 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
             .all()
         )
 
+        preparing_items = (
+            db.query(OrderItem)
+            .join(Order, Order.id == OrderItem.order_id)
+            .join(Guest, Guest.id == Order.guest_id)
+            .filter(
+                Guest.session_id == session.id,
+                OrderItem.status_id == preparing_status.id,
+            )
+            .all()
+        )
+
         tables_data.append(
             StaffDashboardTable(
                 session_id=session.id,
@@ -164,6 +180,30 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
                 StaffReadyTable(
                     table_number=table.table_number,
                     items=items_payload,
+                )
+            )
+
+        if preparing_items:
+            preparing_orders.append(
+                StaffPreparingTable(
+                    table_number=table.table_number,
+                    waiter_id=current_staff.id,
+                    items=[
+                        StaffPreparingItem(
+                            id=item.id,
+                            name=item.menu_item.name if item.menu_item else "Unknown item",
+                            quantity=item.quantity,
+                            status="preparing",
+                            preparation_started_at=item.updated_at,
+                            estimated_ready_at=item.updated_at
+                            + timedelta(
+                                minutes=item.menu_item.base_preparation_time
+                                if item.menu_item
+                                else 0
+                            ),
+                        )
+                        for item in preparing_items
+                    ],
                 )
             )
 
@@ -196,6 +236,7 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
         tables=tables_data,
         ready_to_serve=ready_to_serve_table,
         requests=requests_data,
+        preparing_orders=preparing_orders,
     )
 
 def approve_session(db: Session, session_id: int, approved_by_staff_id: int) -> dict:
