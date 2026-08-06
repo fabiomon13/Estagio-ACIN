@@ -9,8 +9,13 @@ import { StaffTableCard } from '../components/StaffTableCard';
 import { useStaffDashboardDerivedData } from '../hooks/useStaffDashboardDerivedData';
 import { useStaffReadyToServe } from '../hooks/useStaffReadyToServe';
 import { useStaffPreparingOrders } from '../hooks/useStaffPreparingOrders';
-import type { StaffPaymentMethod, StaffSessionBill } from '../types/staff.types';
+import type {
+  StaffPaymentMethod,
+  StaffSessionBill,
+  StaffDashboardTable,
+} from '../types/staff.types';
 import { StaffPaymentModal } from '../components/StaffPaymentModal';
+import { StaffTableDetailsModal } from '../components/StaffTableDetailsModal';
 
 import Button from '../../../components/ui/button/Button';
 
@@ -57,6 +62,11 @@ export function StaffPage() {
   const [paymentDialog, setPaymentDialog] = useState<{
     sessionId: number;
     tableNumber: number;
+    bill: StaffSessionBill;
+  } | null>(null);
+
+  const [tableDetailsDialog, setTableDetailsDialog] = useState<{
+    table: StaffDashboardTable;
     bill: StaffSessionBill;
   } | null>(null);
 
@@ -132,6 +142,26 @@ export function StaffPage() {
       await load();
     } catch {
       showToast({ variant: 'danger', title: 'Não foi possível resolver assistência' });
+    }
+  };
+
+  const onOpenTableDetails = async (table: StaffDashboardTable) => {
+    if (table.session_id === null) {
+      return;
+    }
+
+    try {
+      const bill = await getStaffSessionBill(table.session_id);
+
+      setTableDetailsDialog({
+        table,
+        bill,
+      });
+    } catch {
+      showToast({
+        variant: 'danger',
+        title: 'Unable to load table details',
+      });
     }
   };
 
@@ -293,6 +323,7 @@ export function StaffPage() {
                       void onSolveAssistance(requestId, tableNumber);
                     }}
                     onStartPayment={onOpenPayment}
+                    onOpenDetails={onOpenTableDetails}
                   />
                 );
               })}
@@ -321,6 +352,25 @@ export function StaffPage() {
           tableNumber={paymentDialog.tableNumber}
           onClose={() => setPaymentDialog(null)}
           onConfirm={onConfirmPayment}
+        />
+      )}
+
+      {tableDetailsDialog !== null && (
+        <StaffTableDetailsModal
+          table={tableDetailsDialog.table}
+          bill={tableDetailsDialog.bill}
+          canManage={tableDetailsDialog.table.waiter_id === staff?.id || staff?.role === 'admin'}
+          onClose={() => setTableDetailsDialog(null)}
+          onCloseAccount={() => {
+            const { table } = tableDetailsDialog;
+
+            if (table.session_id === null) {
+              return;
+            }
+
+            setTableDetailsDialog(null);
+            void onOpenPayment(table.session_id, table.table_number);
+          }}
         />
       )}
     </div>

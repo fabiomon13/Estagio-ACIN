@@ -37,6 +37,8 @@ type StaffTableCardProps = {
   onSolveAssistance: (requestId: number, tableNumber: number) => void;
 
   onStartPayment: (sessionId: number, tableNumber: number) => void;
+
+  onOpenDetails: (table: StaffDashboardTable) => void;
 };
 
 export function StaffTableCard({
@@ -57,6 +59,7 @@ export function StaffTableCard({
   onCancelSolveAssistance,
   onSolveAssistance,
   onStartPayment,
+  onOpenDetails,
 }: StaffTableCardProps) {
   const sessionId = table.session_id;
   const hasAssistance = Boolean(assistanceRequest);
@@ -65,7 +68,16 @@ export function StaffTableCard({
   return (
     <article
       id={`table-${table.table_number}`}
-      className={`rounded-3xl border-2 p-4 ${
+      onClick={(event) => {
+        const target = event.target as HTMLElement;
+
+        if (target.closest('button')) {
+          return;
+        }
+
+        onOpenDetails(table);
+      }}
+      className={`cursor-pointer rounded-3xl border-2 p-4 transition-opacity hover:opacity-90 ${
         hasUrgentAssistance
           ? 'border-danger bg-danger/10 shadow-[0_0_0_1px_var(--color-danger)]'
           : hasPaymentRequest

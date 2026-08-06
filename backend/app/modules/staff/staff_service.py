@@ -57,6 +57,7 @@ ASSISTANCE_REQUEST_TYPE = "assistance"
 
 PENDING_SERVICE_REQUEST_ALIAS = "pending"
 PREPARING_ORDER_ITEM_ALIAS = "preparing"
+CANCELLED_ORDER_ITEM_ALIAS = "cancelled"
 RESOLVED_SERVICE_REQUEST_ALIAS = "resolved"
 
 def get_order_item_status_by_alias(db: Session, alias: str) -> OrderItemStatus:
@@ -146,13 +147,49 @@ def get_staff_dashboard(db: Session, current_staff: Staff) -> StaffDashboard:
 
         state = StaffTableState.ACTIVE if session.is_approved else StaffTableState.AWAITING_APPROVAL
 
-        total_amount = (
-            db.query(func.sum(OrderItem.unit_price_at_order * OrderItem.quantity))
-            .join(Order, Order.id == OrderItem.order_id)
-            .join(Guest, Guest.id == Order.guest_id)
+        session_guests = (
+            db.query(Guest)
+            .options(joinedload(Guest.buffet))
             .filter(Guest.session_id == session.id)
-            .scalar()
-            or 0.0
+            .all()
+        )
+
+        buffet_total = sum(
+            (
+                Decimal(guest.buffet.price)
+                for guest in session_guests
+                if guest.buffet is not None
+            ),
+            ZERO_MONEY,
+        )
+
+        extras_total = calculate_extras_total(
+            db=db,
+            session_id=session.id,
+        )
+
+        payment = (
+            db.query(Payment)
+            .filter(Payment.session_id == session.id)
+            .first()
+        )
+
+        waste_total = calculate_waste_total(
+            session_guests=session_guests,
+            payment=payment,
+        )
+
+        tip_amount = (
+            Decimal(payment.tip_amount)
+            if payment is not None
+            else ZERO_MONEY
+        )
+
+        total_amount = (
+            buffet_total
+            + extras_total
+            + waste_total
+            + tip_amount
         )
 
         ready_items = (
@@ -415,6 +452,32 @@ def deactivate_session(db: Session, session_id: int, current_staff) -> dict:
     if not session.is_active:
         raise HTTPException(status_code= 409, detail="Dining session is already inactive.")
 
+        cancelled_status = get_order_item_status_by_alias(
+        db,
+        CANCELLED_ORDER_ITEM_ALIAS,
+    )
+
+    active_items = (
+        db.query(OrderItem)
+        .join(Order, OrderItem.order_id == Order.id)
+        .join(Guest, Order.guest_id == Guest.id)
+        .join(OrderItemStatus, OrderItem.status_id == OrderItemStatus.id)
+        .filter(
+            Guest.session_id == session.id,
+            func.lower(OrderItemStatus.alias).in_(
+                [
+                    "pending",
+                    "preparing",
+                    "ready",
+                ]
+            ),
+        )
+        .all()
+    )
+
+    for item in active_items:
+        item.status_id = cancelled_status.id
+
     session.is_active = False
     session.end_time = datetime.now(timezone.utc)
     session.waiter_id = None
@@ -636,8 +699,6 @@ def get_session_bill(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Dining session not found.",
         )
-
-    _ensure_session_owner_or_admin(session, current_staff)
 
     payment = session.payment
     guests_data: list[StaffSessionBillGuest] = []
