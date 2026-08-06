@@ -23,19 +23,13 @@ const NEXT_ICON: Partial<Record<KitchenItemStatus, ReactNode>> = {
   Preparing: <CheckIcon size={16} />,
 };
 
-// A tag is treated as an allergen warning if it follows the naming
-// convention already seeded in the backend (Alergénio: crustáceos)
-function isAllergenTag(tag: string): boolean {
-  return tag.startsWith('Alergénio');
-}
-
 export default function TicketCard({
   onAdvanceStatus,
   elapsedMinutes,
   fragment,
   urgency,
 }: TicketCardProps) {
-  const hasAllergen = fragment.items.some((item) => item.tags.some(isAllergenTag));
+  const hasAllergyMatch = fragment.items.some((item) => item.matched_allergens.length > 0);
 
   return (
     <div className={`${styles.card} ${styles.border[urgency]}`}>
@@ -53,17 +47,16 @@ export default function TicketCard({
 
       <div className="my-3 h-px w-full rounded-full bg-border" />
 
-      {hasAllergen && (
+      {hasAllergyMatch && (
         <div className={styles.allergenBanner}>
           <WarningFilledIcon size={14} />
-          <span>Alergénio nestes pratos — verificar cada prato</span>
+          <span>Alergia real neste pedido — confirmar antes de servir</span>
         </div>
       )}
 
       <section className="flex flex-col gap-4">
         {fragment.items.map((item) => {
           const nextStatus = NEXT_STATUS[item.status];
-          const allergenTags = item.tags.filter(isAllergenTag);
 
           return (
             <div key={item.order_item_id} className="flex items-start justify-between gap-3">
@@ -75,9 +68,9 @@ export default function TicketCard({
 
                   {item.notes && <p className="text-xs italic text-content-subtle">{item.notes}</p>}
 
-                  {allergenTags.length > 0 && (
+                  {item.matched_allergens.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
-                      {allergenTags.map((tag) => (
+                      {item.matched_allergens.map((tag) => (
                         <Badge key={tag} size="sm" variant="danger">
                           {tag}
                         </Badge>

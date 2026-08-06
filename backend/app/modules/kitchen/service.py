@@ -63,6 +63,7 @@ def get_active_tickets(db: Session) -> list[KitchenTicketOut]:
                 joinedload(Order.guest)
                 .joinedload(Guest.dining_session)
                 .joinedload(DiningSession.restaurant_table),
+                joinedload(Order.guest).joinedload(Guest.allergy_tags),
                 selectinload(Order.items).joinedload(OrderItem.status),
                 selectinload(Order.items)
                 .joinedload(OrderItem.menu_item)
@@ -132,12 +133,15 @@ def _build_ticket(order: Order, guest_numbers: dict[int, int]) -> KitchenTicketO
 
 def _build_item(item: OrderItem) -> KitchenOrderItemOut:
     station = item.menu_item.effective_station
+    dish_tag_names = sorted(link.tag.name for link in item.menu_item.tag_links)
+    guest_allergy_names = {tag.name for tag in item.order.guest.allergy_tags}
     return KitchenOrderItemOut(
         order_item_id=item.id,
         menu_item_name=item.menu_item.name,
         quantity=item.quantity,
         notes=item.notes,
-        tags=sorted(link.tag.name for link in item.menu_item.tag_links),
+        tags=dish_tag_names,
+        matched_allergens=[name for name in dish_tag_names if name in guest_allergy_names],
         station_id=station.id,
         station=station.name,
         status=item.status.name,
@@ -167,6 +171,7 @@ def update_item_status(db: Session, order_item_id: int, new_status: str) -> Kitc
             joinedload(OrderItem.menu_item)
             .selectinload(MenuItem.tag_links)
             .joinedload(TagItem.tag),
+            joinedload(OrderItem.order).joinedload(Order.guest).joinedload(Guest.allergy_tags),
         ],
     )
 
