@@ -7,6 +7,7 @@ import { ProductCard } from './ProductCard';
 
 type MenuViewProps = {
   stations: StationSection[];
+  selectedAllergenTagIds?: ReadonlySet<number>;
   navigationStations?: StationSection[];
   cart: Record<number, number>;
   onAdd: (itemId: number) => void;
@@ -17,6 +18,7 @@ type MenuViewProps = {
 
 export function MenuView({
   stations,
+  selectedAllergenTagIds = new Set(),
   navigationStations = stations,
   cart,
   onAdd,
@@ -88,7 +90,7 @@ export function MenuView({
         className="client-menu-sections mx-auto max-w-lg px-4 py-10 text-center text-sm text-content-muted"
         role="status"
       >
-        There are no menu items available at the moment.
+        Não existem artigos disponíveis neste momento.
       </div>
     );
   }
@@ -102,7 +104,7 @@ export function MenuView({
         <nav
           ref={isPreview ? undefined : navigationRef}
           className={`client-category-nav ${isPreview ? 'is-preview' : ''}`}
-          aria-label="Menu categories"
+          aria-label="Categorias do menu"
         >
           <div className="client-category-row scrollbar-none mx-auto flex max-w-lg gap-2 overflow-x-auto">
             {navigationStations.map((station) => {
@@ -187,6 +189,7 @@ export function MenuView({
                     <ProductCard
                       key={item.alias}
                       item={item}
+                      selectedAllergenTagIds={selectedAllergenTagIds}
                       quantity={cart[item.id] ?? 0}
                       onAdd={() => onAdd(item.id)}
                       onAddDetails={(quantity, notes) => onAddDetails?.(item.id, quantity, notes)}

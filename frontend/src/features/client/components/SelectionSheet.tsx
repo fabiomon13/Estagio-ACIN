@@ -7,6 +7,7 @@ export type SelectionSheetProps = {
   items: MenuItem[];
   cart: Record<number, number>;
   buffetItemIds: Set<number>;
+  selectedAllergenTagIds: ReadonlySet<number>;
   isSubmitting: boolean;
   hasActiveOrder: boolean;
   isClosing?: boolean;
@@ -21,6 +22,7 @@ export function SelectionSheet({
   items,
   cart,
   buffetItemIds,
+  selectedAllergenTagIds,
   isSubmitting,
   hasActiveOrder,
   isClosing = false,
@@ -139,13 +141,14 @@ export function SelectionSheet({
       >
         <div className="client-selection-handle" aria-hidden="true" />
         <header className="client-selection-heading">
-          <h2 id="selection-title">Your selection</h2>
-          <p>Current round</p>
+          <h2 id="selection-title">A sua seleção</h2>
+          <p>Ronda atual</p>
         </header>
 
         <div className="client-selection-items">
           {items.map((item) => {
             const quantity = cart[item.id] ?? 0;
+            const hasAllergyWarning = item.tags.some((tag) => selectedAllergenTagIds.has(tag.id));
             return (
               <article key={item.alias} className="client-selection-item">
                 <div className="client-selection-thumbnail" aria-hidden={!item.photo_url}>
@@ -156,16 +159,20 @@ export function SelectionSheet({
                   <button
                     type="button"
                     onClick={() => onRemove(item.id)}
-                    aria-label={`Remove one unit of ${item.name}`}
+                    aria-label={`Remover uma unidade de ${item.name}`}
                   >
                     −
                   </button>
-                  <output aria-label={`${quantity} units`}>{quantity}</output>
+                  <output aria-label={`${quantity} unidades`}>{quantity}</output>
                   <button
                     type="button"
-                    className="is-add"
+                    className={`is-add ${hasAllergyWarning ? 'is-allergy-warning' : ''}`}
                     onClick={() => onAdd(item.id)}
-                    aria-label={`Add one more unit of ${item.name}`}
+                    aria-label={
+                      hasAllergyWarning
+                        ? `Adicionar mais uma unidade de ${item.name}; aviso de alergia`
+                        : `Adicionar mais uma unidade de ${item.name}`
+                    }
                   >
                     +
                   </button>
@@ -174,7 +181,7 @@ export function SelectionSheet({
                   type="button"
                   className="client-selection-delete"
                   onClick={() => onDelete(item.id)}
-                  aria-label={`Remove ${item.name} from selection`}
+                  aria-label={`Remover ${item.name} da seleção`}
                 >
                   ×
                 </button>
@@ -189,7 +196,7 @@ export function SelectionSheet({
         </div>
         {hasActiveOrder && (
           <p className="client-selection-order-warning" role="status">
-            Wait for the current order to be served before sending another round.
+            Aguarde que o pedido atual seja servido antes de enviar outra ronda.
           </p>
         )}
         <button
@@ -198,7 +205,7 @@ export function SelectionSheet({
           disabled={isSubmitting || hasActiveOrder || items.length === 0}
           onClick={onSubmit}
         >
-          {isSubmitting ? 'Sending…' : hasActiveOrder ? 'Order in progress' : 'Send round'}
+          {isSubmitting ? 'A enviar…' : hasActiveOrder ? 'Pedido em curso' : 'Enviar ronda'}
         </button>
       </section>
     </div>

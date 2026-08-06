@@ -3,8 +3,8 @@ import { useState } from 'react';
 import type { ClientOrder } from '../services/orderApi';
 
 const orderProgress = ['pending', 'preparing', 'ready', 'served'] as const;
-const orderProgressLabels = ['Received', 'Preparing', 'Ready', 'Served'];
-const orderTimeFormatter = new Intl.DateTimeFormat(undefined, {
+const orderProgressLabels = ['Recebido', 'Em preparação', 'Pronto', 'Servido'];
+const orderTimeFormatter = new Intl.DateTimeFormat('pt-PT', {
   hour: '2-digit',
   minute: '2-digit',
 });
@@ -27,7 +27,7 @@ export function OrdersView({ orders, onCancel, refreshMessage }: OrdersViewProps
 
   return (
     <div className="client-orders mx-auto max-w-lg px-4 pb-10">
-      <div className="client-orders-tabs" role="tablist" aria-label="Order status">
+      <div className="client-orders-tabs" role="tablist" aria-label="Estado dos pedidos">
         <button
           type="button"
           className={ordersTab === 'active' ? 'is-active' : ''}
@@ -35,7 +35,7 @@ export function OrdersView({ orders, onCancel, refreshMessage }: OrdersViewProps
           aria-selected={ordersTab === 'active'}
           onClick={() => setOrdersTab('active')}
         >
-          In progress
+          Em curso
         </button>
         <button
           type="button"
@@ -44,7 +44,7 @@ export function OrdersView({ orders, onCancel, refreshMessage }: OrdersViewProps
           aria-selected={ordersTab === 'history'}
           onClick={() => setOrdersTab('history')}
         >
-          History
+          Histórico
         </button>
       </div>
 
@@ -56,13 +56,13 @@ export function OrdersView({ orders, onCancel, refreshMessage }: OrdersViewProps
 
       {visibleOrders.length === 0 ? (
         <p className="client-orders-empty">
-          {ordersTab === 'active' ? 'There are no orders in progress.' : 'There is no history yet.'}
+          {ordersTab === 'active' ? 'Não existem pedidos em curso.' : 'Ainda não existe histórico.'}
         </p>
       ) : (
         visibleOrders.map((order) => (
           <section key={order.id} className="client-order-round">
             <header className="client-order-round-heading">
-              <h1>Round {order.round_number}</h1>
+              <h1>Ronda {order.round_number}</h1>
               <time dateTime={order.created_at}>{formatOrderTime(order.created_at)}</time>
             </header>
             <div className="client-order-items">
@@ -119,7 +119,7 @@ function OrderProgressCard({
             type="button"
             onClick={() => void onCancel()}
             disabled={isCancelling}
-            aria-label={`Cancel ${item.menu_item.name}`}
+            aria-label={`Cancelar ${item.menu_item.name}`}
           >
             {isCancelling ? '…' : '×'}
           </button>
@@ -127,7 +127,7 @@ function OrderProgressCard({
       </header>
 
       {isCancelled ? (
-        <p className="client-order-cancelled">Cancelled</p>
+        <p className="client-order-cancelled">Cancelado</p>
       ) : (
         <div className="client-order-progress">
           <div
@@ -143,7 +143,7 @@ function OrderProgressCard({
             ))}
           </div>
           <p className="sr-only" aria-live="polite">
-            Current status: {statusIndex >= 0 ? orderProgressLabels[statusIndex] : item.status.name}
+            Estado atual: {statusIndex >= 0 ? orderProgressLabels[statusIndex] : item.status.name}
           </p>
           <div className="client-order-progress-labels">
             {orderProgressLabels.map((label) => (

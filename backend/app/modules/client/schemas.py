@@ -124,6 +124,9 @@ class GuestBuffetUpdate(RequestSchema):
     description="Null removes the buffet selection",
 )
 
+class GuestAllergyPreferencesUpdate(RequestSchema):
+    allergy_tag_ids: list[int] = Field(default_factory=list, max_length=14)
+
 # Schema for guest response
 # id, session_id, buffet_id: int (greater than 0)
 # buffet_id can be None
@@ -131,6 +134,8 @@ class GuestResponse(ResponseSchema):
     id: int = Field(gt=0)
     session_id: int = Field(gt=0)
     buffet_id: int | None = Field(default=None, gt=0)
+    allergy_tag_ids: list[int] = Field(default_factory=list)
+    allergy_preferences_completed_at: datetime | None = None
 
 # Schema for buffet response
 # id: int (greater than 0)

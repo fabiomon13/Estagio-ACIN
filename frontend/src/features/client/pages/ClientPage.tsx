@@ -5,6 +5,7 @@ import { useToast } from '../../../components/ui/toast/useToast';
 import { ApiError } from '../../../services/api/client';
 import { createUuid } from '../../../utils/createUuid';
 import { BuffetView } from '../components/BuffetView';
+import { AllergyPreferencesModal } from '../components/AllergyPreferencesModal';
 import { ClientHeader } from '../components/ClientHeader';
 import { ClientMessage } from '../components/ClientMessage';
 import { MenuView } from '../components/MenuView';
@@ -19,7 +20,7 @@ import { useClientOrders } from '../hooks/useClientOrders';
 import { useClientServiceRequests } from '../hooks/useClientServiceRequests';
 import { useClientSession } from '../hooks/useClientSession';
 import { useClientSwipe } from '../hooks/useClientSwipe';
-import { updateGuestBuffet } from '../services/guestApi';
+import { updateGuestAllergyPreferences, updateGuestBuffet } from '../services/guestApi';
 import { createSession } from '../services/menuApi';
 import { cancelOrderItem, createOrder } from '../services/orderApi';
 import { getDeviceToken } from '../utils/deviceToken';
@@ -53,7 +54,14 @@ export function ClientPage() {
   const [shouldRenderCart, setShouldRenderCart] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [isNoBuffetConfirmationOpen, setIsNoBuffetConfirmationOpen] = useState(false);
+  const [shouldRenderNoBuffetConfirmation, setShouldRenderNoBuffetConfirmation] = useState(false);
+  const [isAllergyModalOpen, setIsAllergyModalOpen] = useState(false);
+  const [shouldRenderAllergyModal, setShouldRenderAllergyModal] = useState(false);
+  const [isSavingAllergies, setIsSavingAllergies] = useState(false);
   const [serviceRequestConfirmation, setServiceRequestConfirmation] = useState<
+    'assistance' | 'payment_request' | null
+  >(null);
+  const [renderedServiceRequestConfirmation, setRenderedServiceRequestConfirmation] = useState<
     'assistance' | 'payment_request' | null
   >(null);
   const [floatingOrder, setFloatingOrder] = useState({
@@ -61,6 +69,50 @@ export function ClientPage() {
     count: cart.cartCount,
   });
   const pendingOrderRequestId = useRef<string | null>(null);
+
+  const needsAllergySetup =
+    data.guest !== null && data.guest.allergy_preferences_completed_at === null;
+  const isAllergyModalVisible = isAllergyModalOpen || needsAllergySetup;
+
+  useEffect(() => {
+    if (isAllergyModalVisible) {
+      const appearanceTimer = window.setTimeout(() => setShouldRenderAllergyModal(true), 0);
+      return () => window.clearTimeout(appearanceTimer);
+    }
+
+    if (!shouldRenderAllergyModal) return;
+
+    const removalTimer = window.setTimeout(() => setShouldRenderAllergyModal(false), 260);
+    return () => window.clearTimeout(removalTimer);
+  }, [isAllergyModalVisible, shouldRenderAllergyModal]);
+
+  useEffect(() => {
+    if (isNoBuffetConfirmationOpen) {
+      const appearanceTimer = window.setTimeout(() => setShouldRenderNoBuffetConfirmation(true), 0);
+      return () => window.clearTimeout(appearanceTimer);
+    }
+
+    if (!shouldRenderNoBuffetConfirmation) return;
+
+    const removalTimer = window.setTimeout(() => setShouldRenderNoBuffetConfirmation(false), 240);
+    return () => window.clearTimeout(removalTimer);
+  }, [isNoBuffetConfirmationOpen, shouldRenderNoBuffetConfirmation]);
+
+  useEffect(() => {
+    if (serviceRequestConfirmation !== null) {
+      const confirmation = serviceRequestConfirmation;
+      const appearanceTimer = window.setTimeout(
+        () => setRenderedServiceRequestConfirmation(confirmation),
+        0,
+      );
+      return () => window.clearTimeout(appearanceTimer);
+    }
+
+    if (renderedServiceRequestConfirmation === null) return;
+
+    const removalTimer = window.setTimeout(() => setRenderedServiceRequestConfirmation(null), 240);
+    return () => window.clearTimeout(removalTimer);
+  }, [renderedServiceRequestConfirmation, serviceRequestConfirmation]);
 
   const isFloatingOrderLeaving = cart.cartCount === 0;
 
@@ -143,7 +195,7 @@ export function ClientPage() {
       reload();
     } catch (requestError) {
       showToast({
-        title: 'The session could not be created',
+        title: 'Não foi possível criar a sessão',
         description: getErrorMessage(requestError),
         variant: 'danger',
       });
@@ -155,8 +207,8 @@ export function ClientPage() {
   function handleSubmitOrder() {
     if (hasActiveOrder) {
       showToast({
-        title: 'Please wait',
-        description: 'You can send another round after the current order has been served.',
+        title: 'Aguarde, por favor',
+        description: 'Pode enviar outra ronda depois de o pedido atual ser servido.',
         variant: 'danger',
       });
       return;
@@ -190,13 +242,13 @@ export function ClientPage() {
       setIsCartOpen(false);
       swipe.changeView('orders');
       showToast({
-        title: 'Round sent',
-        description: 'The order was sent to the kitchen.',
+        title: 'Ronda enviada',
+        description: 'O pedido foi enviado para a cozinha.',
         variant: 'success',
       });
     } catch (requestError) {
       showToast({
-        title: 'The round could not be sent',
+        title: 'Não foi possível enviar a ronda',
         description: getErrorMessage(requestError),
         variant: 'danger',
       });
@@ -221,7 +273,7 @@ export function ClientPage() {
       );
     } catch (requestError) {
       showToast({
-        title: 'The item could not be cancelled',
+        title: 'Não foi possível cancelar o artigo',
         description: getErrorMessage(requestError),
         variant: 'danger',
       });
@@ -232,8 +284,8 @@ export function ClientPage() {
     if (!tableCode) return;
     if (buffetId !== null && isBuffetSelectionLocked) {
       showToast({
-        title: 'Buffet unavailable',
-        description: 'The first order without buffet has already started being prepared.',
+        title: 'Buffet indisponível',
+        description: 'O primeiro pedido sem buffet já começou a ser preparado.',
         variant: 'danger',
       });
       return;
@@ -245,20 +297,43 @@ export function ClientPage() {
       }
       data.setSelectedBuffetId(updatedGuest.buffet_id);
       showToast({
-        title: buffetId === null ? 'Buffet cancelled' : 'Buffet selected',
+        title: buffetId === null ? 'Buffet cancelado' : 'Buffet selecionado',
         description:
           buffetId === null
-            ? 'Your buffet selection was removed.'
-            : 'Your buffet selection was confirmed.',
+            ? 'A seleção do buffet foi removida.'
+            : 'A seleção do buffet foi confirmada.',
         variant: 'success',
       });
     } catch (requestError) {
       showToast({
-        title: 'The buffet could not be selected',
+        title: 'Não foi possível selecionar o buffet',
         description: getErrorMessage(requestError),
         variant: 'danger',
       });
       throw requestError;
+    }
+  }
+
+  async function handleSaveAllergies(tagIds: number[]) {
+    if (!tableCode || isSavingAllergies) return;
+    setIsSavingAllergies(true);
+    try {
+      const updatedGuest = await updateGuestAllergyPreferences(tableCode, getDeviceToken(), tagIds);
+      data.setGuest(updatedGuest);
+      setIsAllergyModalOpen(false);
+      showToast({
+        title: 'Preferências de alergias guardadas',
+        description: 'Os pratos com os alergénios selecionados apresentam um aviso amarelo.',
+        variant: 'success',
+      });
+    } catch (requestError) {
+      showToast({
+        title: 'Não foi possível guardar as preferências',
+        description: getErrorMessage(requestError),
+        variant: 'danger',
+      });
+    } finally {
+      setIsSavingAllergies(false);
     }
   }
 
@@ -279,13 +354,13 @@ export function ClientPage() {
     void serviceRequests.toggleRequest(type);
   }
 
-  if (!tableCode) return <ClientMessage message="Table code is missing." isError />;
-  if (status === 'loading') return <ClientMessage message="Preparing the menu…" />;
+  if (!tableCode) return <ClientMessage message="Falta o código da mesa." isError />;
+  if (status === 'loading') return <ClientMessage message="A preparar o menu…" />;
   if (status === 'error')
     return (
       <ClientMessage
-        message={error ?? 'The menu could not be loaded.'}
-        actionLabel="Try again"
+        message={error ?? 'Não foi possível carregar o menu.'}
+        actionLabel="Tentar novamente"
         onAction={reload}
         isError
       />
@@ -310,7 +385,9 @@ export function ClientPage() {
 
   if (session.sessionState === 'waiting' && session.table) {
     return (
-      <ClientMessage message={`Table ${session.table.table_number}: waiting for staff approval.`} />
+      <ClientMessage
+        message={`Mesa ${session.table.table_number}: a aguardar aprovação de um funcionário.`}
+      />
     );
   }
 
@@ -329,6 +406,7 @@ export function ClientPage() {
           if (view !== 'buffet' || !isBuffetSelectionLocked) swipe.changeView(view);
         }}
         onServiceRequest={handleServiceRequest}
+        onEditAllergies={() => setIsAllergyModalOpen(true)}
       />
       <main
         className="client-shell min-h-screen bg-[#080b10] pb-24 text-content"
@@ -351,6 +429,7 @@ export function ClientPage() {
             {swipe.activeView === 'menu' && (
               <MenuView
                 stations={data.menuStations}
+                selectedAllergenTagIds={data.selectedAllergenTagIds}
                 cart={cart.cart}
                 onAdd={cart.addToCart}
                 onAddDetails={(itemId, quantity, notes) => {
@@ -364,6 +443,7 @@ export function ClientPage() {
               <BuffetView
                 buffet={selectedBuffet}
                 stations={data.buffetStations}
+                selectedAllergenTagIds={data.selectedAllergenTagIds}
                 cart={cart.cart}
                 isSelected={data.selectedBuffetId === selectedBuffet?.id}
                 canSelectBuffet={!isBuffetSelectionLocked}
@@ -410,9 +490,10 @@ export function ClientPage() {
             disabled={isFloatingOrderLeaving}
             onClick={() => setIsCartOpen(true)}
           >
-            <span>View order</span>
+            <span>Ver pedido</span>
             <strong>
-              {floatingOrder.count} {floatingOrder.count === 1 ? 'item added' : 'items added'}
+              {floatingOrder.count}{' '}
+              {floatingOrder.count === 1 ? 'artigo adicionado' : 'artigos adicionados'}
             </strong>
           </button>
         )}
@@ -421,6 +502,7 @@ export function ClientPage() {
             items={cartItems}
             cart={cart.cart}
             buffetItemIds={chargedBuffetItemIds}
+            selectedAllergenTagIds={data.selectedAllergenTagIds}
             isSubmitting={isSubmittingOrder}
             hasActiveOrder={hasActiveOrder}
             isClosing={!isCartOpen}
@@ -431,9 +513,11 @@ export function ClientPage() {
             onSubmit={handleSubmitOrder}
           />
         )}
-        {isNoBuffetConfirmationOpen && (
+        {shouldRenderNoBuffetConfirmation && (
           <div
-            className="client-buffet-modal-backdrop"
+            className={`client-buffet-modal-backdrop ${
+              isNoBuffetConfirmationOpen ? '' : 'is-closing'
+            }`}
             role="presentation"
             onClick={() => {
               if (!isSubmittingOrder) setIsNoBuffetConfirmationOpen(false);
@@ -447,10 +531,10 @@ export function ClientPage() {
               aria-describedby="no-buffet-confirmation-description"
               onClick={(event) => event.stopPropagation()}
             >
-              <h2 id="no-buffet-confirmation-title">Continue without a buffet?</h2>
+              <h2 id="no-buffet-confirmation-title">Continuar sem buffet?</h2>
               <p id="no-buffet-confirmation-description">
-                After sending your first round, you will no longer be able to select a buffet for
-                this session. Do you want to continue?
+                Depois de enviar a primeira ronda, deixará de poder selecionar um buffet nesta
+                sessão. Pretende continuar?
               </p>
               <div className="client-buffet-modal-actions">
                 <button
@@ -459,7 +543,7 @@ export function ClientPage() {
                   disabled={isSubmittingOrder}
                   onClick={() => setIsNoBuffetConfirmationOpen(false)}
                 >
-                  Go back
+                  Voltar
                 </button>
                 <button
                   type="button"
@@ -469,15 +553,17 @@ export function ClientPage() {
                     void submitOrder();
                   }}
                 >
-                  {isSubmittingOrder ? 'Sending…' : 'Send round'}
+                  {isSubmittingOrder ? 'A enviar…' : 'Enviar ronda'}
                 </button>
               </div>
             </section>
           </div>
         )}
-        {serviceRequestConfirmation && (
+        {renderedServiceRequestConfirmation && (
           <div
-            className="client-buffet-modal-backdrop"
+            className={`client-buffet-modal-backdrop ${
+              serviceRequestConfirmation ? '' : 'is-closing'
+            }`}
             role="presentation"
             onClick={() => setServiceRequestConfirmation(null)}
           >
@@ -490,14 +576,14 @@ export function ClientPage() {
               onClick={(event) => event.stopPropagation()}
             >
               <h2 id="service-request-confirmation-title">
-                {serviceRequestConfirmation === 'assistance'
-                  ? 'Call a member of staff?'
-                  : 'Request the bill?'}
+                {renderedServiceRequestConfirmation === 'assistance'
+                  ? 'Chamar um funcionário?'
+                  : 'Pedir a conta?'}
               </h2>
               <p id="service-request-confirmation-description">
-                {serviceRequestConfirmation === 'assistance'
-                  ? 'A member of staff assigned to your table will be notified and come to assist you.'
-                  : 'The staff assigned to your table will be notified that you are ready to pay.'}
+                {renderedServiceRequestConfirmation === 'assistance'
+                  ? 'O funcionário responsável pela sua mesa será notificado e irá prestar assistência.'
+                  : 'O funcionário responsável pela sua mesa será notificado de que pretende pagar.'}
               </p>
               <div className="client-buffet-modal-actions">
                 <button
@@ -505,14 +591,27 @@ export function ClientPage() {
                   className="is-secondary"
                   onClick={() => setServiceRequestConfirmation(null)}
                 >
-                  Cancel
+                  Cancelar
                 </button>
                 <button type="button" onClick={confirmServiceRequest}>
-                  Confirm
+                  Confirmar
                 </button>
               </div>
             </section>
           </div>
+        )}
+        {shouldRenderAllergyModal && data.guest && (
+          <AllergyPreferencesModal
+            tags={data.allergenTags}
+            selectedTagIds={data.guest.allergy_tag_ids}
+            isInitialSetup={needsAllergySetup}
+            isSaving={isSavingAllergies}
+            isClosing={!isAllergyModalVisible}
+            onClose={() => {
+              if (!needsAllergySetup && !isSavingAllergies) setIsAllergyModalOpen(false);
+            }}
+            onSave={(tagIds) => void handleSaveAllergies(tagIds)}
+          />
         )}
       </main>
     </>
@@ -520,5 +619,5 @@ export function ClientPage() {
 }
 
 function getErrorMessage(error: unknown): string {
-  return error instanceof ApiError ? error.detail : 'Please try again.';
+  return error instanceof ApiError ? error.detail : 'Tente novamente.';
 }

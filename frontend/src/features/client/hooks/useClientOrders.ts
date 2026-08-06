@@ -28,7 +28,7 @@ export function useClientOrders(tableCode: string | undefined, activeView: Clien
         }
       } catch (error) {
         if (isActive && !(error instanceof DOMException && error.name === 'AbortError')) {
-          setPollingError('Orders could not be refreshed. Retrying…');
+          setPollingError('Não foi possível atualizar os pedidos. A tentar novamente…');
         }
       } finally {
         isLoading = false;

@@ -8,16 +8,18 @@ import {
 } from 'react';
 
 import type { CategorySection, ClientSessionState } from '../clientTypes';
-import { ensureGuest } from '../services/guestApi';
+import { ensureGuest, type Guest } from '../services/guestApi';
 import {
   getActiveSession,
   getBuffetItems,
   getBuffets,
   getCategories,
   getMenu,
+  getTags,
   getTable,
   type Buffet,
   type MenuItem,
+  type MenuTag,
   type Table,
 } from '../services/menuApi';
 import { getOrders, type ClientOrder } from '../services/orderApi';
@@ -50,6 +52,8 @@ export function useClientBootstrap({
   const [buffetItems, setBuffetItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<CategorySection['category'][]>([]);
   const [selectedBuffetId, setSelectedBuffetId] = useState<number | null>(null);
+  const [guest, setGuest] = useState<Guest | null>(null);
+  const [allergenTags, setAllergenTags] = useState<MenuTag[]>([]);
 
   useEffect(() => {
     if (!tableCode) return;
@@ -63,10 +67,11 @@ export function useClientBootstrap({
       // A new device must be associated with the active session before any
       // endpoint protected by X-Device-Token (such as orders) is requested.
       const guest = await ensureGuest(tableCode, token);
-      const [nextCategories, menu, nextBuffets, orders] = await Promise.all([
+      const [nextCategories, menu, nextBuffets, nextTags, orders] = await Promise.all([
         getCategories({ signal: controller.signal }),
         getMenu({ signal: controller.signal }),
         getBuffets({ signal: controller.signal }),
+        getTags({ signal: controller.signal }),
         getOrders(tableCode, token, { signal: controller.signal }),
       ]);
       const buffet = nextBuffets.find((item) => item.id === guest.buffet_id) ?? nextBuffets[0];
@@ -79,6 +84,8 @@ export function useClientBootstrap({
       setBuffets(nextBuffets);
       setBuffetItems(nextBuffetItems);
       setSelectedBuffetId(guest.buffet_id);
+      setGuest(guest);
+      setAllergenTags(nextTags.filter((tag) => tag.alias.startsWith('alergenio-')));
       onOrdersLoaded(orders);
       setSessionState('ready');
       setStatus('ready');
@@ -132,7 +139,9 @@ export function useClientBootstrap({
       } catch (requestError) {
         if (!isActive) return;
         setError(
-          requestError instanceof ApiError ? requestError.detail : 'The menu could not be loaded.',
+          requestError instanceof ApiError
+            ? requestError.detail
+            : 'Não foi possível carregar o menu.',
         );
         setStatus('error');
       }
@@ -147,6 +156,10 @@ export function useClientBootstrap({
   }, [onOrdersLoaded, reloadKey, setGuestCount, setSessionState, setTable, tableCode]);
 
   const buffetItemIds = useMemo(() => new Set(buffetItems.map((item) => item.id)), [buffetItems]);
+  const selectedAllergenTagIds = useMemo(
+    () => new Set(guest?.allergy_tag_ids ?? []),
+    [guest?.allergy_tag_ids],
+  );
   const menuSections = useMemo(() => {
     const visibleItems =
       selectedBuffetId === null
@@ -178,7 +191,7 @@ export function useClientBootstrap({
         setError(
           requestError instanceof ApiError
             ? requestError.detail
-            : 'The buffet could not be loaded.',
+            : 'Não foi possível carregar o buffet.',
         );
         setStatus('error');
       });
@@ -202,6 +215,10 @@ export function useClientBootstrap({
       buffetItemIds,
       selectedBuffetId,
       setSelectedBuffetId,
+      guest,
+      setGuest,
+      allergenTags,
+      selectedAllergenTagIds,
       menuStations,
       buffetStations,
     },
