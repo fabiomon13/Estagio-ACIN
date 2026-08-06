@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
-import { apiFetch } from '../../../services/api/client';
+import { ApiError, apiFetch } from '../../../services/api/client';
 
 export type StaffRole = 'admin' | 'waiter' | 'chef';
 
@@ -37,19 +37,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [connectionError, setConnectionError] = useState(false);
 
-  // Checks whether the user already has a valid session when the app loads
-  useEffect(() => {
-    if (isClientRoute) {
-      setIsLoading(false);
-      return;
-    }
-
   // Checks whether the user already has a valid session. A real rejection
   // from the server (ApiError, e.g. 401) means "not authenticated" -- any
   // other failure (no network, server unreachable) doesn't tell us that, so
   // it must not be treated as a logout, or a network blip on page load would
   // kick out an otherwise still-valid session.
   const checkSession = useCallback(() => {
+    if (isClientRoute) {
+      setIsLoading(false);
+      setConnectionError(false);
+      return;
+    }
+
     setIsLoading(true);
     apiFetch<AuthStaff>('/auth/me')
       .then((result) => {
@@ -69,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Checks whether the user already has a valid session when the app loads
   useEffect(() => {
-    checkSession();
+    void Promise.resolve().then(checkSession);
   }, [checkSession]);
 
   // Authenticates the user and stores the returned staff data
