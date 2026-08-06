@@ -26,6 +26,11 @@ from app.models.staff_role import StaffRole
 from app.core.roles import StaffRoleEnum, staff_role
 import random
 from app.models.restaurant_table import RestaurantTable
+from app.modules.client.realtime import (
+    publish_guest_event,
+    publish_menu_event,
+    publish_session_event,
+)
 
 READY_ORDER_ITEM_ALIAS = "ready"
 SERVED_ORDER_ITEM_ALIAS = "served"
@@ -220,6 +225,8 @@ def approve_session(db: Session, session_id: int, approved_by_staff_id: int) -> 
     db.commit()
     db.refresh(session)
 
+    publish_session_event(session.id, "session.changed")
+
     return {
         "message": "Dining session approved successfully",
         "session_id": session_id,
@@ -266,6 +273,15 @@ def mark_item_as_served(db: Session, item_id: int, current_staff) -> dict:
     db.commit()
     db.refresh(order_item)
 
+    guest_id = (
+        db.query(Order.guest_id)
+        .join(OrderItem, OrderItem.order_id == Order.id)
+        .filter(OrderItem.id == item_id)
+        .scalar()
+    )
+    if guest_id is not None:
+        publish_guest_event(guest_id, "orders.changed")
+
     return {
         "success": True,
         "message": f"Order item {item_id} successfully marked as served.",
@@ -309,6 +325,8 @@ def resolve_service_request(db: Session, request_id: int, current_staff) -> dict
     db.commit()
     db.refresh(service_request)
 
+    publish_session_event(service_request.session_id, "service_requests.changed")
+
     return {
         "success": True,
         "message": f"Service request {request_id} successfully resolved.",
@@ -336,6 +354,8 @@ def set_menu_item_availability(
     db.commit()
     db.refresh(menu_item)
 
+    publish_menu_event()
+
     return menu_item
  
 def deactivate_session(db: Session, session_id: int, current_staff) -> dict:
@@ -358,6 +378,8 @@ def deactivate_session(db: Session, session_id: int, current_staff) -> dict:
     session.waiter_id = None
     db.commit()
     db.refresh(session)
+
+    publish_session_event(session.id, "session.changed")
 
     return {
         "success": True,

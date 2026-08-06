@@ -121,35 +121,28 @@ def require_current_guest(
     if device_token is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid client token",
+            detail="Token de cliente inválido",
         )
 
-    token_hashes = (
-        hash_device_token(device_token),
-        hash_legacy_device_token(device_token),
-    )
-
-    guest = db.scalar(
-        select(Guest).where(
-            Guest.session_id == dining_session.id,
-            Guest.device_token_hash.in_(token_hashes),
-        )
+    guest = find_current_guest(
+        dining_session=dining_session,
+        device_token=device_token,
+        db=db,
     )
 
     if guest is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid client token",
+            detail="Token de cliente inválido",
         )
 
-    # Check if the session is approved and has a waiter assigned
     if (
         not dining_session.is_approved
         or dining_session.waiter_id is None
     ):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="The session has not been approved yet",
+            detail="A sessão ainda não foi aprovada",
         )
 
     return guest
@@ -159,3 +152,20 @@ CurrentGuest = Annotated[
     Guest,
     Depends(require_current_guest),
 ]
+
+def find_current_guest(
+    dining_session: DiningSession,
+    device_token: str,
+    db: Session,
+) -> Guest | None:
+    token_hashes = (
+        hash_device_token(device_token),
+        hash_legacy_device_token(device_token),
+    )
+
+    return db.scalar(
+        select(Guest).where(
+            Guest.session_id == dining_session.id,
+            Guest.device_token_hash.in_(token_hashes),
+        )
+    )

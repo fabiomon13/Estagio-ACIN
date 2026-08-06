@@ -14,6 +14,7 @@ from app.models.service_request import ServiceRequest
 from app.models.service_request_status import ServiceRequestStatus
 from app.models.service_request_type import ServiceRequestType
 from app.modules.client.dependencies import CurrentGuest, DbSession
+from app.modules.client.realtime import publish_session_event
 from app.modules.client.schemas import (
     ServiceRequestCreate,
     ServiceRequestResponse,
@@ -154,7 +155,9 @@ def create_service_request(
             detail="It was not possible to create the service request",
         ) from exc
 
-    return require_service_request(db, service_request.id)
+    created_request = require_service_request(db, service_request.id)
+    publish_session_event(guest.session_id, "service_requests.changed")
+    return created_request
 
 # Get service requests for a specific table endpoint
 @router.get(
@@ -223,3 +226,4 @@ def cancel_service_request(
     service_request.status_id = cancelled_status.id
     service_request.resolved_at = datetime.now(timezone.utc)
     db.commit()
+    publish_session_event(guest.session_id, "service_requests.changed")

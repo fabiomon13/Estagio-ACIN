@@ -54,14 +54,15 @@ export function AllergyPreferencesModal({
         </p>
         <div className="client-allergy-options">
           {tags.map((tag) => (
-            <label key={tag.id} className={selection.has(tag.id) ? 'is-selected' : ''}>
-              <input
-                type="checkbox"
-                checked={selection.has(tag.id)}
-                onChange={() => toggle(tag.id)}
-              />
+            <button
+              key={tag.id}
+              type="button"
+              className={selection.has(tag.id) ? 'is-selected' : ''}
+              aria-pressed={selection.has(tag.id)}
+              onClick={() => toggle(tag.id)}
+            >
               <span>{tag.name.replace(/^Alergénio:\s*/i, '')}</span>
-            </label>
+            </button>
           ))}
         </div>
         <p className="client-allergy-disclaimer">
