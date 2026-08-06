@@ -624,6 +624,7 @@ body:has(.client-shell) {
   background: rgb(4 8 12 / 62%);
   padding: 1.5rem;
   backdrop-filter: blur(7px);
+  animation: client-confirmation-backdrop-in 200ms ease-out both;
 }
 
 .client-buffet-modal {
@@ -633,6 +634,60 @@ body:has(.client-shell) {
   background: var(--color-surface-raised);
   padding: 1rem;
   box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 45%);
+  transform-origin: center bottom;
+  animation: client-confirmation-modal-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.client-buffet-modal-backdrop.is-closing {
+  pointer-events: none;
+  animation: client-confirmation-backdrop-out 200ms ease-in both;
+}
+
+.client-buffet-modal-backdrop.is-closing .client-buffet-modal {
+  animation: client-confirmation-modal-out 200ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+@keyframes client-confirmation-backdrop-in {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(7px);
+  }
+}
+
+@keyframes client-confirmation-backdrop-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+}
+
+@keyframes client-confirmation-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.8rem) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes client-confirmation-modal-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(0.65rem) scale(0.98);
+  }
 }
 
 .client-buffet-modal h2 {
@@ -1881,7 +1936,11 @@ body:has(.client-shell) {
   .client-allergy-modal-backdrop,
   .client-allergy-modal,
   .client-allergy-modal-backdrop.is-closing,
-  .client-allergy-modal-backdrop.is-closing .client-allergy-modal {
+  .client-allergy-modal-backdrop.is-closing .client-allergy-modal,
+  .client-buffet-modal-backdrop,
+  .client-buffet-modal,
+  .client-buffet-modal-backdrop.is-closing,
+  .client-buffet-modal-backdrop.is-closing .client-buffet-modal {
     animation-duration: 1ms;
   }
 }

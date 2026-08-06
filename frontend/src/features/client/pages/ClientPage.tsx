@@ -54,10 +54,14 @@ export function ClientPage() {
   const [shouldRenderCart, setShouldRenderCart] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [isNoBuffetConfirmationOpen, setIsNoBuffetConfirmationOpen] = useState(false);
+  const [shouldRenderNoBuffetConfirmation, setShouldRenderNoBuffetConfirmation] = useState(false);
   const [isAllergyModalOpen, setIsAllergyModalOpen] = useState(false);
   const [shouldRenderAllergyModal, setShouldRenderAllergyModal] = useState(false);
   const [isSavingAllergies, setIsSavingAllergies] = useState(false);
   const [serviceRequestConfirmation, setServiceRequestConfirmation] = useState<
+    'assistance' | 'payment_request' | null
+  >(null);
+  const [renderedServiceRequestConfirmation, setRenderedServiceRequestConfirmation] = useState<
     'assistance' | 'payment_request' | null
   >(null);
   const [floatingOrder, setFloatingOrder] = useState({
@@ -81,6 +85,34 @@ export function ClientPage() {
     const removalTimer = window.setTimeout(() => setShouldRenderAllergyModal(false), 260);
     return () => window.clearTimeout(removalTimer);
   }, [isAllergyModalVisible, shouldRenderAllergyModal]);
+
+  useEffect(() => {
+    if (isNoBuffetConfirmationOpen) {
+      const appearanceTimer = window.setTimeout(() => setShouldRenderNoBuffetConfirmation(true), 0);
+      return () => window.clearTimeout(appearanceTimer);
+    }
+
+    if (!shouldRenderNoBuffetConfirmation) return;
+
+    const removalTimer = window.setTimeout(() => setShouldRenderNoBuffetConfirmation(false), 240);
+    return () => window.clearTimeout(removalTimer);
+  }, [isNoBuffetConfirmationOpen, shouldRenderNoBuffetConfirmation]);
+
+  useEffect(() => {
+    if (serviceRequestConfirmation !== null) {
+      const confirmation = serviceRequestConfirmation;
+      const appearanceTimer = window.setTimeout(
+        () => setRenderedServiceRequestConfirmation(confirmation),
+        0,
+      );
+      return () => window.clearTimeout(appearanceTimer);
+    }
+
+    if (renderedServiceRequestConfirmation === null) return;
+
+    const removalTimer = window.setTimeout(() => setRenderedServiceRequestConfirmation(null), 240);
+    return () => window.clearTimeout(removalTimer);
+  }, [renderedServiceRequestConfirmation, serviceRequestConfirmation]);
 
   const isFloatingOrderLeaving = cart.cartCount === 0;
 
@@ -481,9 +513,11 @@ export function ClientPage() {
             onSubmit={handleSubmitOrder}
           />
         )}
-        {isNoBuffetConfirmationOpen && (
+        {shouldRenderNoBuffetConfirmation && (
           <div
-            className="client-buffet-modal-backdrop"
+            className={`client-buffet-modal-backdrop ${
+              isNoBuffetConfirmationOpen ? '' : 'is-closing'
+            }`}
             role="presentation"
             onClick={() => {
               if (!isSubmittingOrder) setIsNoBuffetConfirmationOpen(false);
@@ -525,9 +559,11 @@ export function ClientPage() {
             </section>
           </div>
         )}
-        {serviceRequestConfirmation && (
+        {renderedServiceRequestConfirmation && (
           <div
-            className="client-buffet-modal-backdrop"
+            className={`client-buffet-modal-backdrop ${
+              serviceRequestConfirmation ? '' : 'is-closing'
+            }`}
             role="presentation"
             onClick={() => setServiceRequestConfirmation(null)}
           >
@@ -540,12 +576,12 @@ export function ClientPage() {
               onClick={(event) => event.stopPropagation()}
             >
               <h2 id="service-request-confirmation-title">
-                {serviceRequestConfirmation === 'assistance'
+                {renderedServiceRequestConfirmation === 'assistance'
                   ? 'Chamar um funcionário?'
                   : 'Pedir a conta?'}
               </h2>
               <p id="service-request-confirmation-description">
-                {serviceRequestConfirmation === 'assistance'
+                {renderedServiceRequestConfirmation === 'assistance'
                   ? 'O funcionário responsável pela sua mesa será notificado e irá prestar assistência.'
                   : 'O funcionário responsável pela sua mesa será notificado de que pretende pagar.'}
               </p>
