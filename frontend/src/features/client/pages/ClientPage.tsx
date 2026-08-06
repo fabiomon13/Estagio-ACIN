@@ -480,6 +480,7 @@ export function ClientPage() {
                 cart={cart.cart}
                 isBuffetSelected={data.selectedBuffetId === selectedBuffet?.id}
                 canCancelBuffet={orders.length === 0}
+                selectedAllergenTagIds={data.selectedAllergenTagIds}
               />
             )}
         </div>
