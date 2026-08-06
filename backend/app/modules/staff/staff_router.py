@@ -4,6 +4,9 @@ from sqlalchemy.orm import Session
 from app.db.dependencies import get_db
 from app.modules.staff.staff_contract import (
     StaffDashboard,
+    StaffPaymentCreate,
+    StaffPaymentResponse,
+    StaffSessionBillResponse,
 )
 from app.modules.staff import staff_service
 
@@ -105,3 +108,39 @@ def list_staff_sessions(
         only_active=only_active,
     )
     return {"success": True, "count": len(items), "items": items}
+
+@router.post(
+    "/sessions/{session_id}/payment",
+    response_model=StaffPaymentResponse,
+    tags=["Staff - Payments"],
+    dependencies=[Depends(require_role(StaffRoleEnum.WAITER))],
+)
+def register_payment(
+    session_id: int,
+    payment_data: StaffPaymentCreate,
+    db: Session = Depends(get_db),
+    current_staff: Staff = Depends(get_current_staff),
+):
+    return staff_service.register_payment_and_close_session(
+        db,
+        session_id,
+        payment_data,
+        current_staff,
+    )
+
+@router.get(
+    "/sessions/{session_id}/bill",
+    response_model=StaffSessionBillResponse,
+    tags=["Staff - Payments"],
+    dependencies=[Depends(require_role(StaffRoleEnum.WAITER))],
+)
+def get_session_bill(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_staff: Staff = Depends(get_current_staff),
+):
+    return staff_service.get_session_bill(
+        db,
+        session_id,
+        current_staff,
+    )

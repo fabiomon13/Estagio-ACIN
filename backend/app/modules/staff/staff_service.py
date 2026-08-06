@@ -3,6 +3,13 @@ from sqlalchemy import case, func
 from sqlalchemy.orm import Session, joinedload   
 from datetime import datetime, timedelta, timezone
 
+from app.models.payment import Payment
+from app.modules.client.services.billing import (
+    ZERO_MONEY,
+    calculate_guest_extras_total,
+    calculate_waste_total,
+)
+
 from app.models.dining_session import DiningSession
 from app.models.order import Order
 from app.models.order_item import OrderItem
@@ -20,6 +27,10 @@ from app.modules.staff.staff_contract import (
     StaffReadyItem,
     StaffPreparingItem,
     StaffPreparingTable,
+    StaffPaymentCreate,
+    StaffPaymentResponse,
+    StaffSessionBillGuest,
+    StaffSessionBillResponse,
 )
 from app.models.service_request_type import ServiceRequestType
 from app.models.service_request_status import ServiceRequestStatus
@@ -28,6 +39,15 @@ from app.models.staff_role import StaffRole
 from app.core.roles import StaffRoleEnum, staff_role
 import random
 from app.models.restaurant_table import RestaurantTable
+
+from decimal import Decimal
+
+from app.models.payment import Payment
+from app.modules.client.services.billing import (
+    ZERO_MONEY,
+    calculate_extras_total,
+    calculate_waste_total,
+)
 
 READY_ORDER_ITEM_ALIAS = "ready"
 SERVED_ORDER_ITEM_ALIAS = "served"
@@ -129,7 +149,8 @@ def get_staff_dashboard(db: Session, current_staff: Staff) -> StaffDashboard:
         total_amount = (
             db.query(func.sum(OrderItem.unit_price_at_order * OrderItem.quantity))
             .join(Order, Order.id == OrderItem.order_id)
-            .filter(Order.guest_id == session.id)
+            .join(Guest, Guest.id == Order.guest_id)
+            .filter(Guest.session_id == session.id)
             .scalar()
             or 0.0
         )
@@ -594,3 +615,197 @@ def _ensure_session_owner_or_admin(session: DiningSession, current_staff) -> Non
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only interact with your own assigned tables.",
         )
+
+def get_session_bill(
+    db: Session,
+    session_id: int,
+    current_staff: Staff,
+) -> StaffSessionBillResponse:
+    session = (
+        db.query(DiningSession)
+        .options(
+            joinedload(DiningSession.guests).joinedload(Guest.buffet),
+            joinedload(DiningSession.payment),
+        )
+        .filter(DiningSession.id == session_id)
+        .first()
+    )
+
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dining session not found.",
+        )
+
+    _ensure_session_owner_or_admin(session, current_staff)
+
+    payment = session.payment
+    guests_data: list[StaffSessionBillGuest] = []
+
+    for index, guest in enumerate(session.guests, start=1):
+        buffet_total = (
+            Decimal(guest.buffet.price)
+            if guest.buffet is not None
+            else ZERO_MONEY
+        )
+
+        extras_total = calculate_guest_extras_total(
+            db=db,
+            guest_id=guest.id,
+        )
+
+        guests_data.append(
+            StaffSessionBillGuest(
+                guest_id=guest.id,
+                label=f"Guest {index}",
+                buffet_total=buffet_total,
+                extras_total=extras_total,
+                total=buffet_total + extras_total,
+            )
+        )
+
+    subtotal = sum(
+        (guest.total for guest in guests_data),
+        ZERO_MONEY,
+    )
+
+    waste_total = calculate_waste_total(
+        session_guests=session.guests,
+        payment=payment,
+    )
+
+    tip_amount = (
+        Decimal(payment.tip_amount)
+        if payment is not None
+        else ZERO_MONEY
+    )
+
+    return StaffSessionBillResponse(
+        session_id=session.id,
+        guests=guests_data,
+        subtotal=subtotal,
+        waste_box_count=payment.waste_count if payment is not None else 0,
+        waste_total=waste_total,
+        tip_amount=tip_amount,
+        total=subtotal + waste_total + tip_amount,
+        is_paid=payment is not None,
+        paid_at=payment.paid_at if payment is not None else None,
+    )
+
+def register_payment_and_close_session(
+    db: Session,
+    session_id: int,
+    payment_data: StaffPaymentCreate,
+    current_staff: Staff,
+) -> StaffPaymentResponse:
+    session = (
+        db.query(DiningSession)
+        .options(
+            joinedload(DiningSession.guests).joinedload(Guest.buffet),
+            joinedload(DiningSession.payment),
+        )
+        .filter(DiningSession.id == session_id)
+        .first()
+    )
+
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dining session not found.",
+        )
+
+    _ensure_session_owner_or_admin(session, current_staff)
+
+    if not session.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Dining session is already closed.",
+        )
+
+    if session.payment is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This session already has a payment.",
+        )
+
+    session_guests = session.guests
+
+    buffet_total = sum(
+        (
+            Decimal(guest.buffet.price)
+            for guest in session_guests
+            if guest.buffet is not None
+        ),
+        ZERO_MONEY,
+    )
+
+    extras_total = calculate_extras_total(
+        db=db,
+        session_id=session.id,
+    )
+
+    payment_preview = Payment(
+        waste_count=payment_data.waste_count,
+    )
+
+    waste_total = calculate_waste_total(
+        session_guests=session_guests,
+        payment=payment_preview,
+    )
+
+    total_amount = (
+        buffet_total
+        + extras_total
+        + waste_total
+        + payment_data.tip_amount
+    )
+
+    now = datetime.now(timezone.utc)
+
+    payment = Payment(
+        session_id=session.id,
+        amount_paid=total_amount,
+        tip_amount=payment_data.tip_amount,
+        method=payment_data.method.strip().lower(),
+        waste_count=payment_data.waste_count,
+        paid_at=now,
+    )
+
+    payment_request_type = get_service_request_type_by_alias(
+        db,
+        PAYMENT_REQUEST_TYPE,
+    )
+    resolved_status = get_service_request_status_by_alias(
+        db,
+        RESOLVED_SERVICE_REQUEST_ALIAS,
+    )
+
+    open_payment_requests = (
+        db.query(ServiceRequest)
+        .filter(
+            ServiceRequest.session_id == session.id,
+            ServiceRequest.type_id == payment_request_type.id,
+            ServiceRequest.resolved_at.is_(None),
+        )
+        .all()
+    )
+
+    for request in open_payment_requests:
+        request.status_id = resolved_status.id
+        request.resolved_at = now
+
+    session.is_active = False
+    session.end_time = now
+
+    db.add(payment)
+    db.commit()
+    db.refresh(payment)
+
+    return StaffPaymentResponse(
+        session_id=session.id,
+        amount_paid=Decimal(payment.amount_paid),
+        method=payment.method,
+        tip_amount=Decimal(payment.tip_amount),
+        waste_count=payment.waste_count,
+        paid_at=payment.paid_at,
+    )

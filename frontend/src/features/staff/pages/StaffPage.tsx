@@ -9,12 +9,20 @@ import { StaffTableCard } from '../components/StaffTableCard';
 import { useStaffDashboardDerivedData } from '../hooks/useStaffDashboardDerivedData';
 import { useStaffReadyToServe } from '../hooks/useStaffReadyToServe';
 import { useStaffPreparingOrders } from '../hooks/useStaffPreparingOrders';
+import type { StaffPaymentMethod, StaffSessionBill } from '../types/staff.types';
+import { StaffPaymentModal } from '../components/StaffPaymentModal';
+
+import Button from '../../../components/ui/button/Button';
+
 import '../styles/staff-page.css';
+
 import {
   approveSession,
   deactivateSession,
   resolveRequest,
   markItemAsServed,
+  registerPayment,
+  getStaffSessionBill,
 } from '../api/staffApi';
 
 export function StaffPage() {
@@ -40,17 +48,27 @@ export function StaffPage() {
     tableNumber: number;
   } | null>(null);
 
+  const [showOnlyMyTables, setShowOnlyMyTables] = useState(false);
+
   const [approvalActionFor, setApprovalActionFor] = useState<number | null>(null);
 
   const [confirmSolveForTable, setConfirmSolveForTable] = useState<number | null>(null);
 
-  const [confirmingPaymentForTable, setConfirmingPaymentForTable] = useState<number | null>(null);
+  const [paymentDialog, setPaymentDialog] = useState<{
+    sessionId: number;
+    tableNumber: number;
+    bill: StaffSessionBill;
+  } | null>(null);
 
   const CLOSED_SIDEBAR_WIDTH = 40;
   const OPEN_SIDEBAR_WIDTH = 360;
   const [kitchenOpen, setKitchenOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(OPEN_SIDEBAR_WIDTH);
   const [isSidebarDragging, setIsSidebarDragging] = useState(false);
+
+  const visibleTables = showOnlyMyTables
+    ? tablesView.filter((table) => table.waiter_id === staff?.id)
+    : tablesView;
 
   const setKitchenOpenState = (isOpen: boolean) => {
     setKitchenOpen(isOpen);
@@ -117,20 +135,51 @@ export function StaffPage() {
     }
   };
 
-  const onResolvePayment = async (requestId: number, tableNumber: number, sessionId: number) => {
+  const onOpenPayment = async (sessionId: number, tableNumber: number) => {
     try {
-      await resolveRequest(requestId);
+      const bill = await getStaffSessionBill(sessionId);
 
-      await deactivateSession(sessionId);
+      setPaymentDialog({
+        sessionId,
+        tableNumber,
+        bill,
+      });
+    } catch {
+      showToast({
+        variant: 'danger',
+        title: 'Unable to load the table bill',
+      });
+    }
+  };
+
+  const onConfirmPayment = async (
+    method: StaffPaymentMethod,
+    tipAmount: number,
+    wasteBoxCount: number,
+  ) => {
+    if (paymentDialog === null) {
+      return;
+    }
+
+    try {
+      const payment = await registerPayment(paymentDialog.sessionId, {
+        method,
+        tip_amount: tipAmount,
+        waste_count: wasteBoxCount,
+      });
 
       showToast({
         variant: 'success',
-        title: `Pagamento concluído e mesa ${tableNumber} desativada`,
+        title: `Payment of $${payment.amount_paid} registered`,
       });
-      setConfirmingPaymentForTable(null);
+
+      setPaymentDialog(null);
       await load();
     } catch {
-      showToast({ variant: 'danger', title: 'Não foi possível concluir o pagamento' });
+      showToast({
+        variant: 'danger',
+        title: 'Unable to register payment',
+      });
     }
   };
 
@@ -183,13 +232,28 @@ export function StaffPage() {
           />
 
           <section className="rounded-2xl border border-border bg-surface p-4">
-            <h2 className="text-3xl font-semibold">Planta da Sala</h2>
-            <p className="text-content-muted mb-4">
-              Toque numa mesa para ver os detalhes ou atender
-            </p>
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-3xl font-semibold">Planta da Sala</h2>
+
+                <p className="text-content-muted">
+                  {showOnlyMyTables
+                    ? 'A mostrar apenas as mesas atribuídas a si'
+                    : 'Toque numa mesa para ver os detalhes ou atender'}
+                </p>
+              </div>
+
+              <Button
+                size="sm"
+                variant={showOnlyMyTables ? 'danger' : 'outline'}
+                onClick={() => setShowOnlyMyTables((current) => !current)}
+              >
+                {showOnlyMyTables ? 'Mostrar todas' : 'As minhas mesas'}
+              </Button>
+            </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {tablesView.map((table) => {
+              {visibleTables.map((table) => {
                 const hasUrgentAssistance = assistanceTables.has(table.table_number);
                 const assistanceRequest = assistanceRequestByTable.get(table.table_number);
                 const paymentRequest = paymentRequestByTable.get(table.table_number);
@@ -204,7 +268,6 @@ export function StaffPage() {
                     approvalActionFor={approvalActionFor}
                     confirmingDeactivate={confirmingDeactivate}
                     confirmSolveForTable={confirmSolveForTable}
-                    confirmingPaymentForTable={confirmingPaymentForTable}
                     onStartApproval={setApprovalActionFor}
                     onApprove={async (sessionId, tableNumber) => {
                       await onApprove(sessionId, tableNumber);
@@ -229,11 +292,7 @@ export function StaffPage() {
                     onSolveAssistance={(requestId, tableNumber) => {
                       void onSolveAssistance(requestId, tableNumber);
                     }}
-                    onStartPayment={setConfirmingPaymentForTable}
-                    onCancelPayment={() => setConfirmingPaymentForTable(null)}
-                    onResolvePayment={(requestId, tableNumber, sessionId) => {
-                      void onResolvePayment(requestId, tableNumber, sessionId);
-                    }}
+                    onStartPayment={onOpenPayment}
                   />
                 );
               })}
@@ -255,6 +314,15 @@ export function StaffPage() {
           onDeliver={(group) => void onMarkDelivered(group)}
         />
       </div>
+
+      {paymentDialog !== null && (
+        <StaffPaymentModal
+          bill={paymentDialog.bill}
+          tableNumber={paymentDialog.tableNumber}
+          onClose={() => setPaymentDialog(null)}
+          onConfirm={onConfirmPayment}
+        />
+      )}
     </div>
   );
 }
