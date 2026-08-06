@@ -7,6 +7,7 @@ import { ProductCard } from './ProductCard';
 
 type MenuViewProps = {
   stations: StationSection[];
+  selectedAllergenTagIds?: ReadonlySet<number>;
   navigationStations?: StationSection[];
   cart: Record<number, number>;
   onAdd: (itemId: number) => void;
@@ -17,6 +18,7 @@ type MenuViewProps = {
 
 export function MenuView({
   stations,
+  selectedAllergenTagIds = new Set(),
   navigationStations = stations,
   cart,
   onAdd,
@@ -187,6 +189,7 @@ export function MenuView({
                     <ProductCard
                       key={item.alias}
                       item={item}
+                      selectedAllergenTagIds={selectedAllergenTagIds}
                       quantity={cart[item.id] ?? 0}
                       onAdd={() => onAdd(item.id)}
                       onAddDetails={(quantity, notes) => onAddDetails?.(item.id, quantity, notes)}

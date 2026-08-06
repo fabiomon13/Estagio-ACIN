@@ -13,6 +13,7 @@ type ProductCardProps = {
   onRemove: () => void;
   showActions?: boolean;
   priceMode?: 'unit' | 'included';
+  selectedAllergenTagIds?: ReadonlySet<number>;
 };
 
 export function ProductCard({
@@ -23,12 +24,15 @@ export function ProductCard({
   onRemove,
   showActions = true,
   priceMode = 'unit',
+  selectedAllergenTagIds = new Set(),
 }: ProductCardProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [detailQuantity, setDetailQuantity] = useState(1);
   const [detailNotes, setDetailNotes] = useState('');
   const detailCloseButtonRef = useRef<HTMLButtonElement>(null);
   const category = getCategoryConfig(item.category.alias, item.category.name);
+  const matchingAllergens = item.tags.filter((tag) => selectedAllergenTagIds.has(tag.id));
+  const hasAllergyWarning = matchingAllergens.length > 0;
 
   useEffect(() => {
     if (!isDetailsOpen) return;
@@ -144,8 +148,16 @@ export function ProductCard({
               <button
                 type="button"
                 onClick={onAdd}
-                className="grid size-10 place-items-center rounded-xl bg-primary text-lg font-bold text-white transition active:bg-primary-active"
-                aria-label={`Add one more unit of ${item.name}`}
+                className={`grid size-10 place-items-center rounded-xl text-lg font-bold transition ${
+                  hasAllergyWarning
+                    ? 'bg-amber-400 text-black active:bg-amber-500'
+                    : 'bg-primary text-white active:bg-primary-active'
+                }`}
+                aria-label={
+                  hasAllergyWarning
+                    ? `Add one more unit of ${item.name}; allergy warning`
+                    : `Add one more unit of ${item.name}`
+                }
               >
                 +
               </button>
@@ -154,10 +166,28 @@ export function ProductCard({
             <button
               type="button"
               onClick={openDetails}
-              aria-label={`Add ${item.name}`}
-              className="client-add-button mt-auto flex w-full items-center justify-center gap-1 rounded-xl bg-primary px-3 py-2.5 text-sm font-bold text-white transition active:bg-primary-active"
+              aria-label={
+                hasAllergyWarning ? `Check allergy warning for ${item.name}` : `Add ${item.name}`
+              }
+              className={`client-add-button mt-auto flex w-full items-center justify-center rounded-xl px-2 py-2.5 text-sm font-bold transition ${
+                hasAllergyWarning
+                  ? 'bg-amber-400 text-black active:bg-amber-500'
+                  : 'bg-primary text-white active:bg-primary-active'
+              }`}
             >
-              <PlusIcon size={17} /> Add
+              {hasAllergyWarning ? (
+                <span className="flex max-w-full items-center justify-center gap-1.5 text-[13px] tracking-tight">
+                  <span className="shrink-0 text-base leading-none" aria-hidden="true">
+                    ⚠
+                  </span>
+                  <span>Check allergens</span>
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-1.5">
+                  <PlusIcon size={17} />
+                  <span>Add</span>
+                </span>
+              )}
             </button>
           ))}
       </div>
@@ -195,6 +225,18 @@ export function ProductCard({
             <div className="client-product-details-content">
               <h2 id={`product-details-title-${item.alias}`}>{item.name}</h2>
               <p>{item.description ?? 'Description unavailable'}</p>
+
+              {hasAllergyWarning && (
+                <div className="client-product-allergy-warning" role="alert">
+                  <strong>Allergy warning</strong>
+                  <span>
+                    Contains:{' '}
+                    {matchingAllergens
+                      .map((tag) => tag.name.replace(/^Alergénio:\s*/i, ''))
+                      .join(', ')}
+                  </span>
+                </div>
+              )}
 
               {item.tags.length > 0 && (
                 <div className="client-product-details-tags">
@@ -237,8 +279,12 @@ export function ProductCard({
                     +
                   </button>
                 </div>
-                <button type="button" className="is-primary" onClick={addDetailsToOrder}>
-                  Add to the order
+                <button
+                  type="button"
+                  className={hasAllergyWarning ? 'is-allergy-warning' : 'is-primary'}
+                  onClick={addDetailsToOrder}
+                >
+                  {hasAllergyWarning ? 'Add despite warning' : 'Add to the order'}
                 </button>
               </div>
             </div>

@@ -7,6 +7,8 @@ export type Guest = Readonly<{
   id: number;
   session_id: number;
   buffet_id: number | null;
+  allergy_tag_ids: number[];
+  allergy_preferences_completed_at: string | null;
 }>;
 
 export type GuestId = Guest['id'];
@@ -66,6 +68,20 @@ export function updateGuestBuffet(
     body: JSON.stringify({
       buffet_id: buffetId,
     }),
+  });
+}
+
+export function updateGuestAllergyPreferences(
+  tableCode: string,
+  deviceToken: string,
+  allergyTagIds: number[],
+  options: GuestRequestOptions = {},
+): Promise<Guest> {
+  return apiFetch<Guest>(`${buildCurrentGuestPath(tableCode)}/allergy-preferences`, {
+    method: 'PUT',
+    headers: createDeviceHeaders(deviceToken, true),
+    signal: options.signal,
+    body: JSON.stringify({ allergy_tag_ids: allergyTagIds }),
   });
 }
 

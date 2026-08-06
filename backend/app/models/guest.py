@@ -8,10 +8,18 @@ from sqlalchemy import (
     func,
     Integer,
     String,
+    Table,
 )
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
+
+guest_allergy_tags = Table(
+    "guest_allergy_tags",
+    Base.metadata,
+    Column("guest_id", ForeignKey("guests.id", ondelete="CASCADE"), primary_key=True),
+    Column("tag_id", ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True),
+)
 
 
 class Guest(Base):
@@ -53,6 +61,11 @@ class Guest(Base):
         server_default=func.now(),
     )
 
+    allergy_preferences_completed_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
     dining_session = relationship(
         "DiningSession",
         back_populates="guests",
@@ -68,6 +81,16 @@ class Guest(Base):
         back_populates="guest",
         cascade="all, delete-orphan",
     )
+
+    allergy_tags = relationship(
+        "Tag",
+        secondary=guest_allergy_tags,
+        lazy="selectin",
+    )
+
+    @property
+    def allergy_tag_ids(self) -> list[int]:
+        return sorted(tag.id for tag in self.allergy_tags)
 
     __table_args__ = (
         Index(

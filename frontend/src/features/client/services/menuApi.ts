@@ -102,6 +102,10 @@ export function getCategories(options: MenuRequestOptions = {}): Promise<Categor
   return apiFetch<Category[]>('/client/categories', options);
 }
 
+export function getTags(options: MenuRequestOptions = {}): Promise<MenuTag[]> {
+  return apiFetch<MenuTag[]>('/client/tags', options);
+}
+
 export function getBuffets(options: MenuRequestOptions = {}): Promise<Buffet[]> {
   return apiFetch<Buffet[]>('/client/buffets', options);
 }

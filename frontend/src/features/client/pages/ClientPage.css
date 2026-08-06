@@ -857,6 +857,11 @@ body:has(.client-shell) {
   background: var(--color-primary);
 }
 
+.client-selection-quantity button.is-add.is-allergy-warning {
+  background: #fbbf24;
+  color: #111827;
+}
+
 .client-selection-quantity output {
   min-width: 1rem;
   text-align: center;
@@ -1441,7 +1446,8 @@ body:has(.client-shell) {
   color: var(--color-content-disabled);
 }
 
-.client-product-details-actions > .is-primary {
+.client-product-details-actions > .is-primary,
+.client-product-details-actions > .is-allergy-warning {
   min-height: 2.75rem;
   border: 0;
   border-radius: 999px;
@@ -1450,6 +1456,11 @@ body:has(.client-shell) {
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+}
+
+.client-product-details-actions > .is-allergy-warning {
+  background: #fbbf24;
+  color: #111827;
 }
 
 @media (max-width: 350px) {
@@ -1709,4 +1720,113 @@ body:has(.client-shell) {
 .session-submit:disabled {
   cursor: wait;
   opacity: 0.65;
+}
+.client-allergy-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: end center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 72%);
+  backdrop-filter: blur(6px);
+}
+
+.client-allergy-modal {
+  width: min(100%, 32rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+  background: #11161f;
+  box-shadow: 0 1.5rem 5rem rgb(0 0 0 / 55%);
+}
+
+.client-allergy-eyebrow {
+  margin: 0 0 0.35rem;
+  color: #f5ad42;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.client-allergy-modal h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  line-height: 1.15;
+}
+
+.client-allergy-description,
+.client-allergy-disclaimer {
+  color: var(--color-content-muted);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.client-allergy-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 1.2rem 0;
+}
+
+.client-allergy-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.8rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 0.8rem;
+  background: rgb(255 255 255 / 4%);
+  cursor: pointer;
+}
+
+.client-allergy-options label.is-selected {
+  border-color: #f5ad42;
+  background: rgb(245 173 66 / 12%);
+}
+
+.client-allergy-options input {
+  accent-color: #f5ad42;
+}
+
+.client-allergy-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.client-allergy-actions button {
+  min-height: 2.8rem;
+  border-radius: 0.8rem;
+  padding: 0.65rem 1rem;
+  background: #f5ad42;
+  color: #111;
+  font-weight: 800;
+}
+
+.client-allergy-actions button.is-secondary {
+  background: rgb(255 255 255 / 8%);
+  color: var(--color-content);
+}
+
+@media (min-width: 40rem) {
+  .client-allergy-modal-backdrop {
+    place-items: center;
+  }
+}
+.client-product-allergy-warning {
+  display: grid;
+  gap: 0.2rem;
+  border: 1px solid rgb(251 191 36 / 55%);
+  border-radius: 0.8rem;
+  padding: 0.75rem;
+  background: rgb(251 191 36 / 12%);
+  color: #fcd34d;
+  font-size: 0.82rem;
 }

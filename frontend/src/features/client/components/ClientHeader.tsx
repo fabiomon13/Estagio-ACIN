@@ -14,6 +14,7 @@ type ClientHeaderProps = {
   showBuffet: boolean;
   onChangeView: (view: ClientView) => void;
   onServiceRequest: (type: ServiceRequestType) => void;
+  onEditAllergies: () => void;
 };
 
 export function ClientHeader({
@@ -27,6 +28,7 @@ export function ClientHeader({
   showBuffet,
   onChangeView,
   onServiceRequest,
+  onEditAllergies,
 }: ClientHeaderProps) {
   return (
     <header className="client-header">
@@ -42,6 +44,15 @@ export function ClientHeader({
             </p>
           </div>
           <div className="client-header-service-actions">
+            <button
+              type="button"
+              className="client-header-service-button"
+              aria-label="Edit allergies and intolerances"
+              title="Allergies and intolerances"
+              onClick={onEditAllergies}
+            >
+              <span aria-hidden="true">⚠</span>
+            </button>
             <button
               type="button"
               className={`client-header-service-button ${

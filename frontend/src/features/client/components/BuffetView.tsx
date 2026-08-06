@@ -10,6 +10,7 @@ import { ProductCard } from './ProductCard';
 type BuffetViewProps = {
   buffet: Buffet | null;
   stations: StationSection[];
+  selectedAllergenTagIds?: ReadonlySet<number>;
   navigationStations?: StationSection[];
   cart: Record<number, number>;
   onAdd: (itemId: number) => void;
@@ -27,6 +28,7 @@ type ConfirmationAction = 'select' | 'cancel' | null;
 export function BuffetView({
   buffet,
   stations,
+  selectedAllergenTagIds = new Set(),
   navigationStations = stations,
   cart,
   onAdd,
@@ -415,6 +417,7 @@ export function BuffetView({
                         <ProductCard
                           key={item.alias}
                           item={item}
+                          selectedAllergenTagIds={selectedAllergenTagIds}
                           quantity={cart[item.id] ?? 0}
                           onAdd={() => onAdd(item.id)}
                           onAddDetails={(quantity, notes) =>

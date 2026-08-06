@@ -5,6 +5,7 @@ import { useToast } from '../../../components/ui/toast/useToast';
 import { ApiError } from '../../../services/api/client';
 import { createUuid } from '../../../utils/createUuid';
 import { BuffetView } from '../components/BuffetView';
+import { AllergyPreferencesModal } from '../components/AllergyPreferencesModal';
 import { ClientHeader } from '../components/ClientHeader';
 import { ClientMessage } from '../components/ClientMessage';
 import { MenuView } from '../components/MenuView';
@@ -19,7 +20,7 @@ import { useClientOrders } from '../hooks/useClientOrders';
 import { useClientServiceRequests } from '../hooks/useClientServiceRequests';
 import { useClientSession } from '../hooks/useClientSession';
 import { useClientSwipe } from '../hooks/useClientSwipe';
-import { updateGuestBuffet } from '../services/guestApi';
+import { updateGuestAllergyPreferences, updateGuestBuffet } from '../services/guestApi';
 import { createSession } from '../services/menuApi';
 import { cancelOrderItem, createOrder } from '../services/orderApi';
 import { getDeviceToken } from '../utils/deviceToken';
@@ -53,6 +54,8 @@ export function ClientPage() {
   const [shouldRenderCart, setShouldRenderCart] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [isNoBuffetConfirmationOpen, setIsNoBuffetConfirmationOpen] = useState(false);
+  const [isAllergyModalOpen, setIsAllergyModalOpen] = useState(false);
+  const [isSavingAllergies, setIsSavingAllergies] = useState(false);
   const [serviceRequestConfirmation, setServiceRequestConfirmation] = useState<
     'assistance' | 'payment_request' | null
   >(null);
@@ -61,6 +64,9 @@ export function ClientPage() {
     count: cart.cartCount,
   });
   const pendingOrderRequestId = useRef<string | null>(null);
+
+  const needsAllergySetup =
+    data.guest !== null && data.guest.allergy_preferences_completed_at === null;
 
   const isFloatingOrderLeaving = cart.cartCount === 0;
 
@@ -262,6 +268,29 @@ export function ClientPage() {
     }
   }
 
+  async function handleSaveAllergies(tagIds: number[]) {
+    if (!tableCode || isSavingAllergies) return;
+    setIsSavingAllergies(true);
+    try {
+      const updatedGuest = await updateGuestAllergyPreferences(tableCode, getDeviceToken(), tagIds);
+      data.setGuest(updatedGuest);
+      setIsAllergyModalOpen(false);
+      showToast({
+        title: 'Allergy preferences saved',
+        description: 'Dishes containing the selected allergens will show a yellow warning.',
+        variant: 'success',
+      });
+    } catch (requestError) {
+      showToast({
+        title: 'Preferences could not be saved',
+        description: getErrorMessage(requestError),
+        variant: 'danger',
+      });
+    } finally {
+      setIsSavingAllergies(false);
+    }
+  }
+
   function handleServiceRequest(type: 'assistance' | 'payment_request') {
     if (serviceRequests.activeRequests[type] !== undefined) {
       void serviceRequests.toggleRequest(type);
@@ -329,6 +358,7 @@ export function ClientPage() {
           if (view !== 'buffet' || !isBuffetSelectionLocked) swipe.changeView(view);
         }}
         onServiceRequest={handleServiceRequest}
+        onEditAllergies={() => setIsAllergyModalOpen(true)}
       />
       <main
         className="client-shell min-h-screen bg-[#080b10] pb-24 text-content"
@@ -351,6 +381,7 @@ export function ClientPage() {
             {swipe.activeView === 'menu' && (
               <MenuView
                 stations={data.menuStations}
+                selectedAllergenTagIds={data.selectedAllergenTagIds}
                 cart={cart.cart}
                 onAdd={cart.addToCart}
                 onAddDetails={(itemId, quantity, notes) => {
@@ -364,6 +395,7 @@ export function ClientPage() {
               <BuffetView
                 buffet={selectedBuffet}
                 stations={data.buffetStations}
+                selectedAllergenTagIds={data.selectedAllergenTagIds}
                 cart={cart.cart}
                 isSelected={data.selectedBuffetId === selectedBuffet?.id}
                 canSelectBuffet={!isBuffetSelectionLocked}
@@ -421,6 +453,7 @@ export function ClientPage() {
             items={cartItems}
             cart={cart.cart}
             buffetItemIds={chargedBuffetItemIds}
+            selectedAllergenTagIds={data.selectedAllergenTagIds}
             isSubmitting={isSubmittingOrder}
             hasActiveOrder={hasActiveOrder}
             isClosing={!isCartOpen}
@@ -513,6 +546,18 @@ export function ClientPage() {
               </div>
             </section>
           </div>
+        )}
+        {(isAllergyModalOpen || needsAllergySetup) && data.guest && (
+          <AllergyPreferencesModal
+            tags={data.allergenTags}
+            selectedTagIds={data.guest.allergy_tag_ids}
+            isInitialSetup={needsAllergySetup}
+            isSaving={isSavingAllergies}
+            onClose={() => {
+              if (!needsAllergySetup && !isSavingAllergies) setIsAllergyModalOpen(false);
+            }}
+            onSave={(tagIds) => void handleSaveAllergies(tagIds)}
+          />
         )}
       </main>
     </>

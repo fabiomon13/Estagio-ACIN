@@ -3,6 +3,8 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import UTC, datetime
+
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -11,6 +13,7 @@ from app.db.dependencies import get_db
 from app.models.buffet import Buffet
 from app.models.guest import Guest
 from app.models.order import Order
+from app.models.tag import Tag
 from app.modules.client.dependencies import (
     CurrentGuest,
     CurrentTable,
@@ -19,6 +22,7 @@ from app.modules.client.dependencies import (
 )
 from app.modules.client.schemas import (
     GuestBuffetUpdate,
+    GuestAllergyPreferencesUpdate,
     GuestCreate,
     GuestResponse,
 )
@@ -133,6 +137,32 @@ def create_guest(
 def get_current_guest(
     guest: CurrentGuest,
 ) -> Guest:
+    return guest
+
+@router.put(
+    "/tables/{table_code}/guests/me/allergy-preferences",
+    response_model=GuestResponse,
+)
+def update_current_guest_allergy_preferences(
+    preferences: GuestAllergyPreferencesUpdate,
+    guest: CurrentGuest,
+    db: DbSession,
+) -> Guest:
+    requested_ids = set(preferences.allergy_tag_ids)
+    tags = list(db.scalars(select(Tag).where(Tag.id.in_(requested_ids))).all()) if requested_ids else []
+
+    if len(tags) != len(requested_ids) or any(
+        not tag.alias.startswith("alergenio-") for tag in tags
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Only valid allergen tags can be selected",
+        )
+
+    guest.allergy_tags = tags
+    guest.allergy_preferences_completed_at = datetime.now(UTC)
+    db.commit()
+    db.refresh(guest)
     return guest
 
 # Update current guest buffet endpoint

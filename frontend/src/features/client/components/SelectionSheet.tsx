@@ -7,6 +7,7 @@ export type SelectionSheetProps = {
   items: MenuItem[];
   cart: Record<number, number>;
   buffetItemIds: Set<number>;
+  selectedAllergenTagIds: ReadonlySet<number>;
   isSubmitting: boolean;
   hasActiveOrder: boolean;
   isClosing?: boolean;
@@ -21,6 +22,7 @@ export function SelectionSheet({
   items,
   cart,
   buffetItemIds,
+  selectedAllergenTagIds,
   isSubmitting,
   hasActiveOrder,
   isClosing = false,
@@ -146,6 +148,7 @@ export function SelectionSheet({
         <div className="client-selection-items">
           {items.map((item) => {
             const quantity = cart[item.id] ?? 0;
+            const hasAllergyWarning = item.tags.some((tag) => selectedAllergenTagIds.has(tag.id));
             return (
               <article key={item.alias} className="client-selection-item">
                 <div className="client-selection-thumbnail" aria-hidden={!item.photo_url}>
@@ -163,9 +166,13 @@ export function SelectionSheet({
                   <output aria-label={`${quantity} units`}>{quantity}</output>
                   <button
                     type="button"
-                    className="is-add"
+                    className={`is-add ${hasAllergyWarning ? 'is-allergy-warning' : ''}`}
                     onClick={() => onAdd(item.id)}
-                    aria-label={`Add one more unit of ${item.name}`}
+                    aria-label={
+                      hasAllergyWarning
+                        ? `Add one more unit of ${item.name}; allergy warning`
+                        : `Add one more unit of ${item.name}`
+                    }
                   >
                     +
                   </button>
