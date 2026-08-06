@@ -483,7 +483,6 @@ export function ClientPage() {
               <SwipePreview
                 view={swipe.swipeTargetView}
                 dragOffset={swipe.viewDragOffset}
-                topOffset={swipe.previewTopOffset}
                 isDragging={swipe.isDraggingView}
                 isSettling={swipe.pendingView !== null}
                 menuStations={data.menuStations}

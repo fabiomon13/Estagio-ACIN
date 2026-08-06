@@ -8,7 +8,6 @@ import { OrdersView } from './OrdersView';
 type SwipePreviewProps = {
   view: ClientView;
   dragOffset: number;
-  topOffset: number;
   isDragging: boolean;
   isSettling: boolean;
   menuStations: StationSection[];
@@ -24,7 +23,6 @@ type SwipePreviewProps = {
 export function SwipePreview({
   view,
   dragOffset,
-  topOffset,
   isDragging,
   isSettling,
   menuStations,
@@ -49,8 +47,8 @@ export function SwipePreview({
       style={{
         transform:
           dragOffset < 0
-            ? `translate3d(calc(100% + ${dragOffset}px), ${topOffset}px, 0)`
-            : `translate3d(calc(-100% + ${dragOffset}px), ${topOffset}px, 0)`,
+            ? `translate3d(calc(100% + ${dragOffset}px), 0, 0)`
+            : `translate3d(calc(-100% + ${dragOffset}px), 0, 0)`,
       }}
       aria-hidden="true"
       inert

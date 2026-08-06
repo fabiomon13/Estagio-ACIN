@@ -30,7 +30,8 @@ body:has(.client-shell) {
 }
 
 .client-view {
-  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .client-view.is-dragging {
@@ -46,10 +47,11 @@ body:has(.client-shell) {
   background: #080b10;
   pointer-events: none;
   transition: none;
+  will-change: transform;
 }
 
 .client-view-adjacent.is-settling {
-  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -307,11 +309,6 @@ body:has(.client-shell) {
   background: #080b10;
   box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 18%);
   backdrop-filter: blur(10px);
-}
-
-.client-category-nav.is-preview {
-  position: relative;
-  top: auto;
 }
 
 .client-category-button {

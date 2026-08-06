@@ -15,7 +15,7 @@ import { CLIENT_VIEWS, type ClientView } from '../clientTypes';
 const SWIPE_DISTANCE_THRESHOLD = 60;
 const SWIPE_VELOCITY_THRESHOLD = 0.45;
 const AXIS_LOCK_THRESHOLD = 8;
-const DEFAULT_TRANSITION_DURATION = 200;
+const DEFAULT_TRANSITION_DURATION = 260;
 
 const DEFAULT_IGNORE_SELECTOR = [
   'button',
@@ -54,7 +54,6 @@ export function useClientSwipe({
   const [activeView, setActiveView] = useState<ClientView>(initialView);
   const [pendingView, setPendingView] = useState<ClientView | null>(null);
   const [viewDragOffset, setViewDragOffset] = useState(0);
-  const [previewTopOffset, setPreviewTopOffset] = useState(0);
   const [isDraggingView, setIsDraggingView] = useState(false);
   const [viewportWidth, setViewportWidth] = useState(getViewportWidth);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(getPrefersReducedMotion);
@@ -63,6 +62,8 @@ export function useClientSwipe({
   const pointerStart = useRef<PointerStart | null>(null);
   const transitionTimer = useRef<number | null>(null);
   const animationFrames = useRef<number[]>([]);
+  const dragFrame = useRef<number | null>(null);
+  const pendingDragOffset = useRef(0);
   const transitionLocked = useRef(false);
 
   const activeViewIndex = availableViews.indexOf(activeView);
@@ -115,6 +116,22 @@ export function useClientSwipe({
     }
 
     animationFrames.current = [];
+
+    if (dragFrame.current !== null) {
+      window.cancelAnimationFrame(dragFrame.current);
+      dragFrame.current = null;
+    }
+  }, []);
+
+  const updateDragOffset = useCallback((offset: number) => {
+    pendingDragOffset.current = offset;
+
+    if (dragFrame.current !== null) return;
+
+    dragFrame.current = window.requestAnimationFrame(() => {
+      dragFrame.current = null;
+      setViewDragOffset(pendingDragOffset.current);
+    });
   }, []);
 
   const commitView = useCallback(
@@ -126,7 +143,6 @@ export function useClientSwipe({
       setActiveView(view);
       setPendingView(null);
       setViewDragOffset(0);
-      setPreviewTopOffset(0);
       setIsDraggingView(false);
     },
     [clearScheduledTransition],
@@ -165,8 +181,6 @@ export function useClientSwipe({
 
       clearScheduledTransition();
       transitionLocked.current = true;
-      setPreviewTopOffset(window.scrollY);
-
       const direction = targetIndex > activeViewIndex ? -1 : 1;
 
       setPendingView(view);
@@ -252,7 +266,6 @@ export function useClientSwipe({
       };
 
       if (!ignored) {
-        setPreviewTopOffset(window.scrollY);
         event.currentTarget.setPointerCapture(event.pointerId);
       }
     },
@@ -297,19 +310,24 @@ export function useClientSwipe({
       if (isBeforeFirstView || isAfterLastView) {
         // Add resistance when dragging beyond the
         // first or final view.
-        setViewDragOffset(horizontalDistance * 0.15);
+        updateDragOffset(horizontalDistance * 0.15);
 
         return;
       }
 
-      setViewDragOffset(horizontalDistance);
+      updateDragOffset(horizontalDistance);
     },
-    [activeViewIndex, availableViews.length],
+    [activeViewIndex, availableViews.length, updateDragOffset],
   );
 
   const handlePointerUp = useCallback(
     (event: PointerEvent<HTMLElement>) => {
       const start = pointerStart.current;
+
+      if (dragFrame.current !== null) {
+        window.cancelAnimationFrame(dragFrame.current);
+        dragFrame.current = null;
+      }
 
       pointerStart.current = null;
       setIsDraggingView(false);
@@ -340,6 +358,11 @@ export function useClientSwipe({
   );
 
   const handlePointerCancel = useCallback((event: PointerEvent<HTMLElement>) => {
+    if (dragFrame.current !== null) {
+      window.cancelAnimationFrame(dragFrame.current);
+      dragFrame.current = null;
+    }
+
     pointerStart.current = null;
     transitionLocked.current = false;
 
@@ -393,7 +416,6 @@ export function useClientSwipe({
     pendingView,
     swipeTargetView,
     viewDragOffset,
-    previewTopOffset,
     isDraggingView,
     isTransitioning: pendingView !== null,
     indicatorPosition,
