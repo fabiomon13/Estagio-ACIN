@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 from app.api.deps import ACCESS_TOKEN_COOKIE_NAME, InvalidSessionError
 from app.api.router import api_router
+from app.core.config import settings
 from app.core.websocket_manager import connection_manager
 
 
@@ -29,6 +30,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+        "http://localhost:5174",
     ],
     allow_credentials=True,
     allow_methods=["*"],

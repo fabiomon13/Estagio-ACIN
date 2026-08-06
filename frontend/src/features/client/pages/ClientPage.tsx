@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 
 import { useToast } from '../../../components/ui/toast/useToast';
 import { ApiError } from '../../../services/api/client';
+import { createUuid } from '../../../utils/createUuid';
 import { BuffetView } from '../components/BuffetView';
 import { ClientHeader } from '../components/ClientHeader';
 import { ClientMessage } from '../components/ClientMessage';
@@ -11,6 +12,7 @@ import { OrdersView } from '../components/OrdersView';
 import { SelectionSheet } from '../components/SelectionSheet';
 import { SessionSetup } from '../components/SessionSetup';
 import { SwipePreview } from '../components/SwipePreview';
+import { CLIENT_VIEWS } from '../clientTypes';
 import { useClientBootstrap } from '../hooks/useClientBootstrap';
 import { useClientCart } from '../hooks/useClientCart';
 import { useClientOrders } from '../hooks/useClientOrders';
@@ -23,6 +25,8 @@ import { cancelOrderItem, createOrder } from '../services/orderApi';
 import { getDeviceToken } from '../utils/deviceToken';
 
 import './ClientPage.css';
+
+const CLIENT_VIEWS_WITHOUT_BUFFET = ['menu', 'orders'] as const;
 
 export function ClientPage() {
   const { tableCode } = useParams<{ tableCode: string }>();
@@ -48,6 +52,10 @@ export function ClientPage() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [shouldRenderCart, setShouldRenderCart] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [isNoBuffetConfirmationOpen, setIsNoBuffetConfirmationOpen] = useState(false);
+  const [serviceRequestConfirmation, setServiceRequestConfirmation] = useState<
+    'assistance' | 'payment_request' | null
+  >(null);
   const [floatingOrder, setFloatingOrder] = useState({
     isVisible: cart.cartCount > 0,
     count: cart.cartCount,
@@ -87,7 +95,32 @@ export function ClientPage() {
     () => (data.selectedBuffetId === null ? new Set<number>() : new Set(data.buffetItemIds)),
     [data.buffetItemIds, data.selectedBuffetId],
   );
+  const hasActiveOrder = useMemo(
+    () =>
+      orders.some((order) =>
+        order.items.some(
+          (item) => !['served', 'cancelled', 'returned'].includes(item.status.alias),
+        ),
+      ),
+    [orders],
+  );
+  const isBuffetSelectionLocked = useMemo(
+    () =>
+      data.selectedBuffetId === null &&
+      orders.some((order) =>
+        order.items.some((item) => ['preparing', 'ready', 'served'].includes(item.status.alias)),
+      ),
+    [data.selectedBuffetId, orders],
+  );
   const closeCart = useCallback(() => setIsCartOpen(false), []);
+  const { activeView, changeView, updateAvailableViews } = swipe;
+
+  useEffect(() => {
+    updateAvailableViews(isBuffetSelectionLocked ? CLIENT_VIEWS_WITHOUT_BUFFET : CLIENT_VIEWS);
+    if (isBuffetSelectionLocked && activeView === 'buffet') {
+      changeView('menu');
+    }
+  }, [activeView, changeView, isBuffetSelectionLocked, updateAvailableViews]);
 
   useEffect(() => {
     if (isCartOpen) {
@@ -119,11 +152,29 @@ export function ClientPage() {
     }
   }
 
-  async function handleSubmitOrder() {
-    if (!tableCode || isSubmittingOrder || cart.cartCount === 0) return;
+  function handleSubmitOrder() {
+    if (hasActiveOrder) {
+      showToast({
+        title: 'Please wait',
+        description: 'You can send another round after the current order has been served.',
+        variant: 'danger',
+      });
+      return;
+    }
+
+    if (orders.length === 0 && data.selectedBuffetId === null) {
+      setIsNoBuffetConfirmationOpen(true);
+      return;
+    }
+
+    void submitOrder();
+  }
+
+  async function submitOrder() {
+    if (!tableCode || isSubmittingOrder || cart.cartCount === 0 || hasActiveOrder) return;
     setIsSubmittingOrder(true);
     try {
-      const clientRequestId = pendingOrderRequestId.current ?? crypto.randomUUID();
+      const clientRequestId = pendingOrderRequestId.current ?? createUuid();
       pendingOrderRequestId.current = clientRequestId;
       const order = await createOrder(tableCode, getDeviceToken(), {
         clientRequestId,
@@ -179,6 +230,14 @@ export function ClientPage() {
 
   async function handleChooseBuffet(buffetId: number | null) {
     if (!tableCode) return;
+    if (buffetId !== null && isBuffetSelectionLocked) {
+      showToast({
+        title: 'Buffet unavailable',
+        description: 'The first order without buffet has already started being prepared.',
+        variant: 'danger',
+      });
+      return;
+    }
     try {
       const updatedGuest = await updateGuestBuffet(tableCode, getDeviceToken(), buffetId);
       if (updatedGuest.buffet_id === null) {
@@ -201,6 +260,23 @@ export function ClientPage() {
       });
       throw requestError;
     }
+  }
+
+  function handleServiceRequest(type: 'assistance' | 'payment_request') {
+    if (serviceRequests.activeRequests[type] !== undefined) {
+      void serviceRequests.toggleRequest(type);
+      return;
+    }
+
+    setServiceRequestConfirmation(type);
+  }
+
+  function confirmServiceRequest() {
+    if (serviceRequestConfirmation === null) return;
+
+    const type = serviceRequestConfirmation;
+    setServiceRequestConfirmation(null);
+    void serviceRequests.toggleRequest(type);
   }
 
   if (!tableCode) return <ClientMessage message="Table code is missing." isError />;
@@ -248,8 +324,11 @@ export function ClientPage() {
         pendingServiceRequest={serviceRequests.pendingRequest}
         activeServiceRequests={serviceRequests.activeRequests}
         serviceRequestMessage={serviceRequests.pollingError}
-        onChangeView={swipe.changeView}
-        onServiceRequest={serviceRequests.toggleRequest}
+        showBuffet={!isBuffetSelectionLocked}
+        onChangeView={(view) => {
+          if (view !== 'buffet' || !isBuffetSelectionLocked) swipe.changeView(view);
+        }}
+        onServiceRequest={handleServiceRequest}
       />
       <main
         className="client-shell min-h-screen bg-[#080b10] pb-24 text-content"
@@ -281,12 +360,13 @@ export function ClientPage() {
                 onRemove={cart.removeFromCart}
               />
             )}
-            {swipe.activeView === 'buffet' && (
+            {swipe.activeView === 'buffet' && !isBuffetSelectionLocked && (
               <BuffetView
                 buffet={selectedBuffet}
                 stations={data.buffetStations}
                 cart={cart.cart}
                 isSelected={data.selectedBuffetId === selectedBuffet?.id}
+                canSelectBuffet={!isBuffetSelectionLocked}
                 canCancelSelection={orders.length === 0}
                 onAdd={cart.addToCart}
                 onAddDetails={(itemId, quantity, notes) => {
@@ -305,22 +385,23 @@ export function ClientPage() {
               />
             )}
           </div>
-          {swipe.swipeTargetView && (
-            <SwipePreview
-              view={swipe.swipeTargetView}
-              dragOffset={swipe.viewDragOffset}
-              topOffset={swipe.previewTopOffset}
-              isDragging={swipe.isDraggingView}
-              isSettling={swipe.pendingView !== null}
-              menuStations={data.menuStations}
-              buffet={selectedBuffet}
-              buffetStations={data.buffetStations}
-              orders={orders}
-              cart={cart.cart}
-              isBuffetSelected={data.selectedBuffetId === selectedBuffet?.id}
-              canCancelBuffet={orders.length === 0}
-            />
-          )}
+          {swipe.swipeTargetView &&
+            !(swipe.swipeTargetView === 'buffet' && isBuffetSelectionLocked) && (
+              <SwipePreview
+                view={swipe.swipeTargetView}
+                dragOffset={swipe.viewDragOffset}
+                topOffset={swipe.previewTopOffset}
+                isDragging={swipe.isDraggingView}
+                isSettling={swipe.pendingView !== null}
+                menuStations={data.menuStations}
+                buffet={selectedBuffet}
+                buffetStations={data.buffetStations}
+                orders={orders}
+                cart={cart.cart}
+                isBuffetSelected={data.selectedBuffetId === selectedBuffet?.id}
+                canCancelBuffet={orders.length === 0}
+              />
+            )}
         </div>
         {floatingOrder.isVisible && (
           <button
@@ -341,6 +422,7 @@ export function ClientPage() {
             cart={cart.cart}
             buffetItemIds={chargedBuffetItemIds}
             isSubmitting={isSubmittingOrder}
+            hasActiveOrder={hasActiveOrder}
             isClosing={!isCartOpen}
             onAdd={cart.addToCart}
             onRemove={cart.removeFromCart}
@@ -348,6 +430,89 @@ export function ClientPage() {
             onClose={closeCart}
             onSubmit={handleSubmitOrder}
           />
+        )}
+        {isNoBuffetConfirmationOpen && (
+          <div
+            className="client-buffet-modal-backdrop"
+            role="presentation"
+            onClick={() => {
+              if (!isSubmittingOrder) setIsNoBuffetConfirmationOpen(false);
+            }}
+          >
+            <section
+              className="client-buffet-modal"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="no-buffet-confirmation-title"
+              aria-describedby="no-buffet-confirmation-description"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <h2 id="no-buffet-confirmation-title">Continue without a buffet?</h2>
+              <p id="no-buffet-confirmation-description">
+                After sending your first round, you will no longer be able to select a buffet for
+                this session. Do you want to continue?
+              </p>
+              <div className="client-buffet-modal-actions">
+                <button
+                  type="button"
+                  className="is-secondary"
+                  disabled={isSubmittingOrder}
+                  onClick={() => setIsNoBuffetConfirmationOpen(false)}
+                >
+                  Go back
+                </button>
+                <button
+                  type="button"
+                  disabled={isSubmittingOrder}
+                  onClick={() => {
+                    setIsNoBuffetConfirmationOpen(false);
+                    void submitOrder();
+                  }}
+                >
+                  {isSubmittingOrder ? 'Sending…' : 'Send round'}
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+        {serviceRequestConfirmation && (
+          <div
+            className="client-buffet-modal-backdrop"
+            role="presentation"
+            onClick={() => setServiceRequestConfirmation(null)}
+          >
+            <section
+              className="client-buffet-modal"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="service-request-confirmation-title"
+              aria-describedby="service-request-confirmation-description"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <h2 id="service-request-confirmation-title">
+                {serviceRequestConfirmation === 'assistance'
+                  ? 'Call a member of staff?'
+                  : 'Request the bill?'}
+              </h2>
+              <p id="service-request-confirmation-description">
+                {serviceRequestConfirmation === 'assistance'
+                  ? 'A member of staff assigned to your table will be notified and come to assist you.'
+                  : 'The staff assigned to your table will be notified that you are ready to pay.'}
+              </p>
+              <div className="client-buffet-modal-actions">
+                <button
+                  type="button"
+                  className="is-secondary"
+                  onClick={() => setServiceRequestConfirmation(null)}
+                >
+                  Cancel
+                </button>
+                <button type="button" onClick={confirmServiceRequest}>
+                  Confirm
+                </button>
+              </div>
+            </section>
+          </div>
         )}
       </main>
     </>

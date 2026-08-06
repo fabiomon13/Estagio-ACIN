@@ -17,6 +17,7 @@ type BuffetViewProps = {
   onRemove: (itemId: number) => void;
   onChoose: (buffetId: number | null) => Promise<void>;
   isSelected: boolean;
+  canSelectBuffet?: boolean;
   canCancelSelection: boolean;
   isPreview?: boolean;
 };
@@ -33,10 +34,11 @@ export function BuffetView({
   onRemove,
   onChoose,
   isSelected,
+  canSelectBuffet = true,
   canCancelSelection,
   isPreview = false,
 }: BuffetViewProps) {
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [confirmationAction, setConfirmationAction] = useState<ConfirmationAction>(null);
   const [isChoosing, setIsChoosing] = useState(false);
   const [shouldRenderSelectButton, setShouldRenderSelectButton] = useState(!isSelected);
@@ -51,19 +53,21 @@ export function BuffetView({
 
   const categories = useMemo(() => stations.flatMap((station) => station.categories), [stations]);
 
-  const categoryIds = useMemo(
-    () => new Set(categories.map(({ category }) => category.id)),
+  const categoryAliases = useMemo(
+    () => new Set(categories.map(({ category }) => category.alias)),
     [categories],
   );
 
   const activeCategory =
-    selectedCategory !== null && categoryIds.has(selectedCategory)
+    selectedCategory !== null && categoryAliases.has(selectedCategory)
       ? selectedCategory
-      : (categories[0]?.category.id ?? null);
+      : (categories[0]?.category.alias ?? null);
 
   const hasItems = useMemo(() => categories.some(({ items }) => items.length > 0), [categories]);
 
-  const isConfirmationOpen = confirmationAction !== null;
+  const visibleConfirmationAction =
+    !canSelectBuffet && confirmationAction === 'select' ? null : confirmationAction;
+  const isConfirmationOpen = visibleConfirmationAction !== null;
 
   useEffect(() => {
     if (!isSelected) {
@@ -93,10 +97,10 @@ export function BuffetView({
               Math.abs(first.boundingClientRect.top) - Math.abs(second.boundingClientRect.top),
           )[0];
 
-        const categoryId = closestVisibleEntry?.target.getAttribute('data-buffet-category');
+        const categoryAlias = closestVisibleEntry?.target.getAttribute('data-buffet-category');
 
-        if (categoryId) {
-          setSelectedCategory(Number(categoryId));
+        if (categoryAlias) {
+          setSelectedCategory(categoryAlias);
         }
       },
       {
@@ -121,7 +125,7 @@ export function BuffetView({
 
     const centeringTimer = window.setTimeout(() => {
       const categoryButton = categoryNavigationRef.current?.querySelector<HTMLElement>(
-        `[data-category-id="${activeCategory}"]`,
+        `[data-category-alias="${activeCategory}"]`,
       );
 
       categoryButton?.scrollIntoView({
@@ -175,15 +179,15 @@ export function BuffetView({
     [],
   );
 
-  function scrollToCategory(categoryId: number) {
+  function scrollToCategory(categoryAlias: string) {
     categoryScrollLocked.current = true;
-    setSelectedCategory(categoryId);
+    setSelectedCategory(categoryAlias);
 
     if (categoryUnlockTimer.current !== null) {
       window.clearTimeout(categoryUnlockTimer.current);
     }
 
-    document.getElementById(`buffet-category-${categoryId}`)?.scrollIntoView({
+    document.getElementById(`buffet-category-${categoryAlias}`)?.scrollIntoView({
       behavior: 'smooth',
       block: 'start',
     });
@@ -204,8 +208,7 @@ export function BuffetView({
       await onChoose(buffetId);
       setConfirmationAction(null);
     } catch {
-      // The parent displays the API error.
-      // Keep the dialog open so the user can retry.
+      // The parent displays the request error to the customer.
     } finally {
       choosingLock.current = false;
       setIsChoosing(false);
@@ -225,9 +228,10 @@ export function BuffetView({
   }
 
   function confirmAction() {
-    if (!buffet || confirmationAction === null) return;
+    if (!buffet || visibleConfirmationAction === null) return;
+    if (visibleConfirmationAction === 'select' && !canSelectBuffet) return;
 
-    const buffetId = confirmationAction === 'cancel' ? null : buffet.id;
+    const buffetId = visibleConfirmationAction === 'cancel' ? null : buffet.id;
 
     void choose(buffetId);
   }
@@ -241,10 +245,12 @@ export function BuffetView({
   }
 
   const confirmationTitle =
-    confirmationAction === 'cancel' ? 'Cancel buffet selection?' : 'Confirm buffet selection?';
+    visibleConfirmationAction === 'cancel'
+      ? 'Cancel buffet selection?'
+      : 'Confirm buffet selection?';
 
   const confirmationDescription =
-    confirmationAction === 'cancel'
+    visibleConfirmationAction === 'cancel'
       ? 'The buffet will no longer be associated with your order.'
       : 'You can cancel your buffet selection until you send your first order to the kitchen.';
 
@@ -311,7 +317,7 @@ export function BuffetView({
           <div className="client-category-row scrollbar-none mx-auto flex max-w-lg gap-2 overflow-x-auto">
             {navigationStations.map((station) => {
               const isExpanded = station.categories.some(
-                ({ category }) => category.id === activeCategory,
+                ({ category }) => category.alias === activeCategory,
               );
 
               return station.categories.length > 1 ? (
@@ -323,7 +329,7 @@ export function BuffetView({
                     type="button"
                     className={`client-category-button client-station-button ${isExpanded ? 'is-active' : ''}`}
                     aria-expanded={isExpanded}
-                    onClick={() => scrollToCategory(station.categories[0].category.id)}
+                    onClick={() => scrollToCategory(station.categories[0].category.alias)}
                   >
                     {station.name}
                   </button>
@@ -334,27 +340,27 @@ export function BuffetView({
                   >
                     {station.categories.map(({ category }) => (
                       <CategoryButton
-                        key={category.id}
-                        categoryId={category.id}
+                        key={category.alias}
+                        categoryAlias={category.alias}
                         label={getCategoryConfig(category.alias, category.name).label}
-                        selected={activeCategory === category.id}
-                        onClick={() => scrollToCategory(category.id)}
+                        selected={activeCategory === category.alias}
+                        onClick={() => scrollToCategory(category.alias)}
                       />
                     ))}
                   </div>
                 </div>
               ) : (
                 <CategoryButton
-                  key={station.categories[0].category.id}
-                  categoryId={station.categories[0].category.id}
+                  key={station.categories[0].category.alias}
+                  categoryAlias={station.categories[0].category.alias}
                   label={
                     getCategoryConfig(
                       station.categories[0].category.alias,
                       station.categories[0].category.name,
                     ).label
                   }
-                  selected={activeCategory === station.categories[0].category.id}
-                  onClick={() => scrollToCategory(station.categories[0].category.id)}
+                  selected={activeCategory === station.categories[0].category.alias}
+                  onClick={() => scrollToCategory(station.categories[0].category.alias)}
                 />
               );
             })}
@@ -383,15 +389,15 @@ export function BuffetView({
 
                 return (
                   <section
-                    key={category.id}
-                    id={`buffet-category-${category.id}`}
-                    data-buffet-category={category.id}
+                    key={category.alias}
+                    id={`buffet-category-${category.alias}`}
+                    data-buffet-category={category.alias}
                     className="client-buffet-section"
-                    aria-labelledby={`buffet-category-heading-${category.id}`}
+                    aria-labelledby={`buffet-category-heading-${category.alias}`}
                   >
                     <div className="mb-4 flex items-center gap-3">
                       <Heading
-                        id={`buffet-category-heading-${category.id}`}
+                        id={`buffet-category-heading-${category.alias}`}
                         className={
                           station.categories.length > 1
                             ? 'font-display text-lg font-bold'
@@ -407,7 +413,7 @@ export function BuffetView({
                     <div className="client-menu-grid grid gap-3">
                       {items.map((item) => (
                         <ProductCard
-                          key={item.id}
+                          key={item.alias}
                           item={item}
                           quantity={cart[item.id] ?? 0}
                           onAdd={() => onAdd(item.id)}
@@ -435,7 +441,7 @@ export function BuffetView({
         </p>
       )}
 
-      {shouldRenderSelectButton && !isPreview && (
+      {shouldRenderSelectButton && canSelectBuffet && !isPreview && (
         <button
           ref={selectButtonRef}
           type="button"
@@ -479,7 +485,7 @@ export function BuffetView({
               <button type="button" disabled={isChoosing} onClick={confirmAction}>
                 {isChoosing
                   ? 'Confirming…'
-                  : confirmationAction === 'cancel'
+                  : visibleConfirmationAction === 'cancel'
                     ? 'Cancel buffet'
                     : 'Confirm'}
               </button>

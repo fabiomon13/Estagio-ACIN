@@ -107,13 +107,13 @@ export function ProductCard({
             {item.description ?? 'Description unavailable'}
           </p>
         </button>
-        <div className="mt-2 flex min-h-5 flex-wrap gap-1">
+        <div className="mb-3 mt-2 flex min-h-5 flex-wrap gap-1">
           {item.tags.slice(0, 2).map((tag) => {
             const tagConfiguration = getTagConfig(tag.alias, tag.name);
 
             return (
               <span
-                key={tag.id}
+                key={tag.alias}
                 title={tag.name}
                 className={`client-product-tag is-${tagConfiguration.type}`}
               >
@@ -153,7 +153,7 @@ export function ProductCard({
           ) : (
             <button
               type="button"
-              onClick={onAdd}
+              onClick={openDetails}
               aria-label={`Add ${item.name}`}
               className="client-add-button mt-auto flex w-full items-center justify-center gap-1 rounded-xl bg-primary px-3 py-2.5 text-sm font-bold text-white transition active:bg-primary-active"
             >
@@ -174,7 +174,7 @@ export function ProductCard({
             className="client-product-details"
             role="dialog"
             aria-modal="true"
-            aria-labelledby={`product-details-title-${item.id}`}
+            aria-labelledby={`product-details-title-${item.alias}`}
           >
             <div className="client-product-details-image">
               {item.photo_url ? (
@@ -193,7 +193,7 @@ export function ProductCard({
             </div>
 
             <div className="client-product-details-content">
-              <h2 id={`product-details-title-${item.id}`}>{item.name}</h2>
+              <h2 id={`product-details-title-${item.alias}`}>{item.name}</h2>
               <p>{item.description ?? 'Description unavailable'}</p>
 
               {item.tags.length > 0 && (
@@ -201,7 +201,7 @@ export function ProductCard({
                   {item.tags.map((tag) => {
                     const configuration = getTagConfig(tag.alias, tag.name);
                     return (
-                      <span key={tag.id} className={`is-${configuration.type}`}>
+                      <span key={tag.alias} className={`is-${configuration.type}`}>
                         {configuration.label}
                       </span>
                     );

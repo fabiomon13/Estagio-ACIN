@@ -58,18 +58,19 @@ export function useClientSwipe({
   const [isDraggingView, setIsDraggingView] = useState(false);
   const [viewportWidth, setViewportWidth] = useState(getViewportWidth);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(getPrefersReducedMotion);
+  const [availableViews, setAvailableViews] = useState<readonly ClientView[]>(CLIENT_VIEWS);
 
   const pointerStart = useRef<PointerStart | null>(null);
   const transitionTimer = useRef<number | null>(null);
   const animationFrames = useRef<number[]>([]);
   const transitionLocked = useRef(false);
 
-  const activeViewIndex = CLIENT_VIEWS.indexOf(activeView);
+  const activeViewIndex = availableViews.indexOf(activeView);
 
-  const previousView = activeViewIndex > 0 ? CLIENT_VIEWS[activeViewIndex - 1] : null;
+  const previousView = activeViewIndex > 0 ? availableViews[activeViewIndex - 1] : null;
 
   const nextView =
-    activeViewIndex < CLIENT_VIEWS.length - 1 ? CLIENT_VIEWS[activeViewIndex + 1] : null;
+    activeViewIndex < availableViews.length - 1 ? availableViews[activeViewIndex + 1] : null;
 
   const swipeTargetView = useMemo<ClientView | null>(() => {
     if (pendingView) return pendingView;
@@ -81,19 +82,27 @@ export function useClientSwipe({
 
   const indicatorPosition = useMemo(() => {
     if (!pendingView) {
-      return clamp(activeViewIndex - viewDragOffset / viewportWidth, 0, CLIENT_VIEWS.length - 1);
+      return clamp(activeViewIndex - viewDragOffset / viewportWidth, 0, availableViews.length - 1);
     }
 
-    const pendingIndex = CLIENT_VIEWS.indexOf(pendingView);
+    const pendingIndex = availableViews.indexOf(pendingView);
 
     const progress = Math.min(Math.abs(viewDragOffset) / viewportWidth, 1);
 
     return clamp(
       activeViewIndex + (pendingIndex - activeViewIndex) * progress,
       0,
-      CLIENT_VIEWS.length - 1,
+      availableViews.length - 1,
     );
-  }, [activeViewIndex, pendingView, viewDragOffset, viewportWidth]);
+  }, [activeViewIndex, availableViews, pendingView, viewDragOffset, viewportWidth]);
+
+  const updateAvailableViews = useCallback((views: readonly ClientView[]) => {
+    setAvailableViews((current) =>
+      current.length === views.length && current.every((view, index) => view === views[index])
+        ? current
+        : [...views],
+    );
+  }, []);
 
   const clearScheduledTransition = useCallback(() => {
     if (transitionTimer.current !== null) {
@@ -145,7 +154,7 @@ export function useClientSwipe({
         return;
       }
 
-      const targetIndex = CLIENT_VIEWS.indexOf(view);
+      const targetIndex = availableViews.indexOf(view);
 
       if (targetIndex === -1) return;
 
@@ -181,6 +190,7 @@ export function useClientSwipe({
     [
       activeView,
       activeViewIndex,
+      availableViews,
       clearScheduledTransition,
       commitView,
       prefersReducedMotion,
@@ -278,7 +288,8 @@ export function useClientSwipe({
 
       const isBeforeFirstView = activeViewIndex === 0 && horizontalDistance > 0;
 
-      const isAfterLastView = activeViewIndex === CLIENT_VIEWS.length - 1 && horizontalDistance < 0;
+      const isAfterLastView =
+        activeViewIndex === availableViews.length - 1 && horizontalDistance < 0;
 
       event.preventDefault();
       setIsDraggingView(true);
@@ -293,7 +304,7 @@ export function useClientSwipe({
 
       setViewDragOffset(horizontalDistance);
     },
-    [activeViewIndex],
+    [activeViewIndex, availableViews.length],
   );
 
   const handlePointerUp = useCallback(
@@ -386,6 +397,7 @@ export function useClientSwipe({
     isDraggingView,
     isTransitioning: pendingView !== null,
     indicatorPosition,
+    updateAvailableViews,
     changeView,
     handlePointerDown,
     handlePointerMove,

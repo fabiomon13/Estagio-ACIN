@@ -8,6 +8,7 @@ export type SelectionSheetProps = {
   cart: Record<number, number>;
   buffetItemIds: Set<number>;
   isSubmitting: boolean;
+  hasActiveOrder: boolean;
   isClosing?: boolean;
   onAdd: (itemId: number) => void;
   onRemove: (itemId: number) => void;
@@ -21,6 +22,7 @@ export function SelectionSheet({
   cart,
   buffetItemIds,
   isSubmitting,
+  hasActiveOrder,
   isClosing = false,
   onAdd,
   onRemove,
@@ -104,7 +106,12 @@ export function SelectionSheet({
         }}
         onTouchStart={(event) => {
           const target = event.target instanceof Element ? event.target : null;
-          const canDrag = !target?.closest('.client-selection-items');
+          // Do not turn taps on controls into sheet-drag gestures. On touch
+          // devices even a tiny movement would call preventDefault below and
+          // cancel the button's click (notably the "Send round" action).
+          const canDrag = !target?.closest(
+            'button, a, input, select, textarea, .client-selection-items',
+          );
           sheetTouchStart.current = canDrag ? event.touches[0].clientY : null;
           setIsDraggingSheet(canDrag);
         }}
@@ -140,7 +147,7 @@ export function SelectionSheet({
           {items.map((item) => {
             const quantity = cart[item.id] ?? 0;
             return (
-              <article key={item.id} className="client-selection-item">
+              <article key={item.alias} className="client-selection-item">
                 <div className="client-selection-thumbnail" aria-hidden={!item.photo_url}>
                   {item.photo_url ? <img src={item.photo_url} alt="" /> : '🍽️'}
                 </div>
@@ -180,13 +187,18 @@ export function SelectionSheet({
           <span>Total</span>
           <strong>{formatPrice(total)}</strong>
         </div>
+        {hasActiveOrder && (
+          <p className="client-selection-order-warning" role="status">
+            Wait for the current order to be served before sending another round.
+          </p>
+        )}
         <button
           type="button"
           className="client-selection-submit"
-          disabled={isSubmitting || items.length === 0}
+          disabled={isSubmitting || hasActiveOrder || items.length === 0}
           onClick={onSubmit}
         >
-          {isSubmitting ? 'Sending…' : 'Send round'}
+          {isSubmitting ? 'Sending…' : hasActiveOrder ? 'Order in progress' : 'Send round'}
         </button>
       </section>
     </div>

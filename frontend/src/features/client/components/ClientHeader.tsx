@@ -11,6 +11,7 @@ type ClientHeaderProps = {
   pendingServiceRequest: ServiceRequestType | null;
   activeServiceRequests: Partial<Record<ServiceRequestType, number>>;
   serviceRequestMessage?: string | null;
+  showBuffet: boolean;
   onChangeView: (view: ClientView) => void;
   onServiceRequest: (type: ServiceRequestType) => void;
 };
@@ -23,6 +24,7 @@ export function ClientHeader({
   pendingServiceRequest,
   activeServiceRequests,
   serviceRequestMessage,
+  showBuffet,
   onChangeView,
   onServiceRequest,
 }: ClientHeaderProps) {
@@ -78,6 +80,7 @@ export function ClientHeader({
         activeView={activeView}
         isDragging={isDragging}
         indicatorPosition={indicatorPosition}
+        showBuffet={showBuffet}
         onChange={onChangeView}
       />
     </header>

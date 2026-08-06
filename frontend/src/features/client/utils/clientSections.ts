@@ -6,16 +6,16 @@ export function buildCategorySections(
   categories: readonly Category[],
   items: readonly MenuItem[],
 ): CategorySection[] {
-  const itemsByCategory = new Map<number, MenuItem[]>();
+  const itemsByCategory = new Map<string, MenuItem[]>();
 
   for (const item of items) {
-    const categoryItems = itemsByCategory.get(item.category_id);
+    const categoryItems = itemsByCategory.get(item.category.alias);
     if (categoryItems) categoryItems.push(item);
-    else itemsByCategory.set(item.category_id, [item]);
+    else itemsByCategory.set(item.category.alias, [item]);
   }
 
   return categories.flatMap((category) => {
-    const categoryItems = itemsByCategory.get(category.id) ?? [];
+    const categoryItems = itemsByCategory.get(category.alias) ?? [];
     return categoryItems.length > 0 ? [{ category, items: categoryItems }] : [];
   });
 }

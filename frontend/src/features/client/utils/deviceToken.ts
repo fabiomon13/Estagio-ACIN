@@ -1,5 +1,7 @@
 // frontend/src/features/client/utils/deviceToken.ts
 
+import { createUuid } from '../../../utils/createUuid';
+
 const STORAGE_KEY = 'device_token';
 
 let memoryToken: string | null = null;
@@ -21,7 +23,7 @@ export function getDeviceToken(): string {
     // Continue with an in-memory token.
   }
 
-  const token = createSecureToken();
+  const token = createUuid();
 
   memoryToken = token;
 
@@ -32,22 +34,4 @@ export function getDeviceToken(): string {
   }
 
   return token;
-}
-
-function createSecureToken(): string {
-  if (typeof globalThis.crypto?.randomUUID === 'function') {
-    return globalThis.crypto.randomUUID();
-  }
-
-  if (typeof globalThis.crypto?.getRandomValues !== 'function') {
-    throw new Error('Secure random number generation is unavailable.');
-  }
-
-  const bytes = globalThis.crypto.getRandomValues(new Uint8Array(16));
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0'));
-  return `${hex.slice(0, 4).join('')}-${hex.slice(4, 6).join('')}-${hex
-    .slice(6, 8)
-    .join('')}-${hex.slice(8, 10).join('')}-${hex.slice(10).join('')}`;
 }

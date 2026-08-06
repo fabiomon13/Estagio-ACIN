@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { ApiError, apiFetch } from '../../../services/api/client';
+import { useLocation } from 'react-router-dom';
+import { apiFetch } from '../../../services/api/client';
 
 export type StaffRole = 'admin' | 'waiter' | 'chef';
 
@@ -30,9 +31,18 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 // Provides authentication state and actions to the entire application
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  const isClientRoute = pathname.startsWith('/table/');
   const [staff, setStaff] = useState<AuthStaff | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [connectionError, setConnectionError] = useState(false);
+
+  // Checks whether the user already has a valid session when the app loads
+  useEffect(() => {
+    if (isClientRoute) {
+      setIsLoading(false);
+      return;
+    }
 
   // Checks whether the user already has a valid session. A real rejection
   // from the server (ApiError, e.g. 401) means "not authenticated" -- any
@@ -55,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       })
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [isClientRoute]);
 
   // Checks whether the user already has a valid session when the app loads
   useEffect(() => {
