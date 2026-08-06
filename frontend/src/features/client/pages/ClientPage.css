@@ -1730,6 +1730,7 @@ body:has(.client-shell) {
   padding: 1rem;
   background: rgb(0 0 0 / 72%);
   backdrop-filter: blur(6px);
+  animation: client-allergy-backdrop-in 220ms ease-out both;
 }
 
 .client-allergy-modal {
@@ -1741,6 +1742,61 @@ body:has(.client-shell) {
   padding: 1.5rem;
   background: #11161f;
   box-shadow: 0 1.5rem 5rem rgb(0 0 0 / 55%);
+  transform-origin: center bottom;
+  animation: client-allergy-modal-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.client-allergy-modal-backdrop.is-closing {
+  pointer-events: none;
+  animation: client-allergy-backdrop-out 220ms ease-in both;
+}
+
+.client-allergy-modal-backdrop.is-closing .client-allergy-modal {
+  animation: client-allergy-modal-out 220ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+@keyframes client-allergy-backdrop-in {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(6px);
+  }
+}
+
+@keyframes client-allergy-backdrop-out {
+  from {
+    opacity: 1;
+    backdrop-filter: blur(6px);
+  }
+  to {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+}
+
+@keyframes client-allergy-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.5rem) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes client-allergy-modal-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(1rem) scale(0.98);
+  }
 }
 
 .client-allergy-eyebrow {
@@ -1818,6 +1874,15 @@ body:has(.client-shell) {
 @media (min-width: 40rem) {
   .client-allergy-modal-backdrop {
     place-items: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .client-allergy-modal-backdrop,
+  .client-allergy-modal,
+  .client-allergy-modal-backdrop.is-closing,
+  .client-allergy-modal-backdrop.is-closing .client-allergy-modal {
+    animation-duration: 1ms;
   }
 }
 .client-product-allergy-warning {

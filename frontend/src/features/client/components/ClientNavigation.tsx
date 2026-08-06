@@ -11,7 +11,7 @@ type ClientNavigationProps = {
 const navigationItems: ReadonlyArray<{ view: ClientView; icon: string; label: string }> = [
   { view: 'menu', icon: '⌘', label: 'Menu' },
   { view: 'buffet', icon: '↻', label: 'Buffet' },
-  { view: 'orders', icon: '≡', label: 'Orders' },
+  { view: 'orders', icon: '≡', label: 'Pedidos' },
 ];
 
 export function ClientNavigation({
@@ -24,16 +24,15 @@ export function ClientNavigation({
   const visibleNavigationItems = showBuffet
     ? navigationItems
     : navigationItems.filter(({ view }) => view !== 'buffet');
-  const activeVisibleIndex = visibleNavigationItems.findIndex(({ view }) => view === activeView);
   const boundedIndicatorPosition = Math.min(
-    Math.max(showBuffet ? indicatorPosition : activeVisibleIndex, 0),
+    Math.max(indicatorPosition, 0),
     visibleNavigationItems.length - 1,
   );
 
   return (
     <nav
       className={`client-main-nav${showBuffet ? '' : ' has-two-items'}`}
-      aria-label="Customer navigation"
+      aria-label="Navegação do cliente"
     >
       {visibleNavigationItems.map(({ view, icon, label }) => (
         <button

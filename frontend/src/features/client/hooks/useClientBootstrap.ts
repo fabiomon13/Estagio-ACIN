@@ -139,7 +139,9 @@ export function useClientBootstrap({
       } catch (requestError) {
         if (!isActive) return;
         setError(
-          requestError instanceof ApiError ? requestError.detail : 'The menu could not be loaded.',
+          requestError instanceof ApiError
+            ? requestError.detail
+            : 'Não foi possível carregar o menu.',
         );
         setStatus('error');
       }
@@ -189,7 +191,7 @@ export function useClientBootstrap({
         setError(
           requestError instanceof ApiError
             ? requestError.detail
-            : 'The buffet could not be loaded.',
+            : 'Não foi possível carregar o buffet.',
         );
         setStatus('error');
       });

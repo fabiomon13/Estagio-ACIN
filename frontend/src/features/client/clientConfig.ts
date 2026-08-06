@@ -14,25 +14,25 @@ export type TagConfig = {
 
 export const categoryConfig = {
   'alcoholic-drinks': {
-    label: 'Alcoholic drinks',
+    label: 'Bebidas alcoólicas',
     stationKey: 'bar',
-    stationName: 'Drinks',
+    stationName: 'Bebidas',
     emoji: '🍷',
     stationOrder: 4,
     categoryOrder: 2,
   },
   'soft-drinks-water': {
-    label: 'Soft drinks & water',
+    label: 'Refrigerantes e água',
     stationKey: 'bar',
-    stationName: 'Drinks',
+    stationName: 'Bebidas',
     emoji: '🥤',
     stationOrder: 4,
     categoryOrder: 1,
   },
   desserts: {
-    label: 'Desserts',
+    label: 'Sobremesas',
     stationKey: 'cold-pantry',
-    stationName: 'Cold kitchen',
+    stationName: 'Cozinha fria',
     emoji: '🍰',
     stationOrder: 5,
     categoryOrder: 1,
@@ -40,7 +40,7 @@ export const categoryConfig = {
   tempura: {
     label: 'Tempura',
     stationKey: 'fryer',
-    stationName: 'Fried dishes',
+    stationName: 'Fritos',
     emoji: '🍤',
     stationOrder: 3,
     categoryOrder: 1,
@@ -48,7 +48,7 @@ export const categoryConfig = {
   ramen: {
     label: 'Ramen',
     stationKey: 'hot-wok',
-    stationName: 'Hot dishes',
+    stationName: 'Pratos quentes',
     emoji: '🍜',
     stationOrder: 2,
     categoryOrder: 1,
@@ -73,7 +73,7 @@ export const categoryConfig = {
 
 export const tagConfig = {
   vegetariano: {
-    label: 'Vegetarian',
+    label: 'Vegetariano',
     type: 'diet',
   },
   vegan: {
@@ -81,67 +81,67 @@ export const tagConfig = {
     type: 'diet',
   },
   'sem-gluten': {
-    label: 'Gluten-free',
+    label: 'Sem glúten',
     type: 'diet',
   },
   'sem-lactose': {
-    label: 'Lactose-free',
+    label: 'Sem lactose',
     type: 'diet',
   },
   'alergenio-gluten': {
-    label: 'Gluten',
+    label: 'Glúten',
     type: 'allergen',
   },
   'alergenio-crustaceos': {
-    label: 'Crustaceans',
+    label: 'Crustáceos',
     type: 'allergen',
   },
   'alergenio-ovos': {
-    label: 'Eggs',
+    label: 'Ovos',
     type: 'allergen',
   },
   'alergenio-peixe': {
-    label: 'Fish',
+    label: 'Peixe',
     type: 'allergen',
   },
   'alergenio-amendoins': {
-    label: 'Peanuts',
+    label: 'Amendoins',
     type: 'allergen',
   },
   'alergenio-soja': {
-    label: 'Soy',
+    label: 'Soja',
     type: 'allergen',
   },
   'alergenio-leite': {
-    label: 'Milk',
+    label: 'Leite',
     type: 'allergen',
   },
   'alergenio-frutos-de-casca-rija': {
-    label: 'Tree nuts',
+    label: 'Frutos de casca rija',
     type: 'allergen',
   },
   'alergenio-aipo': {
-    label: 'Celery',
+    label: 'Aipo',
     type: 'allergen',
   },
   'alergenio-mostarda': {
-    label: 'Mustard',
+    label: 'Mostarda',
     type: 'allergen',
   },
   'alergenio-sesamo': {
-    label: 'Sesame',
+    label: 'Sésamo',
     type: 'allergen',
   },
   'alergenio-sulfitos': {
-    label: 'Sulphites',
+    label: 'Sulfitos',
     type: 'allergen',
   },
   'alergenio-tremoco': {
-    label: 'Lupin',
+    label: 'Tremoço',
     type: 'allergen',
   },
   'alergenio-moluscos': {
-    label: 'Molluscs',
+    label: 'Moluscos',
     type: 'allergen',
   },
 } as const satisfies Record<string, TagConfig>;
@@ -150,14 +150,14 @@ export type KnownCategoryAlias = keyof typeof categoryConfig;
 
 export type KnownTagAlias = keyof typeof tagConfig;
 
-const priceFormatter = new Intl.NumberFormat('en-IE', {
+const priceFormatter = new Intl.NumberFormat('pt-PT', {
   style: 'currency',
   currency: 'EUR',
 });
 
 export function getCategoryConfig(alias: string, fallbackName = alias): CategoryConfig {
   const normalizedAlias = alias.trim();
-  const normalizedName = fallbackName.trim() || normalizedAlias || 'Other';
+  const normalizedName = fallbackName.trim() || normalizedAlias || 'Outros';
 
   const configured = categoryConfig[normalizedAlias as KnownCategoryAlias];
 
@@ -178,7 +178,7 @@ export function getCategoryConfig(alias: string, fallbackName = alias): Category
 export function getTagConfig(alias: string, fallbackName: string): TagConfig {
   return (
     tagConfig[alias as KnownTagAlias] ?? {
-      label: fallbackName.replace('Allergen: ', ''),
+      label: fallbackName.replace(/^Alergénio:\s*/i, ''),
       type: alias.startsWith('alergenio-') ? 'allergen' : 'diet',
     }
   );

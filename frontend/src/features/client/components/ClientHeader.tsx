@@ -37,7 +37,7 @@ export function ClientHeader({
         <div className="client-header-actions flex items-center gap-3">
           <div className="client-table-indicator text-right">
             <p className="client-table-label text-[9px] uppercase tracking-[0.18em] text-content-subtle">
-              Table
+              Mesa
             </p>
             <p className="client-table-number font-display text-lg font-bold leading-none">
               {tableNumber}
@@ -47,8 +47,8 @@ export function ClientHeader({
             <button
               type="button"
               className="client-header-service-button"
-              aria-label="Edit allergies and intolerances"
-              title="Allergies and intolerances"
+              aria-label="Editar alergias e intolerâncias"
+              title="Alergias e intolerâncias"
               onClick={onEditAllergies}
             >
               <span aria-hidden="true">⚠</span>
@@ -58,8 +58,8 @@ export function ClientHeader({
               className={`client-header-service-button ${
                 activeServiceRequests.payment_request !== undefined ? 'is-payment-active' : ''
               }`}
-              aria-label="Request the bill"
-              title="Request the bill"
+              aria-label="Pedir a conta"
+              title="Pedir a conta"
               disabled={pendingServiceRequest !== null}
               aria-pressed={activeServiceRequests.payment_request !== undefined}
               onClick={() => onServiceRequest('payment_request')}
@@ -71,8 +71,8 @@ export function ClientHeader({
               className={`client-header-service-button ${
                 activeServiceRequests.assistance !== undefined ? 'is-assistance-active' : ''
               }`}
-              aria-label="Call staff"
-              title="Call staff"
+              aria-label="Chamar um funcionário"
+              title="Chamar um funcionário"
               disabled={pendingServiceRequest !== null}
               aria-pressed={activeServiceRequests.assistance !== undefined}
               onClick={() => onServiceRequest('assistance')}

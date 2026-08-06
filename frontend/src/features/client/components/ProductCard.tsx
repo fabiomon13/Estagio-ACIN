@@ -74,7 +74,7 @@ export function ProductCard({
       <button
         type="button"
         className="client-product-visual relative h-32 overflow-hidden bg-gradient-to-br from-surface-elevated via-primary-soft to-surface-raised"
-        aria-label={`View details of ${item.name}`}
+        aria-label={`Ver detalhes de ${item.name}`}
         onClick={openDetails}
       >
         {item.photo_url ? (
@@ -93,7 +93,7 @@ export function ProductCard({
           </div>
         )}
         <span className="client-product-price absolute bottom-2 right-2 rounded-full bg-black/85 px-2 py-1 text-xs font-bold text-white">
-          {priceMode === 'included' ? 'Included' : formatPrice(item.base_price)}
+          {priceMode === 'included' ? 'Incluído' : formatPrice(item.base_price)}
         </span>
       </button>
 
@@ -103,12 +103,12 @@ export function ProductCard({
         <button
           type="button"
           className="client-product-summary-button"
-          aria-label={`View details of ${item.name}`}
+          aria-label={`Ver detalhes de ${item.name}`}
           onClick={openDetails}
         >
           <h3 className="font-display text-base font-bold leading-tight">{item.name}</h3>
           <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-content-muted">
-            {item.description ?? 'Description unavailable'}
+            {item.description ?? 'Descrição indisponível'}
           </p>
         </button>
         <div className="mb-3 mt-2 flex min-h-5 flex-wrap gap-1">
@@ -126,7 +126,7 @@ export function ProductCard({
             );
           })}
           {item.tags.length > 2 && (
-            <span className="client-product-tag" aria-label={`${item.tags.length - 2} more tags`}>
+            <span className="client-product-tag" aria-label={`Mais ${item.tags.length - 2} tags`}>
               +{item.tags.length - 2}
             </span>
           )}
@@ -138,11 +138,11 @@ export function ProductCard({
                 type="button"
                 onClick={onRemove}
                 className="grid size-10 place-items-center rounded-xl bg-surface-raised text-lg font-bold text-white transition active:opacity-75"
-                aria-label={`Remove one unit of ${item.name}`}
+                aria-label={`Remover uma unidade de ${item.name}`}
               >
                 −
               </button>
-              <output className="text-base font-bold" aria-label={`${quantity} units`}>
+              <output className="text-base font-bold" aria-label={`${quantity} unidades`}>
                 {quantity}
               </output>
               <button
@@ -155,8 +155,8 @@ export function ProductCard({
                 }`}
                 aria-label={
                   hasAllergyWarning
-                    ? `Add one more unit of ${item.name}; allergy warning`
-                    : `Add one more unit of ${item.name}`
+                    ? `Adicionar mais uma unidade de ${item.name}; aviso de alergia`
+                    : `Adicionar mais uma unidade de ${item.name}`
                 }
               >
                 +
@@ -167,7 +167,9 @@ export function ProductCard({
               type="button"
               onClick={openDetails}
               aria-label={
-                hasAllergyWarning ? `Check allergy warning for ${item.name}` : `Add ${item.name}`
+                hasAllergyWarning
+                  ? `Verificar aviso de alergia de ${item.name}`
+                  : `Adicionar ${item.name}`
               }
               className={`client-add-button mt-auto flex w-full items-center justify-center rounded-xl px-2 py-2.5 text-sm font-bold transition ${
                 hasAllergyWarning
@@ -180,12 +182,12 @@ export function ProductCard({
                   <span className="shrink-0 text-base leading-none" aria-hidden="true">
                     ⚠
                   </span>
-                  <span>Check allergens</span>
+                  <span>Ver alergénios</span>
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-1.5">
                   <PlusIcon size={17} />
-                  <span>Add</span>
+                  <span>Adicionar</span>
                 </span>
               )}
             </button>
@@ -215,7 +217,7 @@ export function ProductCard({
               <button
                 ref={detailCloseButtonRef}
                 type="button"
-                aria-label="Close product details"
+                aria-label="Fechar detalhes do artigo"
                 onClick={() => setIsDetailsOpen(false)}
               >
                 <CloseIcon size={20} />
@@ -224,13 +226,13 @@ export function ProductCard({
 
             <div className="client-product-details-content">
               <h2 id={`product-details-title-${item.alias}`}>{item.name}</h2>
-              <p>{item.description ?? 'Description unavailable'}</p>
+              <p>{item.description ?? 'Descrição indisponível'}</p>
 
               {hasAllergyWarning && (
                 <div className="client-product-allergy-warning" role="alert">
-                  <strong>Allergy warning</strong>
+                  <strong>Aviso de alergia</strong>
                   <span>
-                    Contains:{' '}
+                    Contém:{' '}
                     {matchingAllergens
                       .map((tag) => tag.name.replace(/^Alergénio:\s*/i, ''))
                       .join(', ')}
@@ -252,7 +254,7 @@ export function ProductCard({
               )}
 
               <label className="client-product-details-notes">
-                <span>Special notes</span>
+                <span>Notas especiais</span>
                 <textarea
                   value={detailNotes}
                   maxLength={300}
@@ -265,15 +267,15 @@ export function ProductCard({
                   <button
                     type="button"
                     disabled={detailQuantity <= 1}
-                    aria-label="Decrease quantity"
+                    aria-label="Diminuir quantidade"
                     onClick={() => setDetailQuantity((current) => Math.max(1, current - 1))}
                   >
                     −
                   </button>
-                  <output aria-label={`${detailQuantity} units`}>{detailQuantity}</output>
+                  <output aria-label={`${detailQuantity} unidades`}>{detailQuantity}</output>
                   <button
                     type="button"
-                    aria-label="Increase quantity"
+                    aria-label="Aumentar quantidade"
                     onClick={() => setDetailQuantity((current) => current + 1)}
                   >
                     +
@@ -284,7 +286,7 @@ export function ProductCard({
                   className={hasAllergyWarning ? 'is-allergy-warning' : 'is-primary'}
                   onClick={addDetailsToOrder}
                 >
-                  {hasAllergyWarning ? 'Add despite warning' : 'Add to the order'}
+                  {hasAllergyWarning ? 'Adicionar apesar do aviso' : 'Adicionar ao pedido'}
                 </button>
               </div>
             </div>

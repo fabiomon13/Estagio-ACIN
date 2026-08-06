@@ -7,6 +7,7 @@ type AllergyPreferencesModalProps = {
   selectedTagIds: number[];
   isInitialSetup: boolean;
   isSaving: boolean;
+  isClosing: boolean;
   onClose: () => void;
   onSave: (tagIds: number[]) => void;
 };
@@ -16,6 +17,7 @@ export function AllergyPreferencesModal({
   selectedTagIds,
   isInitialSetup,
   isSaving,
+  isClosing,
   onClose,
   onSave,
 }: AllergyPreferencesModalProps) {
@@ -31,7 +33,11 @@ export function AllergyPreferencesModal({
   }
 
   return (
-    <div className="client-allergy-modal-backdrop" role="presentation" onClick={onClose}>
+    <div
+      className={`client-allergy-modal-backdrop ${isClosing ? 'is-closing' : ''}`}
+      role="presentation"
+      onClick={onClose}
+    >
       <section
         className="client-allergy-modal"
         role="dialog"
@@ -39,12 +45,12 @@ export function AllergyPreferencesModal({
         aria-labelledby="allergy-preferences-title"
         onClick={(event) => event.stopPropagation()}
       >
-        <p className="client-allergy-eyebrow">Before you order</p>
-        <h2 id="allergy-preferences-title">Do you have any allergies or intolerances?</h2>
+        <p className="client-allergy-eyebrow">Antes de pedir</p>
+        <h2 id="allergy-preferences-title">Tem alguma alergia ou intolerância?</h2>
         <p className="client-allergy-description">
-          Select every allergen you need to avoid. Matching dishes will remain visible with a yellow
-          warning. Always confirm severe allergies with a member of staff because
-          cross-contamination may occur.
+          Selecione todos os alergénios que precisa de evitar. Os pratos correspondentes continuam
+          visíveis com um aviso amarelo. Confirme sempre alergias graves com um funcionário, pois
+          pode ocorrer contaminação cruzada.
         </p>
         <div className="client-allergy-options">
           {tags.map((tag) => (
@@ -59,12 +65,12 @@ export function AllergyPreferencesModal({
           ))}
         </div>
         <p className="client-allergy-disclaimer">
-          This filter is informational and does not replace confirmation with the restaurant.
+          Este filtro é informativo e não substitui a confirmação junto do restaurante.
         </p>
         <div className="client-allergy-actions">
           {!isInitialSetup && (
             <button type="button" className="is-secondary" disabled={isSaving} onClick={onClose}>
-              Cancel
+              Cancelar
             </button>
           )}
           <button
@@ -72,7 +78,11 @@ export function AllergyPreferencesModal({
             disabled={isSaving}
             onClick={() => onSave(Array.from(selection).sort((a, b) => a - b))}
           >
-            {isSaving ? 'Saving…' : selection.size === 0 ? 'I have no allergies' : 'Save choices'}
+            {isSaving
+              ? 'A guardar…'
+              : selection.size === 0
+                ? 'Não tenho alergias'
+                : 'Guardar escolhas'}
           </button>
         </div>
       </section>

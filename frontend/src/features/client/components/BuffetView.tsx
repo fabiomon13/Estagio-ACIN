@@ -241,20 +241,20 @@ export function BuffetView({
   if (!buffet) {
     return (
       <p className="mx-auto max-w-lg px-4 py-8 text-sm text-content-muted" role="status">
-        Buffet unavailable.
+        Buffet indisponível.
       </p>
     );
   }
 
   const confirmationTitle =
     visibleConfirmationAction === 'cancel'
-      ? 'Cancel buffet selection?'
-      : 'Confirm buffet selection?';
+      ? 'Cancelar a seleção do buffet?'
+      : 'Confirmar a seleção do buffet?';
 
   const confirmationDescription =
     visibleConfirmationAction === 'cancel'
-      ? 'The buffet will no longer be associated with your order.'
-      : 'You can cancel your buffet selection until you send your first order to the kitchen.';
+      ? 'O buffet deixará de estar associado ao seu pedido.'
+      : 'Pode cancelar a seleção do buffet até enviar o primeiro pedido para a cozinha.';
 
   return (
     <div
@@ -264,28 +264,28 @@ export function BuffetView({
     >
       <header className="client-buffet-heading">
         <h1>{buffet.name}</h1>
-        <p>{formatPrice(buffet.price)} per person</p>
+        <p>{formatPrice(buffet.price)} por pessoa</p>
       </header>
 
       {!isSelected && (
         <div className="client-buffet-notice is-primary">
-          <strong>Not included</strong>
-          <p>Drinks, extras and products available in the Menu section are charged separately.</p>
+          <strong>Não incluído</strong>
+          <p>Bebidas, extras e produtos disponíveis no Menu são cobrados separadamente.</p>
         </div>
       )}
 
       <div className="client-buffet-notice">
         <p>
-          All dishes shown in this section are included. Drinks, extras and Menu products are
-          charged separately.
+          Todos os pratos apresentados nesta secção estão incluídos. Bebidas, extras e produtos do
+          Menu são cobrados separadamente.
         </p>
       </div>
 
       {Number(buffet.waste_charge) > 0 && (
         <div className="client-buffet-notice">
-          <strong>Food waste policy</strong>
+          <strong>Política de desperdício alimentar</strong>
           <p>
-            Excessive food waste may incur an additional charge of{' '}
+            O desperdício alimentar excessivo pode implicar uma cobrança adicional de{' '}
             {formatPrice(buffet.waste_charge)}.
           </p>
         </div>
@@ -294,14 +294,14 @@ export function BuffetView({
       {isSelected && (
         <div className="client-selected-buffet" role="status">
           <div>
-            <span>Buffet selected</span>
+            <span>Buffet selecionado</span>
           </div>
 
           {canCancelSelection && !isPreview && (
             <button
               type="button"
               disabled={isChoosing}
-              aria-label="Cancel buffet selection"
+              aria-label="Cancelar seleção do buffet"
               onClick={() => setConfirmationAction('cancel')}
             >
               {isChoosing ? '…' : '×'}
@@ -314,7 +314,7 @@ export function BuffetView({
         <nav
           ref={isPreview ? undefined : categoryNavigationRef}
           className={`client-category-nav client-buffet-category-nav ${isPreview ? 'is-preview' : ''}`}
-          aria-label="Buffet categories"
+          aria-label="Categorias do buffet"
         >
           <div className="client-category-row scrollbar-none mx-auto flex max-w-lg gap-2 overflow-x-auto">
             {navigationStations.map((station) => {
@@ -440,7 +440,7 @@ export function BuffetView({
           className="client-buffet-empty py-10 text-center text-sm text-content-muted"
           role="status"
         >
-          There are no buffet dishes available at the moment.
+          Não existem pratos de buffet disponíveis neste momento.
         </p>
       )}
 
@@ -452,7 +452,7 @@ export function BuffetView({
           disabled={!hasItems || isChoosing || isSelected}
           onClick={() => setConfirmationAction('select')}
         >
-          Select buffet
+          Selecionar buffet
         </button>
       )}
 
@@ -482,15 +482,15 @@ export function BuffetView({
                 disabled={isChoosing}
                 onClick={closeConfirmation}
               >
-                Keep current selection
+                Manter seleção atual
               </button>
 
               <button type="button" disabled={isChoosing} onClick={confirmAction}>
                 {isChoosing
-                  ? 'Confirming…'
+                  ? 'A confirmar…'
                   : visibleConfirmationAction === 'cancel'
-                    ? 'Cancel buffet'
-                    : 'Confirm'}
+                    ? 'Cancelar buffet'
+                    : 'Confirmar'}
               </button>
             </div>
           </section>

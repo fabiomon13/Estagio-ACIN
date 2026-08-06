@@ -49,7 +49,7 @@ export function useClientServiceRequests({ tableCode, enabled }: UseClientServic
         setPollingError(null);
       } catch (error) {
         if (isActive && !(error instanceof DOMException && error.name === 'AbortError')) {
-          setPollingError('Service request status could not be refreshed. Retrying…');
+          setPollingError('Não foi possível atualizar o estado do pedido. A tentar novamente…');
         }
       } finally {
         isLoading = false;
@@ -79,23 +79,26 @@ export function useClientServiceRequests({ tableCode, enabled }: UseClientServic
             return next;
           });
           showToast({
-            title: type === 'payment_request' ? 'Bill request cancelled' : 'Assistance cancelled',
-            description: 'The request was cancelled.',
+            title:
+              type === 'payment_request'
+                ? 'Pedido de conta cancelado'
+                : 'Pedido de assistência cancelado',
+            description: 'O pedido foi cancelado.',
             variant: 'default',
           });
         } else {
           const request = await createServiceRequest(tableCode, getDeviceToken(), type);
           setActiveRequests((current) => ({ ...current, [type]: request.id }));
           showToast({
-            title: type === 'payment_request' ? 'Bill requested' : 'Staff called',
-            description: 'The request was sent to the staff.',
+            title: type === 'payment_request' ? 'Conta pedida' : 'Funcionário chamado',
+            description: 'O pedido foi enviado ao funcionário.',
             variant: 'success',
           });
         }
       } catch (error) {
         showToast({
-          title: 'The request could not be sent',
-          description: error instanceof ApiError ? error.detail : 'Please try again.',
+          title: 'Não foi possível enviar o pedido',
+          description: error instanceof ApiError ? error.detail : 'Tente novamente.',
           variant: 'danger',
         });
       } finally {
