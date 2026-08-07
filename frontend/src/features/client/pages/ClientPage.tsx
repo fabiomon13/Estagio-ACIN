@@ -4,15 +4,11 @@ import { useParams } from 'react-router-dom';
 import { useToast } from '../../../components/ui/toast/useToast';
 import { ApiError } from '../../../services/api/client';
 import { createUuid } from '../../../utils/createUuid';
-import { BuffetView } from '../components/BuffetView';
-import { AllergyPreferencesModal } from '../components/AllergyPreferencesModal';
-import { ClientHeader } from '../components/ClientHeader';
-import { ClientMessage } from '../components/ClientMessage';
-import { MenuView } from '../components/MenuView';
-import { OrdersView } from '../components/OrdersView';
-import { SelectionSheet } from '../components/SelectionSheet';
-import { SessionSetup } from '../components/SessionSetup';
-import { SwipePreview } from '../components/SwipePreview';
+import { SelectionSheet } from '../components/selection/SelectionSheet';
+import { AllergyPreferencesModal } from '../components/shared/AllergyPreferencesModal';
+import { ClientHeader } from '../components/shared/ClientHeader';
+import { ClientMessage } from '../components/shared/ClientMessage';
+import { SessionSetup } from '../components/shared/SessionSetup';
 import { CLIENT_VIEWS } from '../clientTypes';
 import { useClientBootstrap } from '../hooks/useClientBootstrap';
 import { useClientCart } from '../hooks/useClientCart';
@@ -20,11 +16,13 @@ import { useClientOrders } from '../hooks/useClientOrders';
 import { useClientRealtime } from '../hooks/useClientRealtime';
 import { useClientServiceRequests } from '../hooks/useClientServiceRequests';
 import { useClientSession } from '../hooks/useClientSession';
-import { useClientSwipe } from '../hooks/useClientSwipe';
+import { useClientSwipe } from '../hooks/swipe/useClientSwipe';
 import { updateGuestAllergyPreferences, updateGuestBuffet } from '../services/guestApi';
 import { createSession } from '../services/menuApi';
 import { cancelOrderItem, createOrder } from '../services/orderApi';
 import { getDeviceToken } from '../utils/deviceToken';
+import { ClientConfirmationModal } from './components/ClientConfirmationModal';
+import { ClientViewStage } from './components/ClientViewStage';
 
 import './ClientPage.css';
 
@@ -322,7 +320,7 @@ export function ClientPage() {
     }
   }
 
-  async function handleSaveAllergies(tagIds: number[]) {
+  async function handleSaveAllergies(tagIds: readonly number[]) {
     if (!tableCode || isSavingAllergies) return;
     setIsSavingAllergies(true);
     try {
@@ -428,76 +426,17 @@ export function ClientPage() {
             A restabelecer a ligação em tempo real.
           </p>
         )}
-        <div className="client-view-stage">
-          <div
-            key={swipe.activeView}
-            className={`client-view${swipe.isDraggingView ? ' is-dragging' : ''}`}
-            onTransitionEnd={swipe.handleViewTransitionEnd}
-            style={{
-              transform:
-                swipe.viewDragOffset === 0
-                  ? undefined
-                  : `translate3d(${swipe.viewDragOffset}px, 0, 0)`,
-            }}
-          >
-            {swipe.activeView === 'menu' && (
-              <MenuView
-                stations={data.menuStations}
-                selectedAllergenTagIds={data.selectedAllergenTagIds}
-                cart={cart.cart}
-                onAdd={cart.addToCart}
-                onAddDetails={(itemId, quantity, notes) => {
-                  cart.addQuantity(itemId, quantity);
-                  cart.setItemNotes(itemId, notes);
-                }}
-                onRemove={cart.removeFromCart}
-              />
-            )}
-            {swipe.activeView === 'buffet' && !isBuffetSelectionLocked && (
-              <BuffetView
-                buffet={selectedBuffet}
-                stations={data.buffetStations}
-                selectedAllergenTagIds={data.selectedAllergenTagIds}
-                cart={cart.cart}
-                isSelected={data.selectedBuffetId === selectedBuffet?.id}
-                canSelectBuffet={!isBuffetSelectionLocked}
-                canCancelSelection={orders.length === 0}
-                onAdd={cart.addToCart}
-                onAddDetails={(itemId, quantity, notes) => {
-                  cart.addQuantity(itemId, quantity);
-                  cart.setItemNotes(itemId, notes);
-                }}
-                onRemove={cart.removeFromCart}
-                onChoose={handleChooseBuffet}
-              />
-            )}
-            {swipe.activeView === 'orders' && (
-              <OrdersView
-                orders={orders}
-                onCancel={handleCancelOrderItem}
-                refreshMessage={pollingError}
-              />
-            )}
-          </div>
-          {swipe.swipeTargetView &&
-            !(swipe.swipeTargetView === 'buffet' && isBuffetSelectionLocked) && (
-              <SwipePreview
-                view={swipe.swipeTargetView}
-                dragOffset={swipe.viewDragOffset}
-                topOffset={swipe.targetViewTopOffset}
-                isDragging={swipe.isDraggingView}
-                isSettling={swipe.pendingView !== null}
-                menuStations={data.menuStations}
-                buffet={selectedBuffet}
-                buffetStations={data.buffetStations}
-                orders={orders}
-                cart={cart.cart}
-                isBuffetSelected={data.selectedBuffetId === selectedBuffet?.id}
-                canCancelBuffet={orders.length === 0}
-                selectedAllergenTagIds={data.selectedAllergenTagIds}
-              />
-            )}
-        </div>
+        <ClientViewStage
+          swipe={swipe}
+          data={data}
+          cart={cart}
+          orders={orders}
+          selectedBuffet={selectedBuffet}
+          isBuffetSelectionLocked={isBuffetSelectionLocked}
+          pollingError={pollingError}
+          onChooseBuffet={handleChooseBuffet}
+          onCancelOrderItem={handleCancelOrderItem}
+        />
         {floatingOrder.isVisible && (
           <button
             type="button"
@@ -529,91 +468,37 @@ export function ClientPage() {
           />
         )}
         {shouldRenderNoBuffetConfirmation && (
-          <div
-            className={`client-buffet-modal-backdrop ${
-              isNoBuffetConfirmationOpen ? '' : 'is-closing'
-            }`}
-            role="presentation"
-            onClick={() => {
-              if (!isSubmittingOrder) setIsNoBuffetConfirmationOpen(false);
+          <ClientConfirmationModal
+            title="Continuar sem buffet?"
+            description="Depois de enviar a primeira ronda, deixará de poder selecionar um buffet nesta sessão. Pretende continuar?"
+            cancelLabel="Voltar"
+            confirmLabel="Enviar ronda"
+            isOpen={isNoBuffetConfirmationOpen}
+            isBusy={isSubmittingOrder}
+            onCancel={() => setIsNoBuffetConfirmationOpen(false)}
+            onConfirm={() => {
+              setIsNoBuffetConfirmationOpen(false);
+              void submitOrder();
             }}
-          >
-            <section
-              className="client-buffet-modal"
-              role="alertdialog"
-              aria-modal="true"
-              aria-labelledby="no-buffet-confirmation-title"
-              aria-describedby="no-buffet-confirmation-description"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <h2 id="no-buffet-confirmation-title">Continuar sem buffet?</h2>
-              <p id="no-buffet-confirmation-description">
-                Depois de enviar a primeira ronda, deixará de poder selecionar um buffet nesta
-                sessão. Pretende continuar?
-              </p>
-              <div className="client-buffet-modal-actions">
-                <button
-                  type="button"
-                  className="is-secondary"
-                  disabled={isSubmittingOrder}
-                  onClick={() => setIsNoBuffetConfirmationOpen(false)}
-                >
-                  Voltar
-                </button>
-                <button
-                  type="button"
-                  disabled={isSubmittingOrder}
-                  onClick={() => {
-                    setIsNoBuffetConfirmationOpen(false);
-                    void submitOrder();
-                  }}
-                >
-                  {isSubmittingOrder ? 'A enviar…' : 'Enviar ronda'}
-                </button>
-              </div>
-            </section>
-          </div>
+          />
         )}
         {renderedServiceRequestConfirmation && (
-          <div
-            className={`client-buffet-modal-backdrop ${
-              serviceRequestConfirmation ? '' : 'is-closing'
-            }`}
-            role="presentation"
-            onClick={() => setServiceRequestConfirmation(null)}
-          >
-            <section
-              className="client-buffet-modal"
-              role="alertdialog"
-              aria-modal="true"
-              aria-labelledby="service-request-confirmation-title"
-              aria-describedby="service-request-confirmation-description"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <h2 id="service-request-confirmation-title">
-                {renderedServiceRequestConfirmation === 'assistance'
-                  ? 'Chamar um funcionário?'
-                  : 'Pedir a conta?'}
-              </h2>
-              <p id="service-request-confirmation-description">
-                {renderedServiceRequestConfirmation === 'assistance'
-                  ? 'O funcionário responsável pela sua mesa será notificado e irá prestar assistência.'
-                  : 'O funcionário responsável pela sua mesa será notificado de que pretende pagar.'}
-              </p>
-              <div className="client-buffet-modal-actions">
-                <button
-                  type="button"
-                  className="is-secondary"
-                  onClick={() => setServiceRequestConfirmation(null)}
-                >
-                  Cancelar
-                </button>
-                <button type="button" onClick={confirmServiceRequest}>
-                  Confirmar
-                </button>
-              </div>
-            </section>
-          </div>
+          <ClientConfirmationModal
+            title={
+              renderedServiceRequestConfirmation === 'assistance'
+                ? 'Chamar um funcionário?'
+                : 'Pedir a conta?'
+            }
+            description={
+              renderedServiceRequestConfirmation === 'assistance'
+                ? 'O funcionário responsável pela sua mesa será notificado e irá prestar assistência.'
+                : 'O funcionário responsável pela sua mesa será notificado de que pretende pagar.'
+            }
+            confirmLabel="Confirmar"
+            isOpen={serviceRequestConfirmation !== null}
+            onCancel={() => setServiceRequestConfirmation(null)}
+            onConfirm={confirmServiceRequest}
+          />
         )}
         {shouldRenderAllergyModal && data.guest && (
           <AllergyPreferencesModal

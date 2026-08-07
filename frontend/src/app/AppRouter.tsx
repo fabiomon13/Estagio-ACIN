@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
 import { AdminPage } from '../features/admin/pages/AdminPage';
 import { AuthProvider } from '../features/auth/hooks/useAuth';

@@ -1,0 +1,162 @@
+﻿/* Page shell and animated views */
+body:has(.client-shell) {
+  width: 100%;
+  min-width: 20rem;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0;
+  overflow-x: hidden;
+  background: #080b10;
+  overscroll-behavior: none;
+}
+
+.client-shell {
+  width: 100%;
+  min-width: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: clip;
+  background: #080b10;
+  padding-top: calc(7rem + env(safe-area-inset-top));
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  color: var(--color-content);
+  touch-action: pan-y;
+}
+
+.client-view-stage {
+  position: relative;
+  width: 100%;
+  overflow: clip visible;
+}
+
+.client-view {
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.client-view.is-dragging,
+.client-view.is-settling {
+  will-change: transform;
+}
+
+.client-view.is-dragging {
+  transition: none;
+}
+
+.client-view-adjacent {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  min-height: 100%;
+  background: #080b10;
+  pointer-events: none;
+  transition: none;
+  will-change: transform;
+}
+
+.client-view-adjacent.is-settling {
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .client-view,
+  .client-view-adjacent {
+    transition: none;
+    animation: none;
+  }
+}
+
+.client-shell,
+.client-shell *,
+.client-shell *::before,
+.client-shell *::after,
+.client-header,
+.client-header *,
+.client-header *::before,
+.client-header *::after {
+  box-sizing: border-box;
+}
+
+.client-shell *,
+.client-header * {
+  min-width: 0;
+}
+
+.client-buffet,
+.client-orders,
+.client-swipe-menu-preview {
+  max-width: 66rem;
+}
+
+.client-station-section {
+  padding-top: 0.8rem;
+  scroll-margin-top: calc(10.75rem + env(safe-area-inset-top));
+}
+
+.client-station-section + .client-station-section {
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 1.5rem;
+}
+
+.client-station-heading {
+  margin: 0;
+  font-size: 1.4rem;
+  line-height: 1.15;
+}
+
+.client-menu-section {
+  padding-top: 0.75rem;
+  scroll-margin-top: calc(10.75rem + env(safe-area-inset-top));
+}
+
+.client-menu-section + .client-menu-section {
+  margin-top: 1.5rem;
+}
+
+.client-menu-section h3 {
+  font-size: 1.1rem;
+  line-height: 1.25;
+}
+
+/* Full-screen client messages */
+.client-message-screen {
+  display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
+  place-items: center;
+  background: #0d1419;
+  padding: max(2rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right))
+    max(2rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left));
+  color: var(--color-content);
+  text-align: center;
+}
+
+.client-message-content {
+  display: grid;
+  width: min(100%, 28rem);
+  justify-items: center;
+  gap: 2rem;
+}
+
+.client-message-logo {
+  width: min(15rem, 70vw);
+  height: auto;
+}
+
+.client-message-text {
+  max-width: 26rem;
+  margin: 0;
+  color: var(--color-content-muted);
+  font-size: clamp(1.05rem, 4.5vw, 1.25rem);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.client-message-text.is-error {
+  color: #fca5a5;
+}
+
+.client-message-action {
+  min-width: 11rem;
+  padding-inline: 1.75rem;
+}

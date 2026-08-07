@@ -8,10 +8,18 @@ type MenuItemImageProps = {
   loading?: 'eager' | 'lazy';
 };
 
-export function MenuItemImage({ src, alt = '', className, fallback, loading }: MenuItemImageProps) {
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+export function MenuItemImage({
+  src,
+  alt = '',
+  className,
+  fallback,
+  loading = 'eager',
+}: MenuItemImageProps) {
+  const [failedSource, setFailedSource] = useState<string | null>(null);
 
-  if (!src || failedSrc === src) return fallback;
+  if (!src || failedSource === src) {
+    return fallback;
+  }
 
   return (
     <img
@@ -20,7 +28,7 @@ export function MenuItemImage({ src, alt = '', className, fallback, loading }: M
       className={className}
       loading={loading}
       decoding="sync"
-      onError={() => setFailedSrc(src)}
+      onError={() => setFailedSource(src)}
     />
   );
 }

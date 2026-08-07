@@ -10,9 +10,9 @@ export function CategoryButton({ categoryAlias, label, selected, onClick }: Cate
     <button
       type="button"
       data-category-alias={categoryAlias}
-      onClick={onClick}
-      className={`client-category-button ${selected ? 'is-active' : ''}`}
+      className={['client-category-button', selected ? 'is-active' : ''].filter(Boolean).join(' ')}
       aria-current={selected ? 'true' : undefined}
+      onClick={onClick}
     >
       {label}
     </button>

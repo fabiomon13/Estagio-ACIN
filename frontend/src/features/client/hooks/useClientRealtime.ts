@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { CLIENT_REALTIME_MAX_RECONNECT_DELAY_MS } from '../clientConfig';
 import { buildClientWebSocketUrl, parseClientRealtimeEvent } from '../services/clientRealtime';
 import { getDeviceToken } from '../utils/deviceToken';
 
 const INITIAL_RECONNECT_DELAY_MS = 1_000;
-const MAX_RECONNECT_DELAY_MS = 30_000;
 const HEARTBEAT_INTERVAL_MS = 25_000;
 
 export type ClientRealtimeStatus =
@@ -99,7 +99,7 @@ export function useClientRealtime({
         reconnectTimer = null;
         connect();
 
-        reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY_MS);
+        reconnectDelay = Math.min(reconnectDelay * 2, CLIENT_REALTIME_MAX_RECONNECT_DELAY_MS);
       }, reconnectDelay);
     }
 

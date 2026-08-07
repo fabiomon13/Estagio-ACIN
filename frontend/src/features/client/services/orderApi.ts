@@ -73,7 +73,9 @@ export function getOrders(
   options: OrderRequestOptions = {},
 ): Promise<ClientOrder[]> {
   return apiFetch<ClientOrder[]>(buildOrdersPath(tableCode), {
-    headers: createDeviceHeaders(deviceToken),
+    headers: createDeviceHeaders(deviceToken, {
+      includeJson: true,
+    }),
     signal: options.signal,
   });
 }
@@ -87,7 +89,9 @@ export function createOrder(
   validateCreateOrderInput(input);
   return apiFetch<ClientOrder>(buildOrdersPath(tableCode), {
     method: 'POST',
-    headers: createDeviceHeaders(deviceToken, true),
+    headers: createDeviceHeaders(deviceToken, {
+      includeJson: true,
+    }),
     signal: options.signal,
     body: JSON.stringify({
       client_request_id: input.clientRequestId,
