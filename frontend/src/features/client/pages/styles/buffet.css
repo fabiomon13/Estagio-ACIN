@@ -166,12 +166,21 @@
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
-  animation: client-floating-order-enter 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
   transform-origin: bottom center;
-  transition: bottom 180ms ease-out;
+  transition:
+    bottom 180ms ease-out,
+    opacity 180ms ease-in,
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
 }
 
-.client-shell:has(.client-floating-order) .client-buffet-choose {
+.client-buffet-choose.is-dragging {
+  transition:
+    bottom 180ms ease-out,
+    opacity 180ms ease-in;
+}
+
+body:has(.client-floating-order) .client-buffet-choose {
   bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 4.25rem);
 }
 
@@ -180,8 +189,8 @@
 }
 
 .client-buffet-choose.is-leaving {
+  opacity: 0;
   pointer-events: none;
-  animation: client-floating-order-leave 180ms ease-in both;
 }
 
 .client-selected-buffet {

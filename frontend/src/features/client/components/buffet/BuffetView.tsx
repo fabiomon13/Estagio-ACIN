@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { formatPrice, getCategoryConfig } from '../../clientConfig';
 import type { StationSection } from '../../clientTypes';
@@ -15,6 +16,9 @@ type BuffetViewProps = {
   cart: Readonly<Record<number, number>>;
   isSelected: boolean;
   isPreview?: boolean;
+  showSelectAction?: boolean;
+  selectActionTransform?: string;
+  isSelectActionDragging?: boolean;
   canSelectBuffet?: boolean;
   canCancelSelection: boolean;
   onAdd: (itemId: number) => void;
@@ -31,6 +35,9 @@ export function BuffetView({
   cart,
   isSelected,
   isPreview = false,
+  showSelectAction,
+  selectActionTransform = 'none',
+  isSelectActionDragging = false,
   canSelectBuffet = true,
   canCancelSelection,
   onAdd,
@@ -67,6 +74,7 @@ export function BuffetView({
       : (categories[0]?.category.alias ?? null);
 
   const hasItems = useMemo(() => categories.some(({ items }) => items.length > 0), [categories]);
+  const shouldShowSelectAction = showSelectAction ?? !isPreview;
 
   const visibleConfirmationAction =
     confirmationAction === 'select' && !canSelectBuffet ? null : confirmationAction;
@@ -367,18 +375,27 @@ export function BuffetView({
         </p>
       )}
 
-      {!isPreview && shouldRenderSelectButton && canSelectBuffet && (
-        <button
-          type="button"
-          className={['client-buffet-choose', isSelected ? 'is-leaving' : '']
-            .filter(Boolean)
-            .join(' ')}
-          disabled={!hasItems || isChoosing || isSelected}
-          onClick={() => setConfirmationAction('select')}
-        >
-          Selecionar buffet
-        </button>
-      )}
+      {shouldShowSelectAction &&
+        shouldRenderSelectButton &&
+        canSelectBuffet &&
+        createPortal(
+          <button
+            type="button"
+            className={[
+              'client-buffet-choose',
+              isSelected ? 'is-leaving' : '',
+              isSelectActionDragging ? 'is-dragging' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            style={{ transform: selectActionTransform }}
+            disabled={isPreview || isChoosing || isSelected}
+            onClick={() => setConfirmationAction('select')}
+          >
+            Selecionar buffet
+          </button>,
+          document.body,
+        )}
 
       {visibleConfirmationAction && (
         <BuffetConfirmationModal

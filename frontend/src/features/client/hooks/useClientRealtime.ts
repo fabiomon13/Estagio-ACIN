@@ -19,11 +19,16 @@ type UseClientRealtimeOptions = {
   onServiceRequestsChanged: () => void;
   onSessionChanged: () => void;
   onMenuChanged: () => void;
+  onReconnect: () => void;
 };
 
 type RealtimeCallbacks = Pick<
   UseClientRealtimeOptions,
-  'onOrdersChanged' | 'onServiceRequestsChanged' | 'onSessionChanged' | 'onMenuChanged'
+  | 'onOrdersChanged'
+  | 'onServiceRequestsChanged'
+  | 'onSessionChanged'
+  | 'onMenuChanged'
+  | 'onReconnect'
 >;
 
 export function useClientRealtime({
@@ -33,6 +38,7 @@ export function useClientRealtime({
   onServiceRequestsChanged,
   onSessionChanged,
   onMenuChanged,
+  onReconnect,
 }: UseClientRealtimeOptions): ClientRealtimeStatus {
   const [status, setStatus] = useState<ClientRealtimeStatus>(enabled ? 'connecting' : 'disabled');
 
@@ -41,6 +47,7 @@ export function useClientRealtime({
     onServiceRequestsChanged,
     onSessionChanged,
     onMenuChanged,
+    onReconnect,
   });
 
   useEffect(() => {
@@ -49,8 +56,9 @@ export function useClientRealtime({
       onServiceRequestsChanged,
       onSessionChanged,
       onMenuChanged,
+      onReconnect,
     };
-  }, [onMenuChanged, onOrdersChanged, onServiceRequestsChanged, onSessionChanged]);
+  }, [onMenuChanged, onOrdersChanged, onReconnect, onServiceRequestsChanged, onSessionChanged]);
 
   useEffect(() => {
     if (!enabled || !tableCode) {
@@ -126,6 +134,9 @@ export function useClientRealtime({
 
       switch (event.type) {
         case 'authenticated':
+          if (hasConnected) {
+            callbacksRef.current.onReconnect();
+          }
           hasConnected = true;
           reconnectDelay = INITIAL_RECONNECT_DELAY_MS;
           setStatus('connected');

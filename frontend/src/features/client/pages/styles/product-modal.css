@@ -1,8 +1,10 @@
 ﻿.client-product-details-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 120;
+  z-index: 1000;
   display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
   place-items: center;
   overflow-y: auto;
   background: rgb(4 8 12 / 82%);
@@ -14,7 +16,9 @@
 
 .client-product-details {
   width: min(100%, 26rem);
-  overflow: hidden;
+  max-height: calc(100dvh - 2rem);
+  overflow-x: hidden;
+  overflow-y: auto;
   border: 1px solid var(--color-border);
   border-radius: 1rem;
   background: #111720;

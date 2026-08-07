@@ -34,8 +34,8 @@ export function ClientPage() {
   const session = useClientSession();
   const cart = useClientCart();
   const swipe = useClientSwipe();
-  const clientOrders = useClientOrders(tableCode, swipe.activeView);
-  const { orders, setOrders, hydrateOrders, prependOrder, pollingError } = clientOrders;
+  const clientOrders = useClientOrders(tableCode);
+  const { orders, setOrders, hydrateOrders, prependOrder, refreshError } = clientOrders;
   const { status, error, reload, data } = useClientBootstrap({
     tableCode,
     setTable: session.setTable,
@@ -55,6 +55,10 @@ export function ClientPage() {
     onServiceRequestsChanged: serviceRequests.refetch,
     onSessionChanged: reload,
     onMenuChanged: reload,
+    onReconnect: () => {
+      void serviceRequests.refetch();
+      reload();
+    },
   });
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [shouldRenderCart, setShouldRenderCart] = useState(false);
@@ -406,7 +410,7 @@ export function ClientPage() {
         indicatorPosition={swipe.indicatorPosition}
         pendingServiceRequest={serviceRequests.pendingRequest}
         activeServiceRequests={serviceRequests.activeRequests}
-        serviceRequestMessage={serviceRequests.pollingError}
+        serviceRequestMessage={serviceRequests.refreshError}
         showBuffet={!isBuffetSelectionLocked}
         onChangeView={(view) => {
           if (view !== 'buffet' || !isBuffetSelectionLocked) swipe.changeView(view);
@@ -420,6 +424,7 @@ export function ClientPage() {
         onPointerMove={swipe.handlePointerMove}
         onPointerUp={swipe.handlePointerUp}
         onPointerCancel={swipe.handlePointerCancel}
+        onLostPointerCapture={swipe.handleLostPointerCapture}
       >
         {realtimeStatus === 'reconnecting' && (
           <p className="sr-only" role="status">
@@ -433,7 +438,7 @@ export function ClientPage() {
           orders={orders}
           selectedBuffet={selectedBuffet}
           isBuffetSelectionLocked={isBuffetSelectionLocked}
-          pollingError={pollingError}
+          refreshError={refreshError}
           onChooseBuffet={handleChooseBuffet}
           onCancelOrderItem={handleCancelOrderItem}
         />

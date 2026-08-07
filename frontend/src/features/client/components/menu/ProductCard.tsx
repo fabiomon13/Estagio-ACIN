@@ -67,12 +67,12 @@ export function ProductCard({
           type="button"
           className="client-product-visual relative h-32 overflow-hidden bg-gradient-to-br from-surface-elevated via-primary-soft to-surface-raised"
           aria-label={`Ver detalhes de ${item.name}`}
+          data-swipe-allow
           onClick={openDetails}
         >
           <MenuItemImage
             src={item.photo_url}
             className="client-product-image size-full object-cover"
-            loading="eager"
             fallback={
               <div
                 className="client-product-placeholder grid size-full place-items-center text-5xl"
