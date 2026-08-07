@@ -3,6 +3,8 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
+from app.modules.staff.websockets.staff_realtime import broadcast_staff_dashboard
+
 from app.models.buffet_item import BuffetItem
 from app.models.guest import Guest
 from app.models.menu_item import MenuItem
@@ -276,6 +278,7 @@ def create_order(
 
     # Atualiza o quadro da cozinha.
     broadcast_active_tickets(db)
+    broadcast_staff_dashboard(db)
 
     # Notifica o frontend do guest.
     publish_guest_event(
@@ -417,6 +420,7 @@ def cancel_order_item(
     # Retira imediatamente o artigo cancelado
     # do quadro da cozinha.
     broadcast_active_tickets(db)
+    broadcast_staff_dashboard(db)
 
     # Atualiza o frontend do guest.
     publish_guest_event(

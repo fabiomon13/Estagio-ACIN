@@ -7,6 +7,7 @@ from app.modules.client.router import router as client_router
 from app.modules.client.websocket import ws_router as client_ws_router
 from app.modules.kitchen.router import router as kitchen_router
 from app.modules.kitchen.websocket import ws_router as kitchen_ws_router
+from app.modules.staff.websockets.staff_websockets import ws_router as staff_ws_router
 
 api_router = APIRouter()
 
@@ -32,6 +33,6 @@ api_router.include_router(
     tags=["Auth"],
 )
 
-api_router.include_router(
-    staff_router
-)
+api_router.include_router(staff_router)
+
+api_router.include_router(staff_ws_router)

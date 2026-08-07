@@ -203,7 +203,7 @@ export function StaffPage() {
 
       showToast({
         variant: 'success',
-        title: `Payment of $${payment.amount_paid} registered`,
+        title: `Pagamento de $${payment.amount_paid} registado`,
       });
 
       setPaymentDialog(null);
@@ -211,7 +211,7 @@ export function StaffPage() {
     } catch {
       showToast({
         variant: 'danger',
-        title: 'Unable to register payment',
+        title: 'Não foi possível registar pagamento',
       });
     }
   };

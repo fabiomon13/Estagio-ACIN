@@ -11,6 +11,8 @@ from fastapi import HTTPException, status
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.orm import Session, aliased, joinedload, selectinload
 
+from app.modules.staff.websockets.staff_realtime import broadcast_staff_dashboard
+
 from app.models.category import Category
 from app.models.dining_session import DiningSession
 from app.models.guest import Guest
@@ -217,6 +219,7 @@ def update_item_status(db: Session, order_item_id: int, new_status: str) -> Kitc
     db.refresh(item)
 
     broadcast_active_tickets(db)
+    broadcast_staff_dashboard(db)
     publish_guest_event(item.order.guest_id, "orders.changed")
 
     return _build_item(item)

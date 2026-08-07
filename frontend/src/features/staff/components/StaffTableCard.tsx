@@ -1,5 +1,3 @@
-import { useState } from 'react';
-
 import Badge from '../../../components/ui/badge/Badge';
 import Button from '../../../components/ui/button/Button';
 import type { StaffDashboardTable } from '../types/staff.types';
