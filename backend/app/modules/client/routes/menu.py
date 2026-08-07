@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
-
+from sqlalchemy import case, func, or_, select
 from app.db.dependencies import get_db
 from app.models.buffet import Buffet
 from app.models.buffet_item import BuffetItem

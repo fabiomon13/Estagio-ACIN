@@ -13,29 +13,45 @@ export type TagConfig = {
 };
 
 export const categoryConfig = {
-  'alcoholic-drinks': {
-    label: 'Bebidas alcoólicas',
-    stationKey: 'bar',
-    stationName: 'Bebidas',
-    emoji: '🍷',
-    stationOrder: 4,
+  starters: {
+    label: 'Entradas',
+    stationKey: 'entradas',
+    stationName: 'Entradas',
+    emoji: '🥟',
+    stationOrder: 1,
+    categoryOrder: 1,
+  },
+  nigiri: {
+    label: 'Nigiri',
+    stationKey: 'sushi',
+    stationName: 'Sushi ',
+    emoji: '🍣',
+    stationOrder: 2,
+    categoryOrder: 1,
+  },
+  sashimi: {
+    label: 'Sashimi',
+    stationKey: 'sushi',
+    stationName: 'Sushi ',
+    emoji: '🐟',
+    stationOrder: 2,
     categoryOrder: 2,
   },
-  'soft-drinks-water': {
-    label: 'Refrigerantes e água',
-    stationKey: 'bar',
-    stationName: 'Bebidas',
-    emoji: '🥤',
-    stationOrder: 4,
-    categoryOrder: 1,
+  uramaki: {
+    label: 'Uramaki',
+    stationKey: 'sushi',
+    stationName: 'Sushi ',
+    emoji: '🍱',
+    stationOrder: 2,
+    categoryOrder: 3,
   },
-  desserts: {
-    label: 'Sobremesas',
-    stationKey: 'cold-pantry',
-    stationName: 'Cozinha fria',
-    emoji: '🍰',
-    stationOrder: 5,
-    categoryOrder: 1,
+  hosomaki: {
+    label: 'Hosomaki',
+    stationKey: 'sushi',
+    stationName: 'Sushi ',
+    emoji: '🍙',
+    stationOrder: 2,
+    categoryOrder: 4,
   },
   tempura: {
     label: 'Tempura',
@@ -48,28 +64,36 @@ export const categoryConfig = {
   ramen: {
     label: 'Ramen',
     stationKey: 'hot-wok',
-    stationName: 'Pratos quentes',
+    stationName: 'Cozinha Quente',
     emoji: '🍜',
-    stationOrder: 2,
+    stationOrder: 4,
     categoryOrder: 1,
   },
-  nigiri: {
-    label: 'Nigiri',
-    stationKey: 'sushi-bar',
-    stationName: 'Sushi',
-    emoji: '🍣',
-    stationOrder: 1,
+  'soft-drinks-water': {
+    label: 'Refrigerantes e água',
+    stationKey: 'bar',
+    stationName: 'Bebidas',
+    emoji: '🥤',
+    stationOrder: 5,
     categoryOrder: 1,
   },
-  sashimi: {
-    label: 'Sashimi',
-    stationKey: 'sushi-bar',
-    stationName: 'Sushi',
-    emoji: '🐟',
-    stationOrder: 1,
+  'alcoholic-drinks': {
+    label: 'Bebidas alcoólicas',
+    stationKey: 'bar',
+    stationName: 'Bebidas',
+    emoji: '🍷',
+    stationOrder: 5,
     categoryOrder: 2,
   },
-} as const satisfies Record<string, CategoryConfig>;
+  desserts: {
+    label: 'Sobremesas',
+    stationKey: 'cold-pantry',
+    stationName: 'Cozinha fria',
+    emoji: '🍰',
+    stationOrder: 6,
+    categoryOrder: 1,
+  },
+};
 
 export const tagConfig = {
   vegetariano: {

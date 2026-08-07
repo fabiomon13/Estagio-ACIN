@@ -1,12 +1,12 @@
 import asyncio
 from contextlib import asynccontextmanager
-
+from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
-
+from fastapi.staticfiles import StaticFiles
 from app.api.deps import ACCESS_TOKEN_COOKIE_NAME, InvalidSessionError
 from app.api.router import api_router
 from app.core.config import settings
@@ -37,6 +37,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Serves whatever image files a teammate drops into static/menu-items/ at
+# /static/menu-items/<filename> -- e.g. static/menu-items/salmon-nigiri.jpg
+# becomes http://localhost:8000/static/menu-items/salmon-nigiri.jpg. No code
+# change needed per image, see app/db/seeds/menu_items.py for the naming
+# convention (filename == the menu item's alias).
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+STATIC_DIR.mkdir(parents=True, exist_ok=True)
+(STATIC_DIR / "menu-items").mkdir(parents=True, exist_ok=True)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 @app.exception_handler(InvalidSessionError)
 async def handle_invalid_session(request: Request, exc: InvalidSessionError) -> JSONResponse:

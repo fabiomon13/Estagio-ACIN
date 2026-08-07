@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-
+import { toMediaUrl } from '../../../services/api/client';
 import CloseIcon from '../../../components/icons/CloseIcon';
 import PlusIcon from '../../../components/icons/PlusIcon';
 import { formatPrice, getCategoryConfig, getTagConfig } from '../clientConfig';
@@ -79,7 +79,7 @@ export function ProductCard({
       >
         {item.photo_url ? (
           <img
-            src={item.photo_url}
+            src={toMediaUrl(item.photo_url) ?? undefined}
             alt=""
             className="client-product-image size-full object-cover"
             loading="lazy"
@@ -210,7 +210,7 @@ export function ProductCard({
           >
             <div className="client-product-details-image">
               {item.photo_url ? (
-                <img src={item.photo_url} alt="" />
+                <img src={toMediaUrl(item.photo_url) ?? undefined} alt="" />
               ) : (
                 <div aria-hidden="true">{category.emoji}</div>
               )}
