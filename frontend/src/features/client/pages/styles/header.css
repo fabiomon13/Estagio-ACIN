@@ -1,0 +1,217 @@
+﻿/* Header and primary navigation */
+.client-header {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 50;
+
+  width: 100%;
+  min-height: calc(7rem + env(safe-area-inset-top));
+  overflow: hidden;
+
+  background: rgb(11 15 20);
+  border-bottom: 1px solid var(--color-border);
+  backdrop-filter: blur(12px);
+
+  padding: env(safe-area-inset-top) max(0.75rem, env(safe-area-inset-right)) 0
+    max(0.75rem, env(safe-area-inset-left));
+
+  isolation: isolate;
+}
+
+.client-header-inner {
+  display: flex;
+  width: min(100%, 66rem);
+  height: 4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-inline: auto;
+}
+
+.client-header-actions {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.client-table-indicator {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 0.15rem;
+  line-height: 1;
+  text-align: center;
+}
+
+.client-table-label {
+  color: var(--color-content-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.client-table-number {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.client-header-service-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-left: 0.6rem;
+  border-left: 1px solid var(--color-border);
+}
+
+.client-header-service-button {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 2.75rem;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 0.8rem;
+  background: var(--color-surface-raised);
+  color: var(--color-content);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    transform 100ms ease;
+}
+
+.client-header-service-button:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.client-header-service-button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-primary) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.client-header-service-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.client-header-service-button.is-payment-active {
+  border-color: #38c98b;
+  background: rgb(56 201 139 / 18%);
+  color: #45d6a0;
+}
+
+.client-header-service-button.is-assistance-active {
+  border-color: var(--color-primary);
+  background: rgb(255 82 89 / 18%);
+  color: var(--color-primary);
+}
+
+.client-logo {
+  display: block;
+  width: 10.25rem;
+  height: auto;
+  max-width: 10.25rem;
+  flex: 0 0 10.25rem;
+  margin: 0;
+  align-self: center;
+}
+
+@media (max-width: 25rem) {
+  .client-logo {
+    width: 9rem;
+    max-width: 9rem;
+    flex-basis: 9rem;
+  }
+}
+
+.client-main-nav {
+  position: relative !important;
+  top: auto;
+  right: auto;
+  left: auto;
+  z-index: 45;
+  display: grid;
+  width: 100%;
+  max-width: none;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0;
+  border-bottom: 1px solid var(--color-border);
+  background: #0b0f14;
+  touch-action: none;
+  transform: none !important;
+  isolation: isolate;
+}
+
+.client-main-nav.has-two-items {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.client-main-nav-item {
+  position: relative;
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 0;
+  background: transparent;
+  color: var(--color-content-muted);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.client-main-nav-item.is-active {
+  color: var(--color-content);
+}
+
+.client-main-nav-indicator {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: calc(100% / 3);
+  height: 2px;
+  border-radius: 999px 999px 0 0;
+  background: var(--color-primary);
+  pointer-events: none;
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.client-main-nav.has-two-items .client-main-nav-indicator {
+  width: 50%;
+}
+
+.client-main-nav-indicator.is-dragging {
+  will-change: transform;
+  transition: none;
+}
+
+@media (max-width: 350px) {
+  .client-header {
+    padding-right: max(0.5rem, env(safe-area-inset-right));
+    padding-left: max(0.5rem, env(safe-area-inset-left));
+  }
+
+  .client-header-inner {
+    gap: 0.35rem;
+  }
+
+  .client-logo {
+    width: 8rem;
+    max-width: 8rem;
+    flex-basis: 8rem;
+  }
+
+  .client-header-actions,
+  .client-header-service-actions {
+    gap: 0.25rem;
+  }
+
+  .client-header-service-actions {
+    padding-left: 0.35rem;
+  }
+}

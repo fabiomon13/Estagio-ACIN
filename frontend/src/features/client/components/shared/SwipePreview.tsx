@@ -1,9 +1,9 @@
-import type { ClientView, StationSection } from '../clientTypes';
-import type { Buffet } from '../services/menuApi';
-import type { ClientOrder } from '../services/orderApi';
-import { BuffetView } from './BuffetView';
-import { MenuView } from './MenuView';
-import { OrdersView } from './OrdersView';
+import { BuffetView } from '../buffet/BuffetView';
+import { MenuView } from '../menu/MenuView';
+import { OrdersView } from '../orders/OrdersView';
+import type { ClientView, StationSection } from '../../clientTypes';
+import type { Buffet } from '../../services/menuApi';
+import type { ClientOrder } from '../../services/orderApi';
 
 type SwipePreviewProps = {
   view: ClientView;
@@ -11,15 +11,21 @@ type SwipePreviewProps = {
   topOffset: number;
   isDragging: boolean;
   isSettling: boolean;
-  menuStations: StationSection[];
+  menuStations: readonly StationSection[];
   buffet: Buffet | null;
-  buffetStations: StationSection[];
-  orders: ClientOrder[];
-  cart: Record<number, number>;
+  buffetStations: readonly StationSection[];
+  orders: readonly ClientOrder[];
+  cart: Readonly<Record<number, number>>;
   isBuffetSelected: boolean;
   canCancelBuffet: boolean;
   selectedAllergenTagIds: ReadonlySet<number>;
 };
+
+const doNothing = (): void => undefined;
+
+async function doNothingAsync(): Promise<void> {
+  return undefined;
+}
 
 export function SwipePreview({
   view,
@@ -36,6 +42,11 @@ export function SwipePreview({
   canCancelBuffet,
   selectedAllergenTagIds,
 }: SwipePreviewProps) {
+  const transform =
+    dragOffset < 0
+      ? `translate3d(calc(100% + ${dragOffset}px), 0, 0)`
+      : `translate3d(calc(-100% + ${dragOffset}px), 0, 0)`;
+
   return (
     <div
       className={[
@@ -48,40 +59,37 @@ export function SwipePreview({
         .join(' ')}
       style={{
         top: `${topOffset}px`,
-        transform:
-          dragOffset < 0
-            ? `translate3d(calc(100% + ${dragOffset}px), 0, 0)`
-            : `translate3d(calc(-100% + ${dragOffset}px), 0, 0)`,
+        transform,
       }}
       aria-hidden="true"
       inert
     >
       {view === 'orders' ? (
-        <OrdersView orders={orders} onCancel={async () => undefined} />
+        <OrdersView orders={orders} onCancel={doNothingAsync} />
       ) : view === 'buffet' ? (
         <BuffetView
           buffet={buffet}
           stations={buffetStations}
-          selectedAllergenTagIds={selectedAllergenTagIds}
           navigationStations={buffetStations}
+          selectedAllergenTagIds={selectedAllergenTagIds}
           cart={cart}
-          onAdd={() => undefined}
-          onAddDetails={() => undefined}
-          onRemove={() => undefined}
-          onChoose={async () => undefined}
           isSelected={isBuffetSelected}
           canCancelSelection={canCancelBuffet}
+          onAdd={doNothing}
+          onAddDetails={doNothing}
+          onRemove={doNothing}
+          onChoose={doNothingAsync}
           isPreview
         />
       ) : (
         <MenuView
           stations={menuStations}
-          selectedAllergenTagIds={selectedAllergenTagIds}
           navigationStations={menuStations}
+          selectedAllergenTagIds={selectedAllergenTagIds}
           cart={cart}
-          onAdd={() => undefined}
-          onAddDetails={() => undefined}
-          onRemove={() => undefined}
+          onAdd={doNothing}
+          onAddDetails={doNothing}
+          onRemove={doNothing}
           isPreview
         />
       )}

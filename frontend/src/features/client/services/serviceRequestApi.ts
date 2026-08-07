@@ -33,7 +33,9 @@ export function createServiceRequest(
 ): Promise<ServiceRequest> {
   return apiFetch<ServiceRequest>(`${buildClientTablePath(tableCode)}/service-requests`, {
     method: 'POST',
-    headers: createDeviceHeaders(deviceToken, true),
+    headers: createDeviceHeaders(deviceToken, {
+      includeJson: true,
+    }),
     body: JSON.stringify({ type }),
     signal: options.signal,
   });
