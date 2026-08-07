@@ -1,7 +1,15 @@
 from fastapi import HTTPException, status
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session, joinedload   
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+
+from app.models.payment import Payment
+from app.modules.client.services.billing import (
+    ZERO_MONEY,
+    calculate_guest_extras_total,
+    calculate_waste_total,
+)
+from app.modules.kitchen.service import broadcast_active_tickets
 
 from app.models.dining_session import DiningSession
 from app.models.order import Order
@@ -10,14 +18,20 @@ from app.models.order_item_status import OrderItemStatus
 from app.models.guest import Guest
 from app.models.menu_item import MenuItem
 from app.models.service_request import ServiceRequest
-from app.schemas.staff.staff_contract import (
+from app.modules.staff.staff_contract import (
     StaffDashboard,
     StaffDashboardSummary,
     StaffDashboardTable,
     StaffOpenRequest,
     StaffTableState,
     StaffReadyTable,
-    StaffReadyItem
+    StaffReadyItem,
+    StaffPreparingItem,
+    StaffPreparingTable,
+    StaffPaymentCreate,
+    StaffPaymentResponse,
+    StaffSessionBillGuest,
+    StaffSessionBillResponse,
 )
 from app.models.service_request_type import ServiceRequestType
 from app.models.service_request_status import ServiceRequestStatus
@@ -26,10 +40,14 @@ from app.models.staff_role import StaffRole
 from app.core.roles import StaffRoleEnum, staff_role
 import random
 from app.models.restaurant_table import RestaurantTable
-from app.modules.client.realtime import (
-    publish_guest_event,
-    publish_menu_event,
-    publish_session_event,
+
+from decimal import Decimal
+
+from app.models.payment import Payment
+from app.modules.client.services.billing import (
+    ZERO_MONEY,
+    calculate_extras_total,
+    calculate_waste_total,
 )
 
 READY_ORDER_ITEM_ALIAS = "ready"
@@ -39,6 +57,8 @@ PAYMENT_REQUEST_TYPE = "payment_request"
 ASSISTANCE_REQUEST_TYPE = "assistance"
 
 PENDING_SERVICE_REQUEST_ALIAS = "pending"
+PREPARING_ORDER_ITEM_ALIAS = "preparing"
+CANCELLED_ORDER_ITEM_ALIAS = "cancelled"
 RESOLVED_SERVICE_REQUEST_ALIAS = "resolved"
 
 def get_order_item_status_by_alias(db: Session, alias: str) -> OrderItemStatus:
@@ -78,7 +98,7 @@ def get_service_request_status_by_alias(db: Session, alias: str) -> ServiceReque
         raise HTTPException(status_code=500, detail=f"Service request status '{alias}' is not configured")
     return row
 
-def get_staff_dashboard(db: Session) -> StaffDashboard:
+def get_staff_dashboard(db: Session, current_staff: Staff) -> StaffDashboard:
     """
     Fetches and formats all data for the staff dashboard[cite: 1].
     Calculates occupied tables, guest counts, and table totals for active sessions[cite: 1].
@@ -86,6 +106,7 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
     """
 
     ready_status = get_order_item_status_by_alias(db, READY_ORDER_ITEM_ALIAS)
+    preparing_status = get_order_item_status_by_alias(db,PREPARING_ORDER_ITEM_ALIAS)
 
     active_sessions = (
         db.query(DiningSession)
@@ -99,6 +120,7 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
 
     tables_data = []
     ready_to_serve_table = []
+    preparing_orders = []
 
     # NEW: load all restaurant tables and map current active session by table_id
     all_tables = db.query(RestaurantTable).order_by(RestaurantTable.table_number).all()
@@ -126,12 +148,49 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
 
         state = StaffTableState.ACTIVE if session.is_approved else StaffTableState.AWAITING_APPROVAL
 
+        session_guests = (
+            db.query(Guest)
+            .options(joinedload(Guest.buffet))
+            .filter(Guest.session_id == session.id)
+            .all()
+        )
+
+        buffet_total = sum(
+            (
+                Decimal(guest.buffet.price)
+                for guest in session_guests
+                if guest.buffet is not None
+            ),
+            ZERO_MONEY,
+        )
+
+        extras_total = calculate_extras_total(
+            db=db,
+            session_id=session.id,
+        )
+
+        payment = (
+            db.query(Payment)
+            .filter(Payment.session_id == session.id)
+            .first()
+        )
+
+        waste_total = calculate_waste_total(
+            session_guests=session_guests,
+            payment=payment,
+        )
+
+        tip_amount = (
+            Decimal(payment.tip_amount)
+            if payment is not None
+            else ZERO_MONEY
+        )
+
         total_amount = (
-            db.query(func.sum(OrderItem.unit_price_at_order * OrderItem.quantity))
-            .join(Order, Order.id == OrderItem.order_id)
-            .filter(Order.guest_id == session.id)
-            .scalar()
-            or 0.0
+            buffet_total
+            + extras_total
+            + waste_total
+            + tip_amount
         )
 
         ready_items = (
@@ -139,6 +198,17 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
             .join(Order, Order.id == OrderItem.order_id)
             .join(Guest, Guest.id == Order.guest_id)
             .filter(Guest.session_id == session.id, OrderItem.status_id == ready_status.id)
+            .all()
+        )
+
+        preparing_items = (
+            db.query(OrderItem)
+            .join(Order, Order.id == OrderItem.order_id)
+            .join(Guest, Guest.id == Order.guest_id)
+            .filter(
+                Guest.session_id == session.id,
+                OrderItem.status_id == preparing_status.id,
+            )
             .all()
         )
 
@@ -172,6 +242,30 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
                 )
             )
 
+        if preparing_items:
+            preparing_orders.append(
+                StaffPreparingTable(
+                    table_number=table.table_number,
+                    waiter_id=current_staff.id,
+                    items=[
+                        StaffPreparingItem(
+                            id=item.id,
+                            name=item.menu_item.name if item.menu_item else "Unknown item",
+                            quantity=item.quantity,
+                            status="preparing",
+                            preparation_started_at=item.updated_at,
+                            estimated_ready_at=item.updated_at
+                            + timedelta(
+                                minutes=item.menu_item.base_preparation_time
+                                if item.menu_item
+                                else 0
+                            ),
+                        )
+                        for item in preparing_items
+                    ],
+                )
+            )
+
     # Open service requests
     open_requests = db.query(ServiceRequest, ServiceRequestType)\
     .join(DiningSession, DiningSession.id == ServiceRequest.session_id)\
@@ -201,6 +295,7 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
         tables=tables_data,
         ready_to_serve=ready_to_serve_table,
         requests=requests_data,
+        preparing_orders=preparing_orders,
     )
 
 def approve_session(db: Session, session_id: int, approved_by_staff_id: int) -> dict:
@@ -224,8 +319,6 @@ def approve_session(db: Session, session_id: int, approved_by_staff_id: int) -> 
 
     db.commit()
     db.refresh(session)
-
-    publish_session_event(session.id, "session.changed")
 
     return {
         "message": "Dining session approved successfully",
@@ -273,14 +366,7 @@ def mark_item_as_served(db: Session, item_id: int, current_staff) -> dict:
     db.commit()
     db.refresh(order_item)
 
-    guest_id = (
-        db.query(Order.guest_id)
-        .join(OrderItem, OrderItem.order_id == Order.id)
-        .filter(OrderItem.id == item_id)
-        .scalar()
-    )
-    if guest_id is not None:
-        publish_guest_event(guest_id, "orders.changed")
+    broadcast_active_tickets(db)
 
     return {
         "success": True,
@@ -325,8 +411,6 @@ def resolve_service_request(db: Session, request_id: int, current_staff) -> dict
     db.commit()
     db.refresh(service_request)
 
-    publish_session_event(service_request.session_id, "service_requests.changed")
-
     return {
         "success": True,
         "message": f"Service request {request_id} successfully resolved.",
@@ -354,8 +438,6 @@ def set_menu_item_availability(
     db.commit()
     db.refresh(menu_item)
 
-    publish_menu_event()
-
     return menu_item
  
 def deactivate_session(db: Session, session_id: int, current_staff) -> dict:
@@ -371,15 +453,42 @@ def deactivate_session(db: Session, session_id: int, current_staff) -> dict:
     _ensure_session_owner_or_admin(session, current_staff)
 
     if not session.is_active:
-        raise HTTPException(status_code= 409, detail="Dining session is already inactive.")
+        raise HTTPException(
+            status_code=409,
+            detail="Dining session is already inactive.",
+        )
+
+    cancelled_status = get_order_item_status_by_alias(
+        db,
+        CANCELLED_ORDER_ITEM_ALIAS,
+    )
+
+    active_items = (
+        db.query(OrderItem)
+        .join(Order, OrderItem.order_id == Order.id)
+        .join(Guest, Order.guest_id == Guest.id)
+        .join(OrderItemStatus, OrderItem.status_id == OrderItemStatus.id)
+        .filter(
+            Guest.session_id == session.id,
+            func.lower(OrderItemStatus.alias).in_(
+                [
+                    "pending",
+                    "preparing",
+                    "ready",
+                ]
+            ),
+        )
+        .all()
+    )
+
+    for item in active_items:
+        item.status_id = cancelled_status.id
 
     session.is_active = False
     session.end_time = datetime.now(timezone.utc)
     session.waiter_id = None
     db.commit()
     db.refresh(session)
-
-    publish_session_event(session.id, "session.changed")
 
     return {
         "success": True,
@@ -575,3 +684,195 @@ def _ensure_session_owner_or_admin(session: DiningSession, current_staff) -> Non
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only interact with your own assigned tables.",
         )
+
+def get_session_bill(
+    db: Session,
+    session_id: int,
+    current_staff: Staff,
+) -> StaffSessionBillResponse:
+    session = (
+        db.query(DiningSession)
+        .options(
+            joinedload(DiningSession.guests).joinedload(Guest.buffet),
+            joinedload(DiningSession.payment),
+        )
+        .filter(DiningSession.id == session_id)
+        .first()
+    )
+
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dining session not found.",
+        )
+
+    payment = session.payment
+    guests_data: list[StaffSessionBillGuest] = []
+
+    for index, guest in enumerate(session.guests, start=1):
+        buffet_total = (
+            Decimal(guest.buffet.price)
+            if guest.buffet is not None
+            else ZERO_MONEY
+        )
+
+        extras_total = calculate_guest_extras_total(
+            db=db,
+            guest_id=guest.id,
+        )
+
+        guests_data.append(
+            StaffSessionBillGuest(
+                guest_id=guest.id,
+                label=f"Guest {index}",
+                buffet_total=buffet_total,
+                extras_total=extras_total,
+                total=buffet_total + extras_total,
+            )
+        )
+
+    subtotal = sum(
+        (guest.total for guest in guests_data),
+        ZERO_MONEY,
+    )
+
+    waste_total = calculate_waste_total(
+        session_guests=session.guests,
+        payment=payment,
+    )
+
+    tip_amount = (
+        Decimal(payment.tip_amount)
+        if payment is not None
+        else ZERO_MONEY
+    )
+
+    return StaffSessionBillResponse(
+        session_id=session.id,
+        guests=guests_data,
+        subtotal=subtotal,
+        waste_box_count=payment.waste_count if payment is not None else 0,
+        waste_total=waste_total,
+        tip_amount=tip_amount,
+        total=subtotal + waste_total + tip_amount,
+        is_paid=payment is not None,
+        paid_at=payment.paid_at if payment is not None else None,
+    )
+
+def register_payment_and_close_session(
+    db: Session,
+    session_id: int,
+    payment_data: StaffPaymentCreate,
+    current_staff: Staff,
+) -> StaffPaymentResponse:
+    session = (
+        db.query(DiningSession)
+        .options(
+            joinedload(DiningSession.guests).joinedload(Guest.buffet),
+            joinedload(DiningSession.payment),
+        )
+        .filter(DiningSession.id == session_id)
+        .first()
+    )
+
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dining session not found.",
+        )
+
+    _ensure_session_owner_or_admin(session, current_staff)
+
+    if not session.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Dining session is already closed.",
+        )
+
+    if session.payment is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This session already has a payment.",
+        )
+
+    session_guests = session.guests
+
+    buffet_total = sum(
+        (
+            Decimal(guest.buffet.price)
+            for guest in session_guests
+            if guest.buffet is not None
+        ),
+        ZERO_MONEY,
+    )
+
+    extras_total = calculate_extras_total(
+        db=db,
+        session_id=session.id,
+    )
+
+    payment_preview = Payment(
+        waste_count=payment_data.waste_count,
+    )
+
+    waste_total = calculate_waste_total(
+        session_guests=session_guests,
+        payment=payment_preview,
+    )
+
+    total_amount = (
+        buffet_total
+        + extras_total
+        + waste_total
+        + payment_data.tip_amount
+    )
+
+    now = datetime.now(timezone.utc)
+
+    payment = Payment(
+        session_id=session.id,
+        amount_paid=total_amount,
+        tip_amount=payment_data.tip_amount,
+        method=payment_data.method.strip().lower(),
+        waste_count=payment_data.waste_count,
+        paid_at=now,
+    )
+
+    payment_request_type = get_service_request_type_by_alias(
+        db,
+        PAYMENT_REQUEST_TYPE,
+    )
+    resolved_status = get_service_request_status_by_alias(
+        db,
+        RESOLVED_SERVICE_REQUEST_ALIAS,
+    )
+
+    open_payment_requests = (
+        db.query(ServiceRequest)
+        .filter(
+            ServiceRequest.session_id == session.id,
+            ServiceRequest.type_id == payment_request_type.id,
+            ServiceRequest.resolved_at.is_(None),
+        )
+        .all()
+    )
+
+    for request in open_payment_requests:
+        request.status_id = resolved_status.id
+        request.resolved_at = now
+
+    session.is_active = False
+    session.end_time = now
+
+    db.add(payment)
+    db.commit()
+    db.refresh(payment)
+
+    return StaffPaymentResponse(
+        session_id=session.id,
+        amount_paid=Decimal(payment.amount_paid),
+        method=payment.method,
+        tip_amount=Decimal(payment.tip_amount),
+        waste_count=payment.waste_count,
+        paid_at=payment.paid_at,
+    )

@@ -1,7 +1,9 @@
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel
+from decimal import Decimal
+
+from pydantic import BaseModel, Field
 
 #Define the possible states of a table in the staff dashboard
 class StaffTableState(StrEnum):
@@ -62,9 +64,57 @@ class StaffOpenRequest(BaseModel):
     is_high_priority: bool
     created_at: datetime
 
-#Define the overall data model for the staff dashboard
+
+class StaffPreparingItem(BaseModel):
+    id: int
+    name: str
+    quantity: int
+    status: str
+    preparation_started_at: datetime
+    estimated_ready_at: datetime
+
+
+class StaffPreparingTable(BaseModel):
+    table_number: int
+    waiter_id: int
+    items: list[StaffPreparingItem]
+
+class StaffPaymentCreate(BaseModel):
+    method: str = Field(min_length=1, max_length=30)
+    tip_amount: Decimal = Field(default=Decimal("0.00"), ge=0)
+    waste_count: int = Field(default=0, ge=0)
+
+
+class StaffPaymentResponse(BaseModel):
+    session_id: int
+    amount_paid: Decimal
+    method: str
+    tip_amount: Decimal
+    waste_count: int
+    paid_at: datetime
+
+class StaffSessionBillGuest(BaseModel):
+    guest_id: int
+    label: str
+    buffet_total: Decimal
+    extras_total: Decimal
+    total: Decimal
+
+
+class StaffSessionBillResponse(BaseModel):
+    session_id: int
+    guests: list[StaffSessionBillGuest]
+    subtotal: Decimal
+    waste_box_count: int
+    waste_total: Decimal
+    tip_amount: Decimal
+    total: Decimal
+    is_paid: bool
+    paid_at: datetime | None
+
 class StaffDashboard(BaseModel):
     summary: StaffDashboardSummary
     tables: list[StaffDashboardTable]
     ready_to_serve: list[StaffReadyTable]
     requests: list[StaffOpenRequest]
+    preparing_orders: list[StaffPreparingTable]
