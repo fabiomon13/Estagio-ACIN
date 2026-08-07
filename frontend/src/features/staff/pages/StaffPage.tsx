@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useToast } from '../../../components/ui/toast/useToast';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { useStaffDashboard } from '../hooks/useStaffDashboard';
@@ -15,6 +15,12 @@ import type {
   StaffSessionBill,
   StaffDashboardTable,
 } from '../types/staff.types';
+
+import {
+  playStaffNotificationSound,
+  prepareStaffNotificationSound,
+} from '../utils/playStaffNotificationSound';
+
 import { StaffPaymentModal } from '../components/StaffPaymentModal';
 import { StaffTableDetailsModal } from '../components/StaffTableDetailsModal';
 
@@ -78,6 +84,74 @@ export function StaffPage() {
   const [kitchenOpen, setKitchenOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(OPEN_SIDEBAR_WIDTH);
   const [isSidebarDragging, setIsSidebarDragging] = useState(false);
+
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    return localStorage.getItem('staff.soundNotificationsEnabled') !== 'false';
+  });
+
+  const previousNotificationSnapshotRef = useRef<{
+    approvalSessionIds: Set<number>;
+    paymentRequestIds: Set<number>;
+    assistanceRequestIds: Set<number>;
+    readyItemIds: Set<number>;
+  } | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem('staff.soundNotificationsEnabled', String(notificationsEnabled));
+  }, [notificationsEnabled]);
+
+  useEffect(() => {
+    if (!data) return;
+
+    const snapshot = {
+      approvalSessionIds: new Set(
+        data.tables
+          .filter((table) => table.state === 'awaiting_approval' && table.session_id !== null)
+          .map((table) => table.session_id as number),
+      ),
+      paymentRequestIds: new Set(
+        data.requests
+          .filter((request) => request.type === 'payment_request')
+          .map((request) => request.id),
+      ),
+      assistanceRequestIds: new Set(
+        data.requests
+          .filter((request) => request.type === 'assistance')
+          .map((request) => request.id),
+      ),
+      readyItemIds: new Set(
+        waiterReadyToServe.flatMap((group) => group.items.map((item) => item.id)),
+      ),
+    };
+
+    const previous = previousNotificationSnapshotRef.current;
+
+    // The first dashboard snapshot establishes the baseline.
+    // It must never make noise just because the page was opened.
+    if (previous !== null && notificationsEnabled) {
+      const hasNewApproval = [...snapshot.approvalSessionIds].some(
+        (id) => !previous.approvalSessionIds.has(id),
+      );
+
+      const hasNewPaymentRequest = [...snapshot.paymentRequestIds].some(
+        (id) => !previous.paymentRequestIds.has(id),
+      );
+
+      const hasNewAssistanceRequest = [...snapshot.assistanceRequestIds].some(
+        (id) => !previous.assistanceRequestIds.has(id),
+      );
+
+      const hasNewReadyItem = [...snapshot.readyItemIds].some(
+        (id) => !previous.readyItemIds.has(id),
+      );
+
+      if (hasNewApproval || hasNewPaymentRequest || hasNewAssistanceRequest || hasNewReadyItem) {
+        playStaffNotificationSound();
+      }
+    }
+
+    previousNotificationSnapshotRef.current = snapshot;
+  }, [data, notificationsEnabled, waiterReadyToServe]);
 
   const visibleTables = showOnlyMyTables
     ? tablesView.filter((table) => table.waiter_id === staff?.id)
@@ -203,7 +277,7 @@ export function StaffPage() {
 
       showToast({
         variant: 'success',
-        title: `Payment of $${payment.amount_paid} registered`,
+        title: `Pagamento de $${payment.amount_paid} registado`,
       });
 
       setPaymentDialog(null);
@@ -211,7 +285,7 @@ export function StaffPage() {
     } catch {
       showToast({
         variant: 'danger',
-        title: 'Unable to register payment',
+        title: 'Não foi possível registar pagamento',
       });
     }
   };
@@ -243,11 +317,22 @@ export function StaffPage() {
 
   return (
     <div className="staff-page min-h-screen bg-background p-5 text-content xl:grid xl:h-dvh xl:min-h-0 xl:grid-rows-[auto_minmax(0,1fr)] xl:overflow-hidden">
+      <div className="staff-page__portrait-message">
+        <p>Rotate the tablet to landscape mode to use the staff dashboard.</p>
+      </div>
       <StaffHeader
         staffName={staff?.name}
         photoUrl={staff?.photo_url}
         onOpenProfile={() => setIsProfileOpen(true)}
         onLogout={logout}
+        notificationsEnabled={notificationsEnabled}
+        onToggleNotifications={() => {
+          if (!notificationsEnabled) {
+            prepareStaffNotificationSound();
+          }
+
+          setNotificationsEnabled((current) => !current);
+        }}
       />
 
       <div

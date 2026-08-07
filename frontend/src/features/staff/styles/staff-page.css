@@ -50,3 +50,23 @@
     padding-bottom: 2rem;
   }
 }
+
+.staff-page__portrait-message {
+  display: none;
+}
+
+@media (orientation: portrait) and (pointer: coarse) {
+  .staff-page__portrait-message {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: grid;
+    place-items: center;
+    padding: 2rem;
+    background: #0b0f14;
+    color: #f8fafc;
+    text-align: center;
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+}

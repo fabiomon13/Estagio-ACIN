@@ -39,6 +39,9 @@ from app.models.staff import Staff
 from app.models.staff_role import StaffRole
 from app.core.roles import StaffRoleEnum, staff_role
 import random
+
+from app.modules.staff.websockets.staff_realtime import broadcast_staff_dashboard
+
 from app.models.restaurant_table import RestaurantTable
 from app.modules.client.realtime import (
     publish_guest_event,
@@ -54,6 +57,7 @@ from app.modules.client.services.billing import (
     calculate_extras_total,
     calculate_waste_total,
 )
+
 
 READY_ORDER_ITEM_ALIAS = "ready"
 SERVED_ORDER_ITEM_ALIAS = "served"
@@ -103,7 +107,7 @@ def get_service_request_status_by_alias(db: Session, alias: str) -> ServiceReque
         raise HTTPException(status_code=500, detail=f"Service request status '{alias}' is not configured")
     return row
 
-def get_staff_dashboard(db: Session, current_staff: Staff) -> StaffDashboard:
+def get_staff_dashboard(db: Session) -> StaffDashboard:
     """
     Fetches and formats all data for the staff dashboard[cite: 1].
     Calculates occupied tables, guest counts, and table totals for active sessions[cite: 1].
@@ -251,7 +255,7 @@ def get_staff_dashboard(db: Session, current_staff: Staff) -> StaffDashboard:
             preparing_orders.append(
                 StaffPreparingTable(
                     table_number=table.table_number,
-                    waiter_id=current_staff.id,
+                    waiter_id=session.waiter_id,
                     items=[
                         StaffPreparingItem(
                             id=item.id,
@@ -325,6 +329,8 @@ def approve_session(db: Session, session_id: int, approved_by_staff_id: int) -> 
     db.commit()
     db.refresh(session)
 
+    broadcast_staff_dashboard(db)
+
     publish_session_event(session.id, "session.changed")
 
     return {
@@ -372,6 +378,8 @@ def mark_item_as_served(db: Session, item_id: int, current_staff) -> dict:
     order_item.status_id = served_status.id
     db.commit()
     db.refresh(order_item)
+
+    broadcast_staff_dashboard(db)
 
     broadcast_active_tickets(db)
     guest_id = (
@@ -426,6 +434,7 @@ def resolve_service_request(db: Session, request_id: int, current_staff) -> dict
     db.commit()
     db.refresh(service_request)
 
+    broadcast_staff_dashboard(db)
     publish_session_event(service_request.session_id, "service_requests.changed")
 
     return {
@@ -511,6 +520,9 @@ def deactivate_session(db: Session, session_id: int, current_staff) -> dict:
 
     publish_session_event(session.id, "session.changed")
 
+    broadcast_active_tickets(db)
+    broadcast_staff_dashboard(db)
+    
     return {
         "success": True,
         "session_id": session.id,
@@ -887,6 +899,8 @@ def register_payment_and_close_session(
     db.add(payment)
     db.commit()
     db.refresh(payment)
+
+    broadcast_staff_dashboard(db)
 
     return StaffPaymentResponse(
         session_id=session.id,

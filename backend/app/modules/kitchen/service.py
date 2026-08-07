@@ -11,6 +11,8 @@ from fastapi import HTTPException, status
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.orm import Session, aliased, joinedload, selectinload
 
+from app.modules.staff.websockets.staff_realtime import broadcast_staff_dashboard
+
 from app.models.category import Category
 from app.models.dining_session import DiningSession
 from app.models.guest import Guest
