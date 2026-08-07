@@ -1,3 +1,5 @@
+import { useLayoutEffect, useRef, useState } from 'react';
+
 import { BuffetView } from '../../components/buffet/BuffetView';
 import { MenuView } from '../../components/menu/MenuView';
 import { OrdersView } from '../../components/orders/OrdersView';
@@ -38,6 +40,8 @@ export function ClientViewStage({
   onChooseBuffet,
   onCancelOrderItem,
 }: ClientViewStageProps) {
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [stageWidth, setStageWidth] = useState(1);
   const views = isBuffetSelectionLocked ? CLIENT_VIEWS_WITHOUT_BUFFET : CLIENT_VIEWS;
   const activeIndex = views.indexOf(swipe.activeView);
   const pendingIndex = swipe.pendingView === null ? -1 : views.indexOf(swipe.pendingView);
@@ -46,6 +50,22 @@ export function ClientViewStage({
     cart.addQuantity(itemId, quantity);
     cart.setItemNotes(itemId, notes);
   };
+
+  useLayoutEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const updateStageWidth = () => {
+      setStageWidth(Math.max(stage.getBoundingClientRect().width, 1));
+    };
+
+    updateStageWidth();
+
+    const observer = new ResizeObserver(updateStageWidth);
+    observer.observe(stage);
+
+    return () => observer.disconnect();
+  }, []);
 
   function getTransform(view: ClientView, index: number): string {
     if (pendingIndex !== -1) {
@@ -71,7 +91,7 @@ export function ClientViewStage({
 
       if (view === swipe.activeView) {
         const direction = pendingIndex > activeIndex ? -100 : 100;
-        return `translate3d(${direction}vw, 0, 0)`;
+        return `translate3d(${(direction / 100) * stageWidth}px, 0, 0)`;
       }
     }
 
@@ -80,14 +100,17 @@ export function ClientViewStage({
     }
 
     const relativePosition = (index - activeIndex) * 100;
-    return `translate3d(calc(${relativePosition}vw + ${swipe.viewDragOffset}px), 0, 0)`;
+    const relativeOffset = (relativePosition / 100) * stageWidth;
+    return `translate3d(${relativeOffset + swipe.viewDragOffset}px, 0, 0)`;
   }
 
   return (
-    <div className="client-view-stage">
+    <div ref={stageRef} className="client-view-stage">
       {views.map((view, index) => {
         const isActive = view === swipe.activeView;
         const isSwipeTarget = view === swipe.swipeTargetView;
+        const isParticipatingInTransition =
+          swipe.pendingView === view || (swipe.isDraggingView && isSwipeTarget);
         const transform = getTransform(view, index);
 
         return (
@@ -135,7 +158,7 @@ export function ClientViewStage({
                 onRemove={isActive ? cart.removeFromCart : doNothing}
                 onChoose={isActive ? onChooseBuffet : doNothingAsync}
                 isPreview={!isActive}
-                showSelectAction={isActive || isSwipeTarget || swipe.pendingView === view}
+                showSelectAction={isActive || isParticipatingInTransition}
                 selectActionTransform={getViewportTransform(view, index)}
                 isSelectActionDragging={swipe.isDraggingView}
               />

@@ -97,6 +97,7 @@ export function ProductCard({
             type="button"
             className="client-product-summary-button"
             aria-label={`Ver detalhes de ${item.name}`}
+            data-swipe-allow
             onClick={openDetails}
           >
             <h3 className="font-display text-base font-bold leading-tight">{item.name}</h3>
