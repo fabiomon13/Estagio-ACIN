@@ -6,9 +6,18 @@ type StaffHeaderProps = {
   photoUrl?: string | null;
   onOpenProfile: () => void;
   onLogout: () => void;
+  notificationsEnabled: boolean;
+  onToggleNotifications: () => void;
 };
 
-export function StaffHeader({ staffName, photoUrl, onOpenProfile, onLogout }: StaffHeaderProps) {
+export function StaffHeader({
+  staffName,
+  photoUrl,
+  onOpenProfile,
+  onLogout,
+  notificationsEnabled,
+  onToggleNotifications,
+}: StaffHeaderProps) {
   return (
     <header className="mb-5 flex items-center justify-between">
       <h1 className="text-3xl font-bold text-primary">Scan&Serve</h1>
@@ -34,6 +43,24 @@ export function StaffHeader({ staffName, photoUrl, onOpenProfile, onLogout }: St
 
           <span className="hidden text-sm sm:block">{staffName}</span>
         </button>
+
+        <Button
+          type="button"
+          onClick={onToggleNotifications}
+          aria-label={
+            notificationsEnabled ? 'Desativar notificações sonoras' : 'Ativar notificações sonoras'
+          }
+          title={
+            notificationsEnabled ? 'Desativar notificações sonoras' : 'Ativar notificações sonoras'
+          }
+          className={`grid size-10 place-items-center rounded-full border transition-colors ${
+            notificationsEnabled
+              ? 'border-primary/50 bg-primary/10 text-primary'
+              : 'border-border bg-surface-raised text-content-muted'
+          }`}
+        >
+          <span aria-hidden="true">{notificationsEnabled ? '🔔' : '🔕'}</span>
+        </Button>
 
         <Button variant="outline" onClick={onLogout}>
           Sair

@@ -1,0 +1,8 @@
+{
+  "name": "Scan&Serve Staff",
+  "short_name": "Scan&Serve",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0b0f14",
+  "theme_color": "#0b0f14"
+}
