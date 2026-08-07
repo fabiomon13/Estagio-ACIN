@@ -1,16 +1,24 @@
 from decimal import Decimal
+from pathlib import Path
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 
 from app.db.session import SessionLocal
-from app.models.buffet_item import BuffetItem
 from app.models.category import Category
 from app.models.menu_item import MenuItem
-from app.models.order_item import OrderItem  # Adicionada esta importação
+
+STATIC_MENU_ITEMS_DIR = Path(__file__).resolve().parents[3] / "static" / "menu-items"
 
 
 def _photo_url(alias: str) -> str:
-    return f"/static/menu-items/{alias}.webp"
+    path = STATIC_MENU_ITEMS_DIR / f"{alias}.webp"
+
+    # Append the file's mtime so replacing an image's contents changes the
+    # URL, forcing browsers to fetch the new file instead of serving a
+    # cached copy of the old one at the same path.
+    version = int(path.stat().st_mtime) if path.exists() else 0
+
+    return f"/static/menu-items/{alias}.webp?v={version}"
 
 
 DEFAULT_MENU_ITEMS = [
@@ -461,13 +469,6 @@ def seed_menu_items() -> None:
     }
 
     with SessionLocal() as session:
-    
-        session.execute(delete(BuffetItem))
-        session.execute(delete(OrderItem))
-        
-        session.execute(delete(MenuItem))
-        session.commit()
-
         categories = session.scalars(
             select(Category).where(
                 Category.alias.in_(required_category_aliases)
