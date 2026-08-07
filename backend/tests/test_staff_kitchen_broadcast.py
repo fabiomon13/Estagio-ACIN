@@ -26,7 +26,10 @@ def test_marking_an_item_as_served_broadcasts_the_updated_kitchen_board(
 
     staff_service.mark_item_as_served(db_session, item.id, admin)
 
-    assert len(broadcasts) == 1
-    topic, message = broadcasts[0]
-    assert topic == "kitchen"
+    # Other topics (e.g. a client-facing notification) may also broadcast on
+    # this transition -- only the kitchen board's own broadcast is this
+    # test's concern, so pick it out instead of assuming it's the only one.
+    kitchen_broadcasts = [(topic, message) for topic, message in broadcasts if topic == "kitchen"]
+    assert len(kitchen_broadcasts) == 1
+    _topic, message = kitchen_broadcasts[0]
     assert "tickets" in message
