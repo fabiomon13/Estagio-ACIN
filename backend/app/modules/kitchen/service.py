@@ -219,8 +219,11 @@ def update_item_status(db: Session, order_item_id: int, new_status: str) -> Kitc
     db.refresh(item)
 
     broadcast_active_tickets(db)
-    broadcast_staff_dashboard(db)
-    publish_guest_event(item.order.guest_id, "orders.changed")
+
+    try:
+        publish_guest_event(item.order.guest_id, "orders.changed")
+    except Exception:
+        logger.exception("publish_guest_event failed after a successful commit")
 
     return _build_item(item)
 
