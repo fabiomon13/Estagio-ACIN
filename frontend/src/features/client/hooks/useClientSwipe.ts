@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   type PointerEvent,
+  type TransitionEvent,
 } from 'react';
 
 import { CLIENT_VIEWS, type ClientView } from '../clientTypes';
@@ -16,6 +17,7 @@ const SWIPE_DISTANCE_THRESHOLD = 60;
 const SWIPE_VELOCITY_THRESHOLD = 0.45;
 const AXIS_LOCK_THRESHOLD = 8;
 const DEFAULT_TRANSITION_DURATION = 260;
+const TRANSITION_FALLBACK_BUFFER = 100;
 
 const DEFAULT_IGNORE_SELECTOR = [
   'button',
@@ -54,6 +56,7 @@ export function useClientSwipe({
   const [activeView, setActiveView] = useState<ClientView>(initialView);
   const [pendingView, setPendingView] = useState<ClientView | null>(null);
   const [viewDragOffset, setViewDragOffset] = useState(0);
+  const [targetViewTopOffset, setTargetViewTopOffset] = useState(0);
   const [isDraggingView, setIsDraggingView] = useState(false);
   const [viewportWidth, setViewportWidth] = useState(getViewportWidth);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(getPrefersReducedMotion);
@@ -143,6 +146,7 @@ export function useClientSwipe({
       setActiveView(view);
       setPendingView(null);
       setViewDragOffset(0);
+      setTargetViewTopOffset(0);
       setIsDraggingView(false);
     },
     [clearScheduledTransition],
@@ -159,7 +163,14 @@ export function useClientSwipe({
         window.clearTimeout(transitionTimer.current);
       }
 
-      transitionTimer.current = window.setTimeout(() => commitView(view), transitionDuration);
+      // The CSS transition starts on the next painted frame, so a timeout with
+      // exactly the same duration can commit a few milliseconds too early and
+      // produce a visible final snap. The transitionend handler below is the
+      // primary completion path; this is only a safety net.
+      transitionTimer.current = window.setTimeout(
+        () => commitView(view),
+        transitionDuration + TRANSITION_FALLBACK_BUFFER,
+      );
     },
     [commitView, prefersReducedMotion, transitionDuration],
   );
@@ -183,6 +194,7 @@ export function useClientSwipe({
       transitionLocked.current = true;
       const direction = targetIndex > activeViewIndex ? -1 : 1;
 
+      setTargetViewTopOffset(window.scrollY);
       setPendingView(view);
 
       // A very small initial offset makes the adjacent
@@ -293,6 +305,13 @@ export function useClientSwipe({
 
         start.axis =
           Math.abs(horizontalDistance) > Math.abs(verticalDistance) ? 'horizontal' : 'vertical';
+
+        if (start.axis === 'horizontal') {
+          // Render the incoming page where its top will be after commit. This
+          // keeps a scrolled source page from lending its vertical position to
+          // the adjacent preview and then visibly snapping back to the top.
+          setTargetViewTopOffset(window.scrollY);
+        }
       }
 
       if (start.axis === 'vertical') {
@@ -373,6 +392,21 @@ export function useClientSwipe({
     setViewDragOffset(0);
   }, []);
 
+  const handleViewTransitionEnd = useCallback(
+    (event: TransitionEvent<HTMLElement>) => {
+      if (
+        event.target !== event.currentTarget ||
+        event.propertyName !== 'transform' ||
+        pendingView === null
+      ) {
+        return;
+      }
+
+      commitView(pendingView);
+    },
+    [commitView, pendingView],
+  );
+
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -416,6 +450,7 @@ export function useClientSwipe({
     pendingView,
     swipeTargetView,
     viewDragOffset,
+    targetViewTopOffset,
     isDraggingView,
     isTransitioning: pendingView !== null,
     indicatorPosition,
@@ -425,6 +460,7 @@ export function useClientSwipe({
     handlePointerMove,
     handlePointerUp,
     handlePointerCancel,
+    handleViewTransitionEnd,
   };
 }
 
@@ -433,7 +469,11 @@ function getViewportWidth(): number {
     return 1;
   }
 
-  return Math.max(window.innerWidth, 1);
+  // innerWidth includes the vertical scrollbar on desktop, while each client
+  // view occupies the document's usable width. Using innerWidth therefore
+  // moves the views a few pixels beyond their true edge before commit, which
+  // looks like an overshoot followed by a snap back into place.
+  return Math.max(document.documentElement.clientWidth, 1);
 }
 
 function getPrefersReducedMotion(): boolean {

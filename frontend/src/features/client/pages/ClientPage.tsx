@@ -432,6 +432,7 @@ export function ClientPage() {
           <div
             key={swipe.activeView}
             className={`client-view${swipe.isDraggingView ? ' is-dragging' : ''}`}
+            onTransitionEnd={swipe.handleViewTransitionEnd}
             style={{
               transform:
                 swipe.viewDragOffset === 0
@@ -483,6 +484,7 @@ export function ClientPage() {
               <SwipePreview
                 view={swipe.swipeTargetView}
                 dragOffset={swipe.viewDragOffset}
+                topOffset={swipe.targetViewTopOffset}
                 isDragging={swipe.isDraggingView}
                 isSettling={swipe.pendingView !== null}
                 menuStations={data.menuStations}

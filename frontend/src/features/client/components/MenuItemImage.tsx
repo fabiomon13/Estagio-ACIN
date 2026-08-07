@@ -19,6 +19,7 @@ export function MenuItemImage({ src, alt = '', className, fallback, loading }: M
       alt={alt}
       className={className}
       loading={loading}
+      decoding="sync"
       onError={() => setFailedSrc(src)}
     />
   );

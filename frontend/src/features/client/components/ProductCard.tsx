@@ -81,7 +81,7 @@ export function ProductCard({
         <MenuItemImage
           src={item.photo_url}
           className="client-product-image size-full object-cover"
-          loading="lazy"
+          loading="eager"
           fallback={
             <div
               className="client-product-placeholder grid size-full place-items-center text-5xl"
