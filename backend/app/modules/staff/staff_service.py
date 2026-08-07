@@ -9,6 +9,7 @@ from app.modules.client.services.billing import (
     calculate_guest_extras_total,
     calculate_waste_total,
 )
+from app.modules.kitchen.service import broadcast_active_tickets
 
 from app.models.dining_session import DiningSession
 from app.models.order import Order
@@ -364,6 +365,8 @@ def mark_item_as_served(db: Session, item_id: int, current_staff) -> dict:
     order_item.status_id = served_status.id
     db.commit()
     db.refresh(order_item)
+
+    broadcast_active_tickets(db)
 
     return {
         "success": True,
