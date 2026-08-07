@@ -453,9 +453,12 @@ def deactivate_session(db: Session, session_id: int, current_staff) -> dict:
     _ensure_session_owner_or_admin(session, current_staff)
 
     if not session.is_active:
-        raise HTTPException(status_code= 409, detail="Dining session is already inactive.")
+        raise HTTPException(
+            status_code=409,
+            detail="Dining session is already inactive.",
+        )
 
-        cancelled_status = get_order_item_status_by_alias(
+    cancelled_status = get_order_item_status_by_alias(
         db,
         CANCELLED_ORDER_ITEM_ALIAS,
     )
