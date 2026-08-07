@@ -14,8 +14,9 @@ class KitchenOrderItemOut(BaseModel):
     order_item_id: int
     menu_item_name: str
     quantity: int
-    notes: str | None 
+    notes: str | None
     tags: list[str]
+    matched_allergens: list[str]  # subset of `tags` the ordering guest actually declared
     station_id: int
     station: str
     status: str
@@ -62,7 +63,9 @@ class KitchenHistoryBaseFilters(BaseModel):
 
 
 class KitchenHistoryFilters(KitchenHistoryBaseFilters):
-    status: str | None = None
+    status: Literal["Pending", "Preparing", "Ready", "Served", "Cancelled", "Returned"] | None = (
+        None
+    )
     limit: int = Field(default=50, ge=1, le=100)
     offset: int = Field(default=0, ge=0)
 

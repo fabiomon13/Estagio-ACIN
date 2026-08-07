@@ -9,6 +9,7 @@ function makeItem(overrides: Partial<KitchenOrderItem> = {}): KitchenOrderItem {
     quantity: 1,
     notes: null,
     tags: [],
+    matched_allergens: [],
     station_id: 1,
     station: 'Hot / Wok',
     status: 'Pending',

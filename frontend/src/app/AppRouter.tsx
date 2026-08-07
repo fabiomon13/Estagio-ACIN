@@ -11,13 +11,14 @@ import { KitchenSettingsPage } from '../features/kitchen/pages/KitchenSettingsPa
 import { NotFoundPage } from '../features/not-found/pages/NotFoundPage';
 import { StaffPage } from '../features/staff/pages/StaffPage';
 import { ProtectedRoute } from '../components/ProtectedRoute';
+import LandingPage from '../features/landing-page/pages/LandingPage';
 
 export function AppRouter() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<LandingPage />} />
 
           <Route path="/table/:tableCode" element={<ClientPage />} />
 
