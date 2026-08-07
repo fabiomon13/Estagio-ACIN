@@ -8,6 +8,18 @@ export function useClientOrders(tableCode: string | undefined, activeView: Clien
   const [orders, setOrders] = useState<ClientOrder[]>([]);
   const [pollingError, setPollingError] = useState<string | null>(null);
 
+  const refetch = useCallback(async (): Promise<void> => {
+    if (!tableCode || document.visibilityState === 'hidden') return;
+
+    try {
+      const nextOrders = await getOrders(tableCode, getDeviceToken());
+      setOrders(nextOrders);
+      setPollingError(null);
+    } catch {
+      setPollingError('Não foi possível atualizar os pedidos. A tentar novamente…');
+    }
+  }, [tableCode]);
+
   useEffect(() => {
     if (activeView !== 'orders' || !tableCode) return;
 
@@ -36,7 +48,7 @@ export function useClientOrders(tableCode: string | undefined, activeView: Clien
     };
 
     void loadOrders();
-    const timer = window.setInterval(loadOrders, 5000);
+    const timer = window.setInterval(loadOrders, 30_000);
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') void loadOrders();
     };
@@ -56,5 +68,5 @@ export function useClientOrders(tableCode: string | undefined, activeView: Clien
     [],
   );
 
-  return { orders, setOrders, hydrateOrders, prependOrder, pollingError };
+  return { orders, setOrders, hydrateOrders, prependOrder, pollingError, refetch };
 }

@@ -18,6 +18,7 @@ type SwipePreviewProps = {
   cart: Record<number, number>;
   isBuffetSelected: boolean;
   canCancelBuffet: boolean;
+  selectedAllergenTagIds: ReadonlySet<number>;
 };
 
 export function SwipePreview({
@@ -33,10 +34,8 @@ export function SwipePreview({
   cart,
   isBuffetSelected,
   canCancelBuffet,
+  selectedAllergenTagIds,
 }: SwipePreviewProps) {
-  const previewMenuStations = limitStations(menuStations);
-  const previewBuffetStations = limitStations(buffetStations);
-
   return (
     <div
       className={[
@@ -48,10 +47,11 @@ export function SwipePreview({
         .filter(Boolean)
         .join(' ')}
       style={{
+        top: `${topOffset}px`,
         transform:
           dragOffset < 0
-            ? `translate3d(calc(100% + ${dragOffset}px), ${topOffset}px, 0)`
-            : `translate3d(calc(-100% + ${dragOffset}px), ${topOffset}px, 0)`,
+            ? `translate3d(calc(100% + ${dragOffset}px), 0, 0)`
+            : `translate3d(calc(-100% + ${dragOffset}px), 0, 0)`,
       }}
       aria-hidden="true"
       inert
@@ -61,7 +61,8 @@ export function SwipePreview({
       ) : view === 'buffet' ? (
         <BuffetView
           buffet={buffet}
-          stations={previewBuffetStations}
+          stations={buffetStations}
+          selectedAllergenTagIds={selectedAllergenTagIds}
           navigationStations={buffetStations}
           cart={cart}
           onAdd={() => undefined}
@@ -74,7 +75,8 @@ export function SwipePreview({
         />
       ) : (
         <MenuView
-          stations={previewMenuStations}
+          stations={menuStations}
+          selectedAllergenTagIds={selectedAllergenTagIds}
           navigationStations={menuStations}
           cart={cart}
           onAdd={() => undefined}
@@ -85,14 +87,4 @@ export function SwipePreview({
       )}
     </div>
   );
-}
-
-function limitStations(stations: readonly StationSection[]): StationSection[] {
-  return stations.slice(0, 2).map((station) => ({
-    ...station,
-    categories: station.categories.slice(0, 2).map((section) => ({
-      ...section,
-      items: section.items.slice(0, 4),
-    })),
-  }));
 }
