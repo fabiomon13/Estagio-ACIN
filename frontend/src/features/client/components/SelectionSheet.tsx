@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 
 import { formatPrice } from '../clientConfig';
 import type { MenuItem } from '../services/menuApi';
+import { getCategoryConfig } from '../clientConfig';
+import { MenuItemImage } from './MenuItemImage';
 
 export type SelectionSheetProps = {
   items: MenuItem[];
@@ -149,10 +151,11 @@ export function SelectionSheet({
           {items.map((item) => {
             const quantity = cart[item.id] ?? 0;
             const hasAllergyWarning = item.tags.some((tag) => selectedAllergenTagIds.has(tag.id));
+            const category = getCategoryConfig(item.category.alias, item.category.name);
             return (
               <article key={item.alias} className="client-selection-item">
                 <div className="client-selection-thumbnail" aria-hidden={!item.photo_url}>
-                  {item.photo_url ? <img src={item.photo_url} alt="" /> : '🍽️'}
+                  <MenuItemImage src={item.photo_url} fallback={category.emoji} />
                 </div>
                 <strong>{item.name}</strong>
                 <div className="client-selection-quantity">

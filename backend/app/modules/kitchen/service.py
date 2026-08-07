@@ -33,6 +33,7 @@ from app.modules.kitchen.schemas import (
     KitchenTicketOut,
 )
 from app.modules.kitchen.websocket import KITCHEN_TOPIC, connection_manager
+from app.modules.client.realtime import publish_guest_event
 
 logger = logging.getLogger(__name__)
 
@@ -168,6 +169,7 @@ def update_item_status(db: Session, order_item_id: int, new_status: str) -> Kitc
         order_item_id,
         options=[
             joinedload(OrderItem.status),
+            joinedload(OrderItem.order),
             joinedload(OrderItem.menu_item).joinedload(MenuItem.station),
             joinedload(OrderItem.menu_item)
             .joinedload(MenuItem.category)
@@ -215,6 +217,7 @@ def update_item_status(db: Session, order_item_id: int, new_status: str) -> Kitc
     db.refresh(item)
 
     broadcast_active_tickets(db)
+    publish_guest_event(item.order.guest_id, "orders.changed")
 
     return _build_item(item)
 

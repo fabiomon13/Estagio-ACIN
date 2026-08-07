@@ -297,7 +297,7 @@ export function BuffetView({
             <span>Buffet selecionado</span>
           </div>
 
-          {canCancelSelection && !isPreview && (
+          {canCancelSelection && (
             <button
               type="button"
               disabled={isChoosing}
@@ -313,7 +313,7 @@ export function BuffetView({
       {navigationStations.length > 0 && (
         <nav
           ref={isPreview ? undefined : categoryNavigationRef}
-          className={`client-category-nav client-buffet-category-nav ${isPreview ? 'is-preview' : ''}`}
+          className="client-category-nav client-buffet-category-nav"
           aria-label="Categorias do buffet"
         >
           <div className="client-category-row scrollbar-none mx-auto flex max-w-lg gap-2 overflow-x-auto">
@@ -424,7 +424,7 @@ export function BuffetView({
                             onAddDetails?.(item.id, quantity, notes)
                           }
                           onRemove={() => onRemove(item.id)}
-                          showActions={isSelected && !isPreview}
+                          showActions={isSelected}
                           priceMode="included"
                         />
                       ))}
@@ -444,7 +444,7 @@ export function BuffetView({
         </p>
       )}
 
-      {shouldRenderSelectButton && canSelectBuffet && !isPreview && (
+      {shouldRenderSelectButton && canSelectBuffet && (
         <button
           ref={selectButtonRef}
           type="button"

@@ -103,7 +103,7 @@ export function MenuView({
         </section>
         <nav
           ref={isPreview ? undefined : navigationRef}
-          className={`client-category-nav ${isPreview ? 'is-preview' : ''}`}
+          className="client-category-nav"
           aria-label="Categorias do menu"
         >
           <div className="client-category-row scrollbar-none mx-auto flex max-w-lg gap-2 overflow-x-auto">

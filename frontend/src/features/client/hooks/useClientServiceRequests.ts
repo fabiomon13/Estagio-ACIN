@@ -23,6 +23,24 @@ export function useClientServiceRequests({ tableCode, enabled }: UseClientServic
     {},
   );
 
+  const refetch = useCallback(async (): Promise<void> => {
+    if (!enabled || !tableCode) return;
+
+    try {
+      const requests = await getServiceRequests(tableCode, getDeviceToken());
+      const next: Partial<Record<ServiceRequestType, number>> = {};
+      for (const request of requests) {
+        if (request.resolved_at === null && request.status.alias === 'pending') {
+          next[request.request_type.alias] = request.id;
+        }
+      }
+      setActiveRequests(next);
+      setPollingError(null);
+    } catch {
+      setPollingError('Não foi possível atualizar o estado do pedido. A tentar novamente…');
+    }
+  }, [enabled, tableCode]);
+
   useEffect(() => {
     if (!enabled || !tableCode) return;
 
@@ -57,7 +75,7 @@ export function useClientServiceRequests({ tableCode, enabled }: UseClientServic
     };
 
     void loadRequests();
-    const timer = window.setInterval(loadRequests, 5000);
+    const timer = window.setInterval(loadRequests, 30_000);
     return () => {
       isActive = false;
       controller?.abort();
@@ -108,5 +126,5 @@ export function useClientServiceRequests({ tableCode, enabled }: UseClientServic
     [activeRequests, pendingRequest, showToast, tableCode],
   );
 
-  return { activeRequests, pendingRequest, pollingError, toggleRequest };
+  return { activeRequests, pendingRequest, pollingError, toggleRequest, refetch };
 }

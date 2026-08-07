@@ -17,6 +17,7 @@ import { CLIENT_VIEWS } from '../clientTypes';
 import { useClientBootstrap } from '../hooks/useClientBootstrap';
 import { useClientCart } from '../hooks/useClientCart';
 import { useClientOrders } from '../hooks/useClientOrders';
+import { useClientRealtime } from '../hooks/useClientRealtime';
 import { useClientServiceRequests } from '../hooks/useClientServiceRequests';
 import { useClientSession } from '../hooks/useClientSession';
 import { useClientSwipe } from '../hooks/useClientSwipe';
@@ -35,10 +36,8 @@ export function ClientPage() {
   const session = useClientSession();
   const cart = useClientCart();
   const swipe = useClientSwipe();
-  const { orders, setOrders, hydrateOrders, prependOrder, pollingError } = useClientOrders(
-    tableCode,
-    swipe.activeView,
-  );
+  const clientOrders = useClientOrders(tableCode, swipe.activeView);
+  const { orders, setOrders, hydrateOrders, prependOrder, pollingError } = clientOrders;
   const { status, error, reload, data } = useClientBootstrap({
     tableCode,
     setTable: session.setTable,
@@ -49,6 +48,15 @@ export function ClientPage() {
   const serviceRequests = useClientServiceRequests({
     tableCode,
     enabled: status === 'ready' && session.sessionState === 'ready',
+  });
+  const realtimeEnabled = status === 'ready' && session.sessionState === 'ready';
+  const realtimeStatus = useClientRealtime({
+    tableCode,
+    enabled: realtimeEnabled,
+    onOrdersChanged: clientOrders.refetch,
+    onServiceRequestsChanged: serviceRequests.refetch,
+    onSessionChanged: reload,
+    onMenuChanged: reload,
   });
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [shouldRenderCart, setShouldRenderCart] = useState(false);
@@ -415,10 +423,16 @@ export function ClientPage() {
         onPointerUp={swipe.handlePointerUp}
         onPointerCancel={swipe.handlePointerCancel}
       >
+        {realtimeStatus === 'reconnecting' && (
+          <p className="sr-only" role="status">
+            A restabelecer a ligação em tempo real.
+          </p>
+        )}
         <div className="client-view-stage">
           <div
             key={swipe.activeView}
             className={`client-view${swipe.isDraggingView ? ' is-dragging' : ''}`}
+            onTransitionEnd={swipe.handleViewTransitionEnd}
             style={{
               transform:
                 swipe.viewDragOffset === 0
@@ -470,7 +484,7 @@ export function ClientPage() {
               <SwipePreview
                 view={swipe.swipeTargetView}
                 dragOffset={swipe.viewDragOffset}
-                topOffset={swipe.previewTopOffset}
+                topOffset={swipe.targetViewTopOffset}
                 isDragging={swipe.isDraggingView}
                 isSettling={swipe.pendingView !== null}
                 menuStations={data.menuStations}
@@ -480,6 +494,7 @@ export function ClientPage() {
                 cart={cart.cart}
                 isBuffetSelected={data.selectedBuffetId === selectedBuffet?.id}
                 canCancelBuffet={orders.length === 0}
+                selectedAllergenTagIds={data.selectedAllergenTagIds}
               />
             )}
         </div>

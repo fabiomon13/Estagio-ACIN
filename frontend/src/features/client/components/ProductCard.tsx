@@ -4,6 +4,7 @@ import CloseIcon from '../../../components/icons/CloseIcon';
 import PlusIcon from '../../../components/icons/PlusIcon';
 import { formatPrice, getCategoryConfig, getTagConfig } from '../clientConfig';
 import type { MenuItem } from '../services/menuApi';
+import { MenuItemImage } from './MenuItemImage';
 
 type ProductCardProps = {
   item: MenuItem;
@@ -77,21 +78,19 @@ export function ProductCard({
         aria-label={`Ver detalhes de ${item.name}`}
         onClick={openDetails}
       >
-        {item.photo_url ? (
-          <img
-            src={item.photo_url}
-            alt=""
-            className="client-product-image size-full object-cover"
-            loading="lazy"
-          />
-        ) : (
-          <div
-            className="client-product-placeholder grid size-full place-items-center text-5xl"
-            aria-hidden="true"
-          >
-            {category.emoji}
-          </div>
-        )}
+        <MenuItemImage
+          src={item.photo_url}
+          className="client-product-image size-full object-cover"
+          loading="eager"
+          fallback={
+            <div
+              className="client-product-placeholder grid size-full place-items-center text-5xl"
+              aria-hidden="true"
+            >
+              {category.emoji}
+            </div>
+          }
+        />
         <span className="client-product-price absolute bottom-2 right-2 rounded-full bg-black/85 px-2 py-1 text-xs font-bold text-white">
           {priceMode === 'included' ? 'Incluído' : formatPrice(item.base_price)}
         </span>
@@ -209,11 +208,10 @@ export function ProductCard({
             aria-labelledby={`product-details-title-${item.alias}`}
           >
             <div className="client-product-details-image">
-              {item.photo_url ? (
-                <img src={item.photo_url} alt="" />
-              ) : (
-                <div aria-hidden="true">{category.emoji}</div>
-              )}
+              <MenuItemImage
+                src={item.photo_url}
+                fallback={<div aria-hidden="true">{category.emoji}</div>}
+              />
               <button
                 ref={detailCloseButtonRef}
                 type="button"
