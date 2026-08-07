@@ -9,6 +9,7 @@ import { StaffTableCard } from '../components/StaffTableCard';
 import { useStaffDashboardDerivedData } from '../hooks/useStaffDashboardDerivedData';
 import { useStaffReadyToServe } from '../hooks/useStaffReadyToServe';
 import { useStaffPreparingOrders } from '../hooks/useStaffPreparingOrders';
+import { StaffProfileModal } from '../../auth/components/StaffProfileModal';
 import type {
   StaffPaymentMethod,
   StaffSessionBill,
@@ -58,6 +59,8 @@ export function StaffPage() {
   const [approvalActionFor, setApprovalActionFor] = useState<number | null>(null);
 
   const [confirmSolveForTable, setConfirmSolveForTable] = useState<number | null>(null);
+
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const [paymentDialog, setPaymentDialog] = useState<{
     sessionId: number;
@@ -240,7 +243,12 @@ export function StaffPage() {
 
   return (
     <div className="staff-page min-h-screen bg-background p-5 text-content xl:grid xl:h-dvh xl:min-h-0 xl:grid-rows-[auto_minmax(0,1fr)] xl:overflow-hidden">
-      <StaffHeader staffName={staff?.name} onLogout={logout} />
+      <StaffHeader
+        staffName={staff?.name}
+        photoUrl={staff?.photo_url}
+        onOpenProfile={() => setIsProfileOpen(true)}
+        onLogout={logout}
+      />
 
       <div
         className={`staff-page__dashboard-grid grid min-h-0 grid-cols-1 gap-4 xl:overflow-hidden ${
@@ -373,6 +381,8 @@ export function StaffPage() {
           }}
         />
       )}
+
+      <StaffProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
     </div>
   );
 }
