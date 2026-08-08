@@ -158,7 +158,7 @@ def create_service_request(
         ) from exc
 
     created_request = require_service_request(db, service_request.id)
-    broadcast_staff_dashboard(db)
+    broadcast_staff_dashboard(db, session_id=guest.session_id)
     publish_session_event(guest.session_id, "service_requests.changed")
     return created_request
 
@@ -230,5 +230,5 @@ def cancel_service_request(
     service_request.resolved_at = datetime.now(timezone.utc)
     db.commit()
 
-    broadcast_staff_dashboard(db)
+    broadcast_staff_dashboard(db, session_id=guest.session_id)
     publish_session_event(guest.session_id, "service_requests.changed")

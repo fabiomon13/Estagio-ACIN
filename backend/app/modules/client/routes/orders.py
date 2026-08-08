@@ -278,7 +278,7 @@ def create_order(
 
     # Atualiza o quadro da cozinha.
     broadcast_active_tickets(db)
-    broadcast_staff_dashboard(db)
+    broadcast_staff_dashboard(db, session_id=locked_guest.session_id)
 
     # Notifica o frontend do guest.
     publish_guest_event(
@@ -420,7 +420,7 @@ def cancel_order_item(
     # Retira imediatamente o artigo cancelado
     # do quadro da cozinha.
     broadcast_active_tickets(db)
-    broadcast_staff_dashboard(db)
+    broadcast_staff_dashboard(db, session_id=guest.session_id)
 
     # Atualiza o frontend do guest.
     publish_guest_event(

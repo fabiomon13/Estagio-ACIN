@@ -85,12 +85,18 @@ export function useStaffDashboard() {
         if (!isMounted) return;
 
         try {
-          const payload = JSON.parse(event.data) as {
-            dashboard: StaffDashboard;
-          };
+          const payload = JSON.parse(event.data) as
+            { type: 'dashboard.changed' } | { dashboard: StaffDashboard };
 
-          applyDashboard(payload.dashboard);
-          setLoading(false);
+          if ('type' in payload && payload.type === 'dashboard.changed') {
+            void load();
+            return;
+          }
+
+          if ('dashboard' in payload) {
+            applyDashboard(payload.dashboard);
+            setLoading(false);
+          }
         } catch {
           // Ignore an invalid message; the backup REST poll will recover.
         }
