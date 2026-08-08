@@ -4,8 +4,7 @@ from app.api.deps import authenticate_staff_websocket
 from app.core.roles import StaffRoleEnum, staff_role
 from app.core.websocket_manager import connection_manager
 from app.modules.staff.websockets.staff_realtime import (
-    STAFF_TOPIC,
-    broadcast_staff_dashboard,
+    STAFF_TOPIC_PREFIX,
 )
 
 ws_router = APIRouter(prefix="/staff", tags=["Staff"])
@@ -22,10 +21,11 @@ async def staff_websocket(websocket: WebSocket) -> None:
         await websocket.close(code=1008)
         return
 
-    await connection_manager.connect(STAFF_TOPIC, websocket)
+    topic = f"{STAFF_TOPIC_PREFIX}:{staff.id}"
+    await connection_manager.connect(topic, websocket)
 
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        connection_manager.disconnect(STAFF_TOPIC, websocket)
+        connection_manager.disconnect(topic, websocket)

@@ -219,7 +219,7 @@ def update_item_status(db: Session, order_item_id: int, new_status: str) -> Kitc
     db.refresh(item)
 
     broadcast_active_tickets(db)
-    broadcast_staff_dashboard(db)
+    broadcast_staff_dashboard(db, session_id=item.order.guest.session_id)
     
     try:
         publish_guest_event(item.order.guest_id, "orders.changed")

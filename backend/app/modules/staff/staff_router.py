@@ -24,8 +24,11 @@ router = APIRouter(prefix="/staff")
     tags=["Staff - Dashboard"],
     dependencies=[Depends(require_role(StaffRoleEnum.WAITER))]
 )
-def get_staff_dashboard(db: Session = Depends(get_db)) -> StaffDashboard:
-    return staff_service.get_staff_dashboard(db)
+def get_staff_dashboard(
+    db: Session = Depends(get_db),
+    current_staff: Staff = Depends(get_current_staff),
+) -> StaffDashboard:
+    return staff_service.get_staff_dashboard(db, current_staff)
 
 
 # Table management (approval + deactivation)
@@ -76,19 +79,32 @@ def list_staff_requests(db: Session = Depends(get_db), current_staff: Staff = De
 
 
 @router.get("/sessions/{session_id}", tags=["Staff - Table management"], dependencies=[Depends(require_role(StaffRoleEnum.WAITER))])
-def get_staff_session(session_id: int, db: Session = Depends(get_db)):
-    """
-    Detailed session view including guests, orders, items, and open service requests.
-    """
-    session = staff_service.get_session_detail(db, session_id)
+def get_staff_session(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_staff: Staff = Depends(get_current_staff),
+):
+    session = staff_service.get_session_detail(
+        db,
+        session_id,
+        current_staff,
+    )
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
     return {"success": True, "session": session}
 
 
 @router.get("/requests/{request_id}", tags=["Staff - Services"], dependencies=[Depends(require_role(StaffRoleEnum.WAITER))])
-def get_staff_request(request_id: int, db: Session = Depends(get_db)):
-    item = staff_service.get_service_request_detail(db, request_id)
+def get_staff_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_staff: Staff = Depends(get_current_staff),
+):
+    item = staff_service.get_service_request_detail(
+        db,
+        request_id,
+        current_staff,
+    )
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service request not found")
     return {"success": True, "request": item}

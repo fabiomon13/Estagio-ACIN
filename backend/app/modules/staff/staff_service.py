@@ -107,7 +107,7 @@ def get_service_request_status_by_alias(db: Session, alias: str) -> ServiceReque
         raise HTTPException(status_code=500, detail=f"Service request status '{alias}' is not configured")
     return row
 
-def get_staff_dashboard(db: Session) -> StaffDashboard:
+def get_staff_dashboard(db: Session, current_staff: Staff) -> StaffDashboard:
     """
     Fetches and formats all data for the staff dashboard[cite: 1].
     Calculates occupied tables, guest counts, and table totals for active sessions[cite: 1].
@@ -276,11 +276,28 @@ def get_staff_dashboard(db: Session) -> StaffDashboard:
             )
 
     # Open service requests
-    open_requests = db.query(ServiceRequest, ServiceRequestType)\
-    .join(DiningSession, DiningSession.id == ServiceRequest.session_id)\
-    .join(ServiceRequestType, ServiceRequestType.id == ServiceRequest.type_id)\
-    .options(joinedload(ServiceRequest.dining_session).joinedload(DiningSession.restaurant_table))\
-    .filter(DiningSession.is_active == True, ServiceRequest.resolved_at.is_(None)).all()
+    open_requests = (
+        db.query(ServiceRequest, ServiceRequestType)
+        .join(DiningSession, DiningSession.id == ServiceRequest.session_id)
+        .join(ServiceRequestType, ServiceRequestType.id == ServiceRequest.type_id)
+        .options(
+            joinedload(ServiceRequest.dining_session)
+            .joinedload(DiningSession.restaurant_table)
+        )
+        .filter(
+            DiningSession.is_active == True,
+            ServiceRequest.resolved_at.is_(None),
+        )
+    )
+
+    # Waiters only receive requests from tables assigned to them.
+    # Admins retain visibility of every table.
+    if staff_role(current_staff) != StaffRoleEnum.ADMIN:
+        open_requests = open_requests.filter(
+            DiningSession.waiter_id == current_staff.id
+        )
+
+    open_requests = open_requests.all()
 
     requests_data = [
         StaffOpenRequest(
@@ -329,7 +346,7 @@ def approve_session(db: Session, session_id: int, approved_by_staff_id: int) -> 
     db.commit()
     db.refresh(session)
 
-    broadcast_staff_dashboard(db)
+    broadcast_staff_dashboard(db, session_id=session.id)
 
     publish_session_event(session.id, "session.changed")
 
@@ -379,7 +396,7 @@ def mark_item_as_served(db: Session, item_id: int, current_staff) -> dict:
     db.commit()
     db.refresh(order_item)
 
-    broadcast_staff_dashboard(db)
+    broadcast_staff_dashboard(db, session_id=owning_session.id)
 
     broadcast_active_tickets(db)
     guest_id = (
@@ -434,7 +451,7 @@ def resolve_service_request(db: Session, request_id: int, current_staff) -> dict
     db.commit()
     db.refresh(service_request)
 
-    broadcast_staff_dashboard(db)
+    broadcast_staff_dashboard(db, session_id=service_request.session_id)
     publish_session_event(service_request.session_id, "service_requests.changed")
 
     return {
@@ -521,7 +538,7 @@ def deactivate_session(db: Session, session_id: int, current_staff) -> dict:
     publish_session_event(session.id, "session.changed")
 
     broadcast_active_tickets(db)
-    broadcast_staff_dashboard(db)
+    broadcast_staff_dashboard(db, session_id=session.id)
     
     return {
         "success": True,
@@ -570,10 +587,11 @@ def list_open_service_requests(db: Session, current_staff: Staff, limit: int = 5
         })
     return items
 
-def get_session_detail(db: Session, session_id: int):
+def get_session_detail(db: Session, session_id: int, current_staff: Staff):
     s = db.query(DiningSession).filter(DiningSession.id == session_id).first()
     if not s:
         return None
+    _ensure_session_owner_or_admin(s, current_staff)
     # guests
     guests = db.query(Guest).filter(Guest.session_id == session_id).all()
     # orders & items
@@ -600,7 +618,7 @@ def get_session_detail(db: Session, session_id: int):
         "open_requests": requests_serialized
     }
 
-def get_service_request_detail(db, request_id: int):
+def get_service_request_detail(db, request_id: int, current_staff: Staff):
     r = (
         db.query(ServiceRequest)
         .join(ServiceRequest.dining_session)
@@ -617,6 +635,7 @@ def get_service_request_detail(db, request_id: int):
     if not r:
         return None
 
+    _ensure_session_owner_or_admin(r.dining_session, current_staff)
     return {
         "id": r.id,
         "session_id": r.session_id,
@@ -737,7 +756,6 @@ def get_session_bill(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Dining session not found.",
         )
-
     payment = session.payment
     guests_data: list[StaffSessionBillGuest] = []
 
@@ -900,7 +918,7 @@ def register_payment_and_close_session(
     db.commit()
     db.refresh(payment)
 
-    broadcast_staff_dashboard(db)
+    broadcast_staff_dashboard(db, session_id=session.id)
 
     return StaffPaymentResponse(
         session_id=session.id,
