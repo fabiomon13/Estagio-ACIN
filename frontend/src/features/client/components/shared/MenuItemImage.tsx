@@ -13,7 +13,7 @@ export function MenuItemImage({
   alt = '',
   className,
   fallback,
-  loading = 'eager',
+  loading = 'lazy',
 }: MenuItemImageProps) {
   const [failedSource, setFailedSource] = useState<string | null>(null);
 
@@ -26,8 +26,10 @@ export function MenuItemImage({
       src={src}
       alt={alt}
       className={className}
+      draggable={false}
       loading={loading}
-      decoding="sync"
+      decoding="async"
+      fetchPriority={loading === 'eager' ? 'high' : 'low'}
       onError={() => setFailedSource(src)}
     />
   );

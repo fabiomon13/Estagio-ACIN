@@ -56,7 +56,8 @@ export function useSwipePointer({
       if (!event.isPrimary || isTransitionLocked()) return;
 
       const target = event.target instanceof Element ? event.target : null;
-      const ignored = Boolean(target?.closest(ignoreSelector));
+      const explicitlyAllowed = Boolean(target?.closest('[data-swipe-allow]'));
+      const ignored = !explicitlyAllowed && Boolean(target?.closest(ignoreSelector));
 
       pointerStart.current = {
         pointerId: event.pointerId,
@@ -151,7 +152,32 @@ export function useSwipePointer({
     [cancelPendingDrag, onDraggingChange, onReset, unlockTransition],
   );
 
+  const resetActiveGesture = useCallback(() => {
+    if (pointerStart.current === null) return;
+
+    cancelPendingDrag();
+    pointerStart.current = null;
+    unlockTransition();
+    onDraggingChange(false);
+    onReset();
+  }, [cancelPendingDrag, onDraggingChange, onReset, unlockTransition]);
+
+  const handleLostPointerCapture = useCallback(() => {
+    resetActiveGesture();
+  }, [resetActiveGesture]);
+
   useEffect(() => cancelPendingDrag, [cancelPendingDrag]);
 
-  return { handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel };
+  useEffect(() => {
+    window.addEventListener('blur', resetActiveGesture);
+    return () => window.removeEventListener('blur', resetActiveGesture);
+  }, [resetActiveGesture]);
+
+  return {
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUp,
+    handlePointerCancel,
+    handleLostPointerCapture,
+  };
 }

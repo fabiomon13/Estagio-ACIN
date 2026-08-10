@@ -18,7 +18,7 @@ type UseClientServiceRequestsOptions = {
 export function useClientServiceRequests({ tableCode, enabled }: UseClientServiceRequestsOptions) {
   const { showToast } = useToast();
   const [pendingRequest, setPendingRequest] = useState<ServiceRequestType | null>(null);
-  const [pollingError, setPollingError] = useState<string | null>(null);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const [activeRequests, setActiveRequests] = useState<Partial<Record<ServiceRequestType, number>>>(
     {},
   );
@@ -35,9 +35,9 @@ export function useClientServiceRequests({ tableCode, enabled }: UseClientServic
         }
       }
       setActiveRequests(next);
-      setPollingError(null);
+      setRefreshError(null);
     } catch {
-      setPollingError('Não foi possível atualizar o estado do pedido. A tentar novamente…');
+      setRefreshError('Não foi possível atualizar o estado do pedido.');
     }
   }, [enabled, tableCode]);
 
@@ -64,10 +64,10 @@ export function useClientServiceRequests({ tableCode, enabled }: UseClientServic
           }
         }
         setActiveRequests(next);
-        setPollingError(null);
+        setRefreshError(null);
       } catch (error) {
         if (isActive && !(error instanceof DOMException && error.name === 'AbortError')) {
-          setPollingError('Não foi possível atualizar o estado do pedido. A tentar novamente…');
+          setRefreshError('Não foi possível atualizar o estado do pedido.');
         }
       } finally {
         isLoading = false;
@@ -75,11 +75,9 @@ export function useClientServiceRequests({ tableCode, enabled }: UseClientServic
     };
 
     void loadRequests();
-    const timer = window.setInterval(loadRequests, 30_000);
     return () => {
       isActive = false;
       controller?.abort();
-      window.clearInterval(timer);
     };
   }, [enabled, tableCode]);
 
@@ -126,5 +124,5 @@ export function useClientServiceRequests({ tableCode, enabled }: UseClientServic
     [activeRequests, pendingRequest, showToast, tableCode],
   );
 
-  return { activeRequests, pendingRequest, pollingError, toggleRequest, refetch };
+  return { activeRequests, pendingRequest, refreshError, toggleRequest, refetch };
 }

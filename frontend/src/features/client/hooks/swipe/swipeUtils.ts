@@ -31,7 +31,10 @@ export type PointerStart = {
 export function getViewportWidth(): number {
   if (typeof window === 'undefined') return 1;
 
-  return Math.max(document.documentElement.clientWidth, 1);
+  const documentWidth = document.documentElement.clientWidth;
+  const bodyWidth = document.body?.getBoundingClientRect().width ?? 0;
+
+  return Math.max(documentWidth, bodyWidth, 1);
 }
 
 export function getPrefersReducedMotion(): boolean {

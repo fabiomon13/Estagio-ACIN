@@ -46,7 +46,6 @@ export function useClientSwipe({
     unlockTransition,
     clearScheduledTransition,
     scheduleCommit,
-    scheduleSettlingFrame,
   } = useSwipeTransition({ duration: transitionDuration, prefersReducedMotion });
 
   const activeViewIndex = availableViews.indexOf(activeView);
@@ -155,40 +154,11 @@ export function useClientSwipe({
     (view: ClientView) => {
       if (view === activeView || isTransitionLocked()) return;
 
-      const targetIndex = availableViews.indexOf(view);
-      if (targetIndex === -1) return;
+      if (!availableViews.includes(view)) return;
 
-      if (prefersReducedMotion) {
-        commitView(view);
-        return;
-      }
-
-      clearScheduledTransition();
-      lockTransition();
-      const direction = targetIndex > activeViewIndex ? -1 : 1;
-
-      setTargetViewTopOffset(window.scrollY);
-      setPendingView(view);
-      setViewDragOffset(direction * 0.01);
-
-      scheduleSettlingFrame(() => {
-        setViewDragOffset(direction * viewportWidth);
-        scheduleCommit(() => commitView(view));
-      });
+      commitView(view);
     },
-    [
-      activeView,
-      activeViewIndex,
-      availableViews,
-      clearScheduledTransition,
-      commitView,
-      prefersReducedMotion,
-      scheduleCommit,
-      scheduleSettlingFrame,
-      isTransitionLocked,
-      lockTransition,
-      viewportWidth,
-    ],
+    [activeView, availableViews, commitView, isTransitionLocked],
   );
 
   const handleViewTransitionEnd = useCallback(

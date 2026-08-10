@@ -1,6 +1,7 @@
 // frontend/src/features/client/menu/ProductDetailsModal.tsx
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import CloseIcon from '../../../../components/icons/CloseIcon';
 import {
@@ -71,7 +72,7 @@ export function ProductDetailsModal({
     onClose();
   }
 
-  return (
+  return createPortal(
     <div
       className="client-product-details-backdrop"
       role="presentation"
@@ -184,6 +185,7 @@ export function ProductDetailsModal({
           )}
         </div>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
