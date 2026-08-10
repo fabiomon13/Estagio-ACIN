@@ -1,6 +1,8 @@
 import uuid
 
-from sqlalchemy import select
+from datetime import datetime, timezone
+
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
@@ -11,7 +13,21 @@ from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.order_item_status import OrderItemStatus
 from app.models.restaurant_table import RestaurantTable
+from app.models.staff import Staff
+from app.models.staff_role import StaffRole
 from app.modules.client.security import hash_device_token
+
+
+def _any_waiter(session: Session) -> Staff:
+    waiter = session.scalar(
+        select(Staff)
+        .join(StaffRole, Staff.staff_role_id == StaffRole.id)
+        .where(func.lower(StaffRole.alias) == "waiter")
+        .order_by(Staff.id)
+    )
+    if waiter is None:
+        raise RuntimeError("No waiter staff found. Run the staff seeder first.")
+    return waiter
 
 
 # Must already exist -- owned by guests.py, not created here.
@@ -100,13 +116,23 @@ def _get_or_create_dining_session(session: Session, table_number: int) -> Dining
         )
     )
     if dining_session is not None:
+        # Approve/assign it now if it's a leftover from before this fix --
+        # otherwise no waiter could ever act on its items (see
+        # `_ensure_session_owner_or_admin` in staff_service.py).
+        if not dining_session.is_approved or dining_session.waiter_id is None:
+            dining_session.is_approved = True
+            dining_session.approved_at = dining_session.approved_at or datetime.now(timezone.utc)
+            dining_session.waiter_id = dining_session.waiter_id or _any_waiter(session).id
+            session.flush()
         return dining_session
 
     dining_session = DiningSession(
         table_id=restaurant_table.id,
         num_clients=1,
         is_active=True,
-        is_approved=False,
+        is_approved=True,
+        approved_at=datetime.now(timezone.utc),
+        waiter_id=_any_waiter(session).id,
     )
     session.add(dining_session)
     session.flush()
