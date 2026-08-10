@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from 'react';
 
+import { toMediaUrl } from '../../../../services/api/client';
+
 type MenuItemImageProps = {
   src: string | null;
   alt?: string;
@@ -16,21 +18,22 @@ export function MenuItemImage({
   loading = 'lazy',
 }: MenuItemImageProps) {
   const [failedSource, setFailedSource] = useState<string | null>(null);
+  const resolvedSrc = toMediaUrl(src);
 
-  if (!src || failedSource === src) {
+  if (!resolvedSrc || failedSource === resolvedSrc) {
     return fallback;
   }
 
   return (
     <img
-      src={src}
+      src={resolvedSrc}
       alt={alt}
       className={className}
       draggable={false}
       loading={loading}
       decoding="async"
       fetchPriority={loading === 'eager' ? 'high' : 'low'}
-      onError={() => setFailedSource(src)}
+      onError={() => setFailedSource(resolvedSrc)}
     />
   );
 }
