@@ -5,7 +5,7 @@ import Badge from '../../../components/ui/badge/Badge';
 import Button from '../../../components/ui/button/Button';
 import ConfirmDialog from '../../../components/ui/confirm-dialog/ConfirmDialog';
 import { useToast } from '../../../components/ui/toast/useToast';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../hooks/AuthContext';
 
 type StaffProfileModalProps = {
   isOpen: boolean;
@@ -28,15 +28,20 @@ export function StaffProfileModal({ isOpen, onClose }: StaffProfileModalProps) {
   const [isVisible, setIsVisible] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
 
+  // Mount the panel the instant it opens, and start its exit transition the
+  // instant it closes. Adjusted during render (not an effect) so each takes
+  // effect on this same render pass instead of the next one.
+  if (isOpen && !shouldRender) {
+    setShouldRender(true);
+  }
+  if (!isOpen && isVisible) {
+    setIsVisible(false);
+  }
+
   // The panel must stay mounted for the closing animation to play.
   useEffect(() => {
-    if (isOpen) {
-      setShouldRender(true);
-      return;
-    }
+    if (isOpen || !shouldRender) return;
 
-    setIsVisible(false);
-    if (!shouldRender) return;
     const removalTimer = window.setTimeout(() => setShouldRender(false), 300);
     return () => window.clearTimeout(removalTimer);
   }, [isOpen, shouldRender]);

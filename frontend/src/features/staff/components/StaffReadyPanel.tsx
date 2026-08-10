@@ -178,7 +178,7 @@ export function StaffReadyPanel({
       <button
         type="button"
         onClick={onToggle}
-        className="absolute left-0 top-1/2 z-50 hidden h-16 w-9 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border border-border bg-surface text-content-muted shadow-lg transition-all duration-300 hover:border-content-muted hover:bg-surface-raised hover:text-content xl:flex"
+        className="absolute left-0 top-26 z-50 hidden h-12 w-6 -translate-x-1/2 flex-col items-center justify-center rounded-full border border-border bg-surface text-content-muted shadow-lg transition-all duration-300 hover:border-content-muted hover:bg-surface-raised hover:text-content xl:flex"
         aria-label={kitchenOpen ? 'Fechar cozinha' : 'Abrir cozinha'}
       >
         <svg

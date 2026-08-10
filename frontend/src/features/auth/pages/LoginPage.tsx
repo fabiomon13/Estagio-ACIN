@@ -7,7 +7,7 @@ import LogoIcon from '../../../components/icons/Logo';
 import Button from '../../../components/ui/button/Button';
 import Input from '../../../components/ui/input/Input';
 import { ApiError } from '../../../services/api/client';
-import { ROLE_HOME_ROUTE, useAuth } from '../hooks/useAuth';
+import { ROLE_HOME_ROUTE, useAuth } from '../hooks/AuthContext';
 
 export function LoginPage() {
   const { staff, isLoading, login } = useAuth();

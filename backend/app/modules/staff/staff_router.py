@@ -4,6 +4,9 @@ from sqlalchemy.orm import Session
 from app.db.dependencies import get_db
 from app.modules.staff.staff_contract import (
     StaffDashboard,
+    StaffPaymentCreate,
+    StaffPaymentResponse,
+    StaffSessionBillResponse,
 )
 from app.modules.staff import staff_service
 
@@ -21,7 +24,10 @@ router = APIRouter(prefix="/staff")
     tags=["Staff - Dashboard"],
     dependencies=[Depends(require_role(StaffRoleEnum.WAITER))]
 )
-def get_staff_dashboard(db: Session = Depends(get_db), current_staff: Staff = Depends(get_current_staff),) -> StaffDashboard:
+def get_staff_dashboard(
+    db: Session = Depends(get_db),
+    current_staff: Staff = Depends(get_current_staff),
+) -> StaffDashboard:
     return staff_service.get_staff_dashboard(db, current_staff)
 
 
@@ -73,19 +79,32 @@ def list_staff_requests(db: Session = Depends(get_db), current_staff: Staff = De
 
 
 @router.get("/sessions/{session_id}", tags=["Staff - Table management"], dependencies=[Depends(require_role(StaffRoleEnum.WAITER))])
-def get_staff_session(session_id: int, db: Session = Depends(get_db)):
-    """
-    Detailed session view including guests, orders, items, and open service requests.
-    """
-    session = staff_service.get_session_detail(db, session_id)
+def get_staff_session(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_staff: Staff = Depends(get_current_staff),
+):
+    session = staff_service.get_session_detail(
+        db,
+        session_id,
+        current_staff,
+    )
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
     return {"success": True, "session": session}
 
 
 @router.get("/requests/{request_id}", tags=["Staff - Services"], dependencies=[Depends(require_role(StaffRoleEnum.WAITER))])
-def get_staff_request(request_id: int, db: Session = Depends(get_db)):
-    item = staff_service.get_service_request_detail(db, request_id)
+def get_staff_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_staff: Staff = Depends(get_current_staff),
+):
+    item = staff_service.get_service_request_detail(
+        db,
+        request_id,
+        current_staff,
+    )
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service request not found")
     return {"success": True, "request": item}
@@ -105,3 +124,39 @@ def list_staff_sessions(
         only_active=only_active,
     )
     return {"success": True, "count": len(items), "items": items}
+
+@router.post(
+    "/sessions/{session_id}/payment",
+    response_model=StaffPaymentResponse,
+    tags=["Staff - Payments"],
+    dependencies=[Depends(require_role(StaffRoleEnum.WAITER))],
+)
+def register_payment(
+    session_id: int,
+    payment_data: StaffPaymentCreate,
+    db: Session = Depends(get_db),
+    current_staff: Staff = Depends(get_current_staff),
+):
+    return staff_service.register_payment_and_close_session(
+        db,
+        session_id,
+        payment_data,
+        current_staff,
+    )
+
+@router.get(
+    "/sessions/{session_id}/bill",
+    response_model=StaffSessionBillResponse,
+    tags=["Staff - Payments"],
+    dependencies=[Depends(require_role(StaffRoleEnum.WAITER))],
+)
+def get_session_bill(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_staff: Staff = Depends(get_current_staff),
+):
+    return staff_service.get_session_bill(
+        db,
+        session_id,
+        current_staff,
+    )

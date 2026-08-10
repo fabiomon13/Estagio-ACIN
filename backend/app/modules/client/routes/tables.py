@@ -4,6 +4,8 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
+from app.modules.staff.websockets.staff_realtime import broadcast_staff_dashboard
+
 from app.models.dining_session import DiningSession
 from app.models.restaurant_table import RestaurantTable
 from app.modules.client.dependencies import (
@@ -85,5 +87,6 @@ def create_session(
             detail="The table already has an active session",
         ) from exc
 
+    broadcast_staff_dashboard(db)
     db.refresh(dining_session)
     return dining_session

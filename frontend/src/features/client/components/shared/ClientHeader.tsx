@@ -1,7 +1,9 @@
-import LogoIcon from '../../../components/icons/Logo';
-import type { ClientView } from '../clientTypes';
-import type { ServiceRequestType } from '../services/serviceRequestApi';
+import LogoIcon from '../../../../components/icons/Logo';
+import type { ClientView } from '../../clientTypes';
+import type { ServiceRequestType } from '../../services/serviceRequestApi';
 import { ClientNavigation } from './ClientNavigation';
+
+type ActiveServiceRequests = Readonly<Partial<Record<ServiceRequestType, number>>>;
 
 type ClientHeaderProps = {
   tableNumber?: number;
@@ -9,7 +11,7 @@ type ClientHeaderProps = {
   isDragging: boolean;
   indicatorPosition: number;
   pendingServiceRequest: ServiceRequestType | null;
-  activeServiceRequests: Partial<Record<ServiceRequestType, number>>;
+  activeServiceRequests: ActiveServiceRequests;
   serviceRequestMessage?: string | null;
   showBuffet: boolean;
   onChangeView: (view: ClientView) => void;
@@ -30,19 +32,28 @@ export function ClientHeader({
   onServiceRequest,
   onEditAllergies,
 }: ClientHeaderProps) {
+  const isPaymentRequestActive = activeServiceRequests.payment_request !== undefined;
+
+  const isAssistanceRequestActive = activeServiceRequests.assistance !== undefined;
+
+  const serviceActionsDisabled = pendingServiceRequest !== null;
+
   return (
     <header className="client-header">
       <div className="client-header-inner">
         <LogoIcon className="client-logo" />
+
         <div className="client-header-actions flex items-center gap-3">
           <div className="client-table-indicator text-right">
             <p className="client-table-label text-[9px] uppercase tracking-[0.18em] text-content-subtle">
               Mesa
             </p>
+
             <p className="client-table-number font-display text-lg font-bold leading-none">
-              {tableNumber}
+              {tableNumber ?? '—'}
             </p>
           </div>
+
           <div className="client-header-service-actions">
             <button
               type="button"
@@ -53,28 +64,44 @@ export function ClientHeader({
             >
               <span aria-hidden="true">⚠</span>
             </button>
+
             <button
               type="button"
-              className={`client-header-service-button ${
-                activeServiceRequests.payment_request !== undefined ? 'is-payment-active' : ''
-              }`}
-              aria-label="Pedir a conta"
-              title="Pedir a conta"
-              disabled={pendingServiceRequest !== null}
-              aria-pressed={activeServiceRequests.payment_request !== undefined}
+              className={[
+                'client-header-service-button',
+                isPaymentRequestActive ? 'is-payment-active' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              disabled={serviceActionsDisabled}
+              aria-label={isPaymentRequestActive ? 'Cancelar pedido de conta' : 'Pedir a conta'}
+              title={isPaymentRequestActive ? 'Cancelar pedido de conta' : 'Pedir a conta'}
+              aria-pressed={isPaymentRequestActive}
               onClick={() => onServiceRequest('payment_request')}
             >
               <span aria-hidden="true">💳</span>
             </button>
+
             <button
               type="button"
-              className={`client-header-service-button ${
-                activeServiceRequests.assistance !== undefined ? 'is-assistance-active' : ''
-              }`}
-              aria-label="Chamar um funcionário"
-              title="Chamar um funcionário"
-              disabled={pendingServiceRequest !== null}
-              aria-pressed={activeServiceRequests.assistance !== undefined}
+              className={[
+                'client-header-service-button',
+                isAssistanceRequestActive ? 'is-assistance-active' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              disabled={serviceActionsDisabled}
+              aria-label={
+                isAssistanceRequestActive
+                  ? 'Cancelar pedido de assistência'
+                  : 'Chamar um funcionário'
+              }
+              title={
+                isAssistanceRequestActive
+                  ? 'Cancelar pedido de assistência'
+                  : 'Chamar um funcionário'
+              }
+              aria-pressed={isAssistanceRequestActive}
               onClick={() => onServiceRequest('assistance')}
             >
               <span aria-hidden="true">?</span>
@@ -82,11 +109,13 @@ export function ClientHeader({
           </div>
         </div>
       </div>
+
       {serviceRequestMessage && (
         <p className="sr-only" role="status">
           {serviceRequestMessage}
         </p>
       )}
+
       <ClientNavigation
         activeView={activeView}
         isDragging={isDragging}

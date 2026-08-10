@@ -31,3 +31,6 @@ frontend/dist-ssr
 
 # Superpowers specs/plans (working docs, not part of the project)
 docs/superpowers/
+
+# Claude Code project context (local only)
+CLAUDE.md

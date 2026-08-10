@@ -62,3 +62,40 @@ export type StaffDashboard = {
   requests: StaffOpenRequest[];
   preparing_orders: StaffPreparingTable[];
 };
+
+export type StaffPaymentMethod = 'cash' | 'card' | 'mb_way';
+
+export type StaffPaymentPayload = {
+  method: StaffPaymentMethod;
+  tip_amount: number;
+  waste_count: number;
+};
+
+export type StaffPaymentResponse = {
+  session_id: number;
+  amount_paid: string;
+  method: string;
+  tip_amount: string;
+  waste_count: number;
+  paid_at: string;
+};
+
+export type StaffSessionBillGuest = {
+  guest_id: number;
+  label: string;
+  buffet_total: string;
+  extras_total: string;
+  total: string;
+};
+
+export type StaffSessionBill = {
+  session_id: number;
+  guests: StaffSessionBillGuest[];
+  subtotal: string;
+  waste_box_count: number;
+  waste_total: string;
+  tip_amount: string;
+  total: string;
+  is_paid: boolean;
+  paid_at: string | null;
+};

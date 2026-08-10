@@ -1,5 +1,10 @@
 import { apiFetch } from '../../../services/api/client';
-import type { StaffDashboard } from '../types/staff.types';
+import type {
+  StaffDashboard,
+  StaffPaymentPayload,
+  StaffPaymentResponse,
+  StaffSessionBill,
+} from '../types/staff.types';
 
 export type { StaffDashboard } from '../types/staff.types';
 
@@ -24,3 +29,15 @@ export const markItemAsServed = (itemId: number) =>
   apiFetch(`/staff/orders/items/${itemId}/serve`, {
     method: 'PATCH',
   });
+
+export const registerPayment = (sessionId: number, payment: StaffPaymentPayload) =>
+  apiFetch<StaffPaymentResponse>(`/staff/sessions/${sessionId}/payment`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payment),
+  });
+
+export const getStaffSessionBill = (sessionId: number) =>
+  apiFetch<StaffSessionBill>(`/staff/sessions/${sessionId}/bill`);

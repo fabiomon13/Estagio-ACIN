@@ -6,58 +6,94 @@ from fastapi import WebSocket
 
 class ConnectionManager:
     """
-    Maintains the active WebSocket connections grouped by topic.
+    Gere ligações WebSocket agrupadas por tópico.
 
-    Topics allow different application areas, such as kitchen, staff, or
-    client views, to receive only the events that are relevant to them.
-
-    The registry is stored in memory and therefore belongs to the current
-    application process.
+    Exemplos de tópicos:
+    - kitchen
+    - staff
+    - client:guest:15
+    - client:session:8
     """
 
     def __init__(self) -> None:
-        # Maps each topic to the WebSocket connections currently subscribed
-        # to that topic.
         self._connections: dict[str, list[WebSocket]] = {}
-
-        # Reference to the application's asyncio event loop. It is used to
-        # schedule asynchronous broadcasts from synchronous code.
         self._loop: asyncio.AbstractEventLoop | None = None
 
-    def bind_loop(self, loop: asyncio.AbstractEventLoop) -> None:
+    def bind_loop(
+        self,
+        loop: asyncio.AbstractEventLoop,
+    ) -> None:
         """
-        Stores the application's running event loop.
+        Guarda o event loop principal da aplicação.
 
-        This should be called during application startup so synchronous code
-        can safely schedule asynchronous WebSocket broadcasts.
+        Permite que serviços síncronos agendem broadcasts
+        assíncronos de forma segura.
         """
         self._loop = loop
 
-    async def connect(self, topic: str, websocket: WebSocket) -> None:
+    async def connect(
+        self,
+        topic: str,
+        websocket: WebSocket,
+    ) -> None:
         """
-        Accepts a WebSocket connection and subscribes it to a topic.
+        Aceita uma ligação WebSocket e adiciona-a ao tópico.
         """
         await websocket.accept()
+        self.subscribe(topic, websocket)
 
-        # Create the topic entry when it does not exist, then register the
-        # newly accepted connection.
-        self._connections.setdefault(topic, []).append(websocket)
-
-    def disconnect(self, topic: str, websocket: WebSocket) -> None:
+    def subscribe(
+        self,
+        topic: str,
+        websocket: WebSocket,
+    ) -> None:
         """
-        Removes a WebSocket connection from a topic.
+        Adiciona ao tópico um WebSocket que já foi aceite.
 
-        The operation is ignored when the topic or connection is not
-        currently registered.
+        É útil quando o endpoint precisa de aceitar primeiro a
+        ligação e só depois autenticar o cliente.
         """
-        connections = self._connections.get(topic, [])
+        connections = self._connections.setdefault(topic, [])
+
+        if websocket not in connections:
+            connections.append(websocket)
+
+    def disconnect(
+        self,
+        topic: str,
+        websocket: WebSocket,
+    ) -> None:
+        """
+        Remove uma ligação de um tópico.
+        """
+        connections = self._connections.get(topic)
+
+        if connections is None:
+            return
 
         if websocket in connections:
             connections.remove(websocket)
 
-        # Remove empty topic entries to keep the registry clean.
         if not connections:
             self._connections.pop(topic, None)
+
+    async def send_personal(
+        self,
+        websocket: WebSocket,
+        message: dict[str, Any],
+    ) -> bool:
+        """
+        Envia uma mensagem para uma ligação específica.
+
+        Retorna False se já não for possível comunicar com
+        essa ligação.
+        """
+        try:
+            await websocket.send_json(message)
+        except Exception:
+            return False
+
+        return True
 
     async def _broadcast_async(
         self,
@@ -65,42 +101,84 @@ class ConnectionManager:
         message: dict[str, Any],
     ) -> None:
         """
-        Sends a JSON message to every connection subscribed to a topic.
+        Envia uma mensagem para todas as ligações do tópico.
 
-        Connections that fail during delivery are considered inactive and
-        removed from the registry after the broadcast iteration.
+        Ligações que falhem durante o envio são removidas.
         """
-        disconnected_connections: list[WebSocket] = []
+        connections = list(
+            self._connections.get(topic, [])
+        )
 
-        # Iterate over a copy so the original registry can be safely updated
-        # when inactive connections are removed.
-        for connection in list(self._connections.get(topic, [])):
-            try:
-                await connection.send_json(message)
-            except Exception:
-                # Delivery errors normally indicate that the client has
-                # disconnected without completing the normal close flow.
-                disconnected_connections.append(connection)
+        if not connections:
+            return
 
-        for connection in disconnected_connections:
-            self.disconnect(topic, connection)
+        results = await asyncio.gather(
+            *(
+                self.send_personal(websocket, message)
+                for websocket in connections
+            ),
+            return_exceptions=True,
+        )
 
-    def broadcast(self, topic: str, message: dict[str, Any]) -> None:
+        for websocket, result in zip(
+            connections,
+            results,
+            strict=True,
+        ):
+            if result is not True:
+                self.disconnect(topic, websocket)
+
+    def broadcast(
+        self,
+        topic: str,
+        message: dict[str, Any],
+    ) -> None:
         """
-        Schedules a broadcast from synchronous application code.
+        Agenda um broadcast a partir de código síncrono.
 
-        If the event loop has not been registered or is already closed, the
-        message is ignored because no asynchronous task can be scheduled.
+        Este método não bloqueia a operação HTTP que originou
+        o evento.
         """
-        if self._loop is None or self._loop.is_closed():
+        loop = self._loop
+
+        if loop is None or loop.is_closed():
             return
 
         asyncio.run_coroutine_threadsafe(
             self._broadcast_async(topic, message),
-            self._loop,
+            loop,
+        )
+
+    async def broadcast_async(
+        self,
+        topic: str,
+        message: dict[str, Any],
+    ) -> None:
+        """
+        Executa diretamente um broadcast a partir de código
+        assíncrono.
+        """
+        await self._broadcast_async(topic, message)
+
+    def topic_connection_count(
+        self,
+        topic: str,
+    ) -> int:
+        """
+        Retorna o número de ligações num tópico.
+
+        Útil para testes e monitorização.
+        """
+        return len(self._connections.get(topic, []))
+
+    def total_connection_count(self) -> int:
+        """
+        Retorna o número total de ligações WebSocket.
+        """
+        return sum(
+            len(connections)
+            for connections in self._connections.values()
         )
 
 
-# Shared manager instance used by the application's WebSocket endpoints and
-# services that publish real-time events.
 connection_manager = ConnectionManager()

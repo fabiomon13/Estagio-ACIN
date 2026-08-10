@@ -6,12 +6,13 @@ export const CLIENT_VIEWS = ['menu', 'buffet', 'orders'] as const;
 
 export type ClientView = (typeof CLIENT_VIEWS)[number];
 
-export type ClientSessionState = 'loading' | 'setup' | 'waiting' | 'ready' | 'error';
+export const CLIENT_SESSION_STATES = ['loading', 'setup', 'waiting', 'ready', 'error'] as const;
+
+export type ClientSessionState = (typeof CLIENT_SESSION_STATES)[number];
 
 export type MenuItemId = MenuItem['id'];
 export type CategoryAlias = Category['alias'];
 export type BuffetId = Buffet['id'];
-export type StationKey = string;
 
 export type ClientCart = Readonly<Partial<Record<MenuItemId, number>>>;
 
@@ -21,28 +22,19 @@ export type CategorySection = Readonly<{
 }>;
 
 export type StationSection = Readonly<{
-  key: StationKey;
+  key: string;
   name: string;
   categories: readonly CategorySection[];
 }>;
 
 export type ClientPageState =
-  | {
-      status: 'loading';
-    }
-  | {
-      status: 'setup';
-    }
-  | {
-      status: 'waiting';
-    }
-  | {
-      status: 'ready';
-    }
-  | {
+  | Readonly<{
+      status: Exclude<ClientSessionState, 'error'>;
+    }>
+  | Readonly<{
       status: 'error';
       message: string;
-    };
+    }>;
 
 export type ClientData = Readonly<{
   menuItems: readonly MenuItem[];

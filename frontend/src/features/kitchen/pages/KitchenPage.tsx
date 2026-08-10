@@ -3,22 +3,11 @@ import { groupTicketsByColumn } from '../utils/getTicketColumn';
 import { filterFragments } from '../utils/filterFragments';
 import { useKitchenTickets } from '../hooks/useKitchenTickets';
 import KitchenColumn from '../components/kitchen-column/KitchenColumn';
+import KitchenClock from '../components/kitchen-clock/KitchenClock';
 import Loader from '../../../components/ui/loader/Loader';
 import SearchInput from '../../../components/ui/search-input/SearchInput';
 import Dropdown from '../../../components/ui/dropdown/Dropdown';
 import { getStationColor, STATION_NAMES } from '../../../utils/getStationColor';
-import { useNow } from '../../../hooks/useNow';
-
-const dateFormatter = new Intl.DateTimeFormat('pt-PT', {
-  weekday: 'long',
-  day: '2-digit',
-  month: 'long',
-});
-
-const timeFormatter = new Intl.DateTimeFormat('pt-PT', {
-  hour: '2-digit',
-  minute: '2-digit',
-});
 
 const ALL_STATIONS_VALUE = '';
 
@@ -36,7 +25,6 @@ export function KitchenPage() {
   const [search, setSearch] = useState('');
   const [stationFilter, setStationFilter] = useState(ALL_STATIONS_VALUE);
   const columns = groupTicketsByColumn(tickets);
-  const now = useNow();
 
   if (isLoading) {
     return (
@@ -67,12 +55,7 @@ export function KitchenPage() {
             />
           </div>
         </div>
-        <div className="text-right">
-          <h1 className="text-content text-2xl">{timeFormatter.format(now)}</h1>
-          <span className="text-md text-content-subtle capitalize">
-            {dateFormatter.format(now)}
-          </span>
-        </div>
+        <KitchenClock />
       </header>
       <section className=" flex items-start gap-4 w-full">
         <KitchenColumn
