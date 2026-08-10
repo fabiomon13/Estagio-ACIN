@@ -20,14 +20,17 @@ export type GuestRequestOptions = Readonly<{
 
 const pendingGuestRequests = new Map<string, Promise<Guest>>();
 
+// Builds the URL path for the guests endpoint based on the provided table code
 function buildGuestsPath(tableCode: string): string {
   return `${buildClientTablePath(tableCode)}/guests`;
 }
 
+// Builds the URL path for the current guest endpoint based on the provided table code
 function buildCurrentGuestPath(tableCode: string): string {
   return `${buildGuestsPath(tableCode)}/me`;
 }
 
+// Fetches the current guest for the specified table code and device token, returning a Promise that resolves to the Guest object
 export function getCurrentGuest(
   tableCode: string,
   deviceToken: string,
@@ -78,6 +81,7 @@ export function updateGuestBuffet(
   });
 }
 
+// Updates the allergy preferences for the current guest, sending a PUT request to the allergy-preferences endpoint with the specified allergy tag IDs
 export function updateGuestAllergyPreferences(
   tableCode: string,
   deviceToken: string,
@@ -96,15 +100,18 @@ export function updateGuestAllergyPreferences(
   });
 }
 
+// Ensures that a guest exists for the specified table code and device token, creating one if necessary, and returns a Promise that resolves to the Guest object
 export function ensureGuest(tableCode: string, deviceToken: string): Promise<Guest> {
   const requestKey = createGuestRequestKey(tableCode, deviceToken);
 
   const pendingRequest = pendingGuestRequests.get(requestKey);
 
+  // If there is already a pending request for this table code and device token, return the existing Promise to avoid duplicate requests
   if (pendingRequest) {
     return pendingRequest;
   }
 
+  // If there is no pending request, initiate a new request to ensure the guest exists and track it in the pendingGuestRequests map
   const trackedRequest = ensureGuestExists(tableCode, deviceToken).finally(() => {
     if (pendingGuestRequests.get(requestKey) === trackedRequest) {
       pendingGuestRequests.delete(requestKey);
@@ -116,6 +123,8 @@ export function ensureGuest(tableCode: string, deviceToken: string): Promise<Gue
   return trackedRequest;
 }
 
+// Attempts to fetch the current guest, and if not found (401), creates a new guest.
+// If a conflict occurs (409), it retries fetching the current guest.
 async function ensureGuestExists(tableCode: string, deviceToken: string): Promise<Guest> {
   try {
     return await getCurrentGuest(tableCode, deviceToken);
@@ -135,12 +144,13 @@ async function ensureGuestExists(tableCode: string, deviceToken: string): Promis
     try {
       return await getCurrentGuest(tableCode, deviceToken);
     } catch {
-      // Preserva o erro original da criação, que explica a corrida.
+      // Preserve the original creation error if fetching the current guest fails after a conflict
       throw creationError;
     }
   }
 }
 
+// Creates a unique key for tracking pending guest requests based on the table code and device token, ensuring that requests are not duplicated
 function createGuestRequestKey(tableCode: string, deviceToken: string): string {
   return JSON.stringify([tableCode.trim(), deviceToken.trim()]);
 }

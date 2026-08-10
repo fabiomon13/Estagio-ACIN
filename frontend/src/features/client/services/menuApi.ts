@@ -72,6 +72,7 @@ export type Buffet = {
   waste_charge: string;
 };
 
+// Fetches the complete menu by retrieving all pages of menu items, combining them into a single result
 export async function getMenu({
   limit = 100,
   offset = 0,
@@ -89,6 +90,7 @@ export async function getMenu({
   return { ...firstPage, items, limit: items.length };
 }
 
+// Fetches a single page of menu items based on the specified limit and offset, returning a Promise that resolves to a MenuPage object
 function getMenuPage(limit: number, offset: number, signal?: AbortSignal): Promise<MenuPage> {
   const query = new URLSearchParams({
     is_available: 'true',
@@ -98,6 +100,7 @@ function getMenuPage(limit: number, offset: number, signal?: AbortSignal): Promi
   return apiFetch<MenuPage>(`/client/menu-items?${query}`, { signal });
 }
 
+// Fetches lists of categories, tags, buffets, buffet items, table information, and active dining sessions from the API
 export function getCategories(options: MenuRequestOptions = {}): Promise<Category[]> {
   return apiFetch<Category[]>('/client/categories', options);
 }
@@ -128,6 +131,7 @@ export function getActiveSession(
   return apiFetch<DiningSession>(`${buildClientTablePath(tableCode)}/session`, options);
 }
 
+// Creates a new dining session for the specified table code, including the number of clients in the request body
 export function createSession(tableCode: string, numClients: number): Promise<DiningSession> {
   return apiFetch<DiningSession>(`${buildClientTablePath(tableCode)}/session`, {
     method: 'POST',

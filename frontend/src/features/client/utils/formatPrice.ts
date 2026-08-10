@@ -17,6 +17,5 @@ export function formatPrice(value: string | number): string {
     return '—';
   }
 
-  // Use the price formatter to convert the numeric value into a localized currency string.
   return priceFormatter.format(numericValue);
 }
