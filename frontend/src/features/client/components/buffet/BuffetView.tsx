@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 
 import { formatPrice, getCategoryConfig } from '../../clientConfig';
 import type { StationSection } from '../../clientTypes';
-import { ProductCard } from '../menu/ProductCard';
+import { ProductCardItem } from '../menu/ProductCardItem';
 import type { Buffet } from '../../services/menuApi';
 import { BuffetCategoryNavigation } from './BuffetCategoryNavigation';
 import { BuffetConfirmationModal, type BuffetConfirmationAction } from './BuffetConfirmationModal';
@@ -53,7 +53,8 @@ export function BuffetView({
 
   const [isChoosing, setIsChoosing] = useState(false);
 
-  const [shouldRenderSelectButton, setShouldRenderSelectButton] = useState(!isSelected);
+  const [shouldRenderSelectButton, setShouldRenderSelectButton] = useState(false);
+  const [isSelectButtonLeaving, setIsSelectButtonLeaving] = useState(false);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const categoryNavigationRef = useRef<HTMLElement>(null);
@@ -75,33 +76,32 @@ export function BuffetView({
 
   const hasItems = useMemo(() => categories.some(({ items }) => items.length > 0), [categories]);
   const shouldShowSelectAction = showSelectAction ?? !isPreview;
+  const shouldDisplaySelectButton = shouldShowSelectAction && canSelectBuffet && !isSelected;
 
   const visibleConfirmationAction =
     confirmationAction === 'select' && !canSelectBuffet ? null : confirmationAction;
 
   useEffect(() => {
-    if (!isSelected) {
+    if (shouldDisplaySelectButton) {
       const appearanceTimer = window.setTimeout(() => {
+        setIsSelectButtonLeaving(false);
         setShouldRenderSelectButton(true);
       }, 0);
 
-      return () => {
-        window.clearTimeout(appearanceTimer);
-      };
+      return () => window.clearTimeout(appearanceTimer);
     }
 
-    if (!shouldRenderSelectButton) {
-      return;
-    }
-
+    const leavingTimer = window.setTimeout(() => setIsSelectButtonLeaving(true), 0);
     const removalTimer = window.setTimeout(() => {
       setShouldRenderSelectButton(false);
+      setIsSelectButtonLeaving(false);
     }, 180);
 
     return () => {
+      window.clearTimeout(leavingTimer);
       window.clearTimeout(removalTimer);
     };
-  }, [isSelected, shouldRenderSelectButton]);
+  }, [shouldDisplaySelectButton]);
 
   useEffect(() => {
     if (isPreview || !rootRef.current || categories.length === 0) {
@@ -277,7 +277,7 @@ export function BuffetView({
 
       {isSelected && (
         <div className="client-selected-buffet" role="status">
-          <span>Buffet selecionado</span>
+          <strong>Buffet selecionado</strong>
 
           {canCancelSelection && (
             <button
@@ -345,16 +345,14 @@ export function BuffetView({
 
                     <div className="client-menu-grid grid gap-3">
                       {items.map((item) => (
-                        <ProductCard
+                        <ProductCardItem
                           key={item.alias}
                           item={item}
                           selectedAllergenTagIds={selectedAllergenTagIds}
                           quantity={cart[item.id] ?? 0}
-                          onAdd={() => onAdd(item.id)}
-                          onAddDetails={(quantity, notes) =>
-                            onAddDetails?.(item.id, quantity, notes)
-                          }
-                          onRemove={() => onRemove(item.id)}
+                          onAddItem={onAdd}
+                          onAddItemDetails={onAddDetails}
+                          onRemoveItem={onRemove}
                           showActions={isSelected}
                           priceMode="included"
                         />
@@ -375,21 +373,19 @@ export function BuffetView({
         </p>
       )}
 
-      {shouldShowSelectAction &&
-        shouldRenderSelectButton &&
-        canSelectBuffet &&
+      {shouldRenderSelectButton &&
         createPortal(
           <button
             type="button"
             className={[
               'client-buffet-choose',
-              isSelected ? 'is-leaving' : '',
+              isSelectButtonLeaving ? 'is-leaving' : '',
               isSelectActionDragging ? 'is-dragging' : '',
             ]
               .filter(Boolean)
               .join(' ')}
             style={{ transform: selectActionTransform }}
-            disabled={isPreview || isChoosing || isSelected}
+            disabled={isPreview || isChoosing || isSelected || isSelectButtonLeaving}
             onClick={() => setConfirmationAction('select')}
           >
             Selecionar buffet

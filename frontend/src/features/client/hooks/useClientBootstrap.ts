@@ -1,7 +1,10 @@
+// frontend/src/features/client/hooks/useClientBootstrap.ts
+
 import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type SetStateAction,
@@ -54,6 +57,7 @@ export function useClientBootstrap({
   const [selectedBuffetId, setSelectedBuffetId] = useState<number | null>(null);
   const [guest, setGuest] = useState<Guest | null>(null);
   const [allergenTags, setAllergenTags] = useState<MenuTag[]>([]);
+  const buffetItemsCacheRef = useRef(new Map<number, MenuItem[]>());
 
   useEffect(() => {
     if (!tableCode) return;
@@ -75,9 +79,19 @@ export function useClientBootstrap({
         getOrders(tableCode, token, { signal: controller.signal }),
       ]);
       const buffet = nextBuffets.find((item) => item.id === guest.buffet_id) ?? nextBuffets[0];
+
+      // A reload must receive the latest menu data instead of reusing entries
+      // cached by a previous bootstrap cycle.
+      buffetItemsCacheRef.current.clear();
+
       const nextBuffetItems = buffet
         ? await getBuffetItems(buffet.id, { signal: controller.signal })
         : [];
+
+      if (buffet) {
+        buffetItemsCacheRef.current.set(buffet.id, nextBuffetItems);
+      }
+
       if (!isActive) return;
       setCategories(nextCategories);
       setMenuItems(menu.items);
@@ -182,12 +196,20 @@ export function useClientBootstrap({
 
     let isActive = true;
     const controller = new AbortController();
-    getBuffetItems(displayedBuffetId, { signal: controller.signal })
+    const cachedItems = buffetItemsCacheRef.current.get(displayedBuffetId);
+    const itemsRequest = cachedItems
+      ? Promise.resolve(cachedItems)
+      : getBuffetItems(displayedBuffetId, { signal: controller.signal });
+
+    itemsRequest
       .then((items) => {
-        if (isActive) setBuffetItems(items);
+        if (!isActive) return;
+
+        buffetItemsCacheRef.current.set(displayedBuffetId, items);
+        setBuffetItems(items);
       })
       .catch((requestError: unknown) => {
-        if (!isActive) return;
+        if (!isActive || controller.signal.aborted) return;
         setError(
           requestError instanceof ApiError
             ? requestError.detail

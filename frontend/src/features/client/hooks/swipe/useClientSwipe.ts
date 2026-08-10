@@ -37,6 +37,7 @@ export function useClientSwipe({
   const [viewDragOffset, setViewDragOffset] = useState(0);
   const [targetViewTopOffset, setTargetViewTopOffset] = useState(0);
   const [isDraggingView, setIsDraggingView] = useState(false);
+  const [isViewSettled, setIsViewSettled] = useState(true);
   const [viewportWidth, setViewportWidth] = useState(getViewportWidth);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(getPrefersReducedMotion);
   const [availableViews, setAvailableViews] = useState<readonly ClientView[]>(CLIENT_VIEWS);
@@ -53,6 +54,7 @@ export function useClientSwipe({
     unlockTransition,
     clearScheduledTransition,
     scheduleCommit,
+    scheduleSettlingFrame,
   } = useSwipeTransition({ duration: transitionDuration, prefersReducedMotion });
 
   const activeViewIndex = availableViews.indexOf(activeView);
@@ -101,6 +103,7 @@ export function useClientSwipe({
       setViewDragOffset(0);
       setTargetViewTopOffset(0);
       setIsDraggingView(false);
+      setIsViewSettled(true);
     },
     [clearScheduledTransition, unlockTransition],
   );
@@ -155,7 +158,10 @@ export function useClientSwipe({
     unlockTransition,
     onDragOffsetChange: setViewDragOffset,
     onDraggingChange: setIsDraggingView,
-    onHorizontalDragStart: () => setTargetViewTopOffset(window.scrollY),
+    onHorizontalDragStart: () => {
+      setTargetViewTopOffset(window.scrollY);
+      setIsViewSettled(false);
+    },
     onFinish: finishSwipe,
     onReset: resetPointerState,
   });
@@ -174,6 +180,7 @@ export function useClientSwipe({
       }
 
       lockTransition();
+      setIsViewSettled(false);
 
       if (prefersReducedMotion) {
         commitView(view);
@@ -181,12 +188,15 @@ export function useClientSwipe({
       }
 
       const targetIndex = availableViews.indexOf(view);
-      const direction = targetIndex > activeViewIndex ? -1 : 1;
+      const targetOffset = (activeViewIndex - targetIndex) * viewportWidth;
 
       setTargetViewTopOffset(window.scrollY);
       setPendingView(view);
-      setViewDragOffset(direction * viewportWidth);
-      scheduleCommit(() => commitView(view));
+      setViewDragOffset(0);
+      scheduleSettlingFrame(() => {
+        setViewDragOffset(targetOffset);
+        scheduleCommit(() => commitView(view));
+      });
     },
     [
       activeView,
@@ -197,19 +207,21 @@ export function useClientSwipe({
       lockTransition,
       prefersReducedMotion,
       scheduleCommit,
+      scheduleSettlingFrame,
       viewportWidth,
     ],
   );
 
   const handleViewTransitionEnd = useCallback(
     (event: TransitionEvent<HTMLElement>) => {
-      if (
-        event.target === event.currentTarget &&
-        event.propertyName === 'transform' &&
-        pendingView !== null
-      ) {
+      if (event.target !== event.currentTarget || event.propertyName !== 'transform') return;
+
+      if (pendingView !== null) {
         commitView(pendingView);
+        return;
       }
+
+      setIsViewSettled(true);
     },
     [commitView, pendingView],
   );
@@ -240,8 +252,10 @@ export function useClientSwipe({
     pendingView,
     swipeTargetView,
     viewDragOffset,
+    viewportWidth,
     targetViewTopOffset,
     isDraggingView,
+    isViewSettled,
     isTransitioning: pendingView !== null,
     indicatorPosition,
     updateAvailableViews,

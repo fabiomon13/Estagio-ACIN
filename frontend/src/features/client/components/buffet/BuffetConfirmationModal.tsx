@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 export type BuffetConfirmationAction = 'select' | 'cancel';
 
@@ -60,7 +61,7 @@ export function BuffetConfirmationModal({
     };
   }, [isSubmitting, onClose]);
 
-  return (
+  return createPortal(
     <div
       className="client-buffet-modal-backdrop"
       role="presentation"
@@ -93,6 +94,7 @@ export function BuffetConfirmationModal({
           </button>
         </div>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

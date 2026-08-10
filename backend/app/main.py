@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from fastapi.staticfiles import StaticFiles
 from app.api.deps import ACCESS_TOKEN_COOKIE_NAME, InvalidSessionError
 from app.api.router import api_router
+from app.core.cache_policy import get_cache_control
 from app.core.config import settings
 from app.core.websocket_manager import connection_manager
 
@@ -36,6 +37,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_public_cache_headers(request: Request, call_next):
+    """Cache only public catalogue data and static assets.
+
+    Session, order, billing and staff responses deliberately remain uncached.
+    """
+    response = await call_next(request)
+
+    if request.method in {"GET", "HEAD"} and response.status_code == 200:
+        cache_control = get_cache_control(request.url.path)
+
+        if cache_control is not None:
+            response.headers["Cache-Control"] = cache_control
+
+    return response
 
 # Serves whatever image files a teammate drops into static/menu-items/ at
 # /static/menu-items/<filename> -- e.g. static/menu-items/salmon-nigiri.jpg

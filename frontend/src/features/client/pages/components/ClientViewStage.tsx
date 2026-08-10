@@ -69,14 +69,13 @@ export function ClientViewStage({
 
   function getTransform(view: ClientView, index: number): string {
     if (pendingIndex !== -1) {
-      if (view === swipe.pendingView) return 'translate3d(0, 0, 0)';
+      const relativePosition = (index - activeIndex) * 100;
+      const transitionOffset =
+        swipe.viewportWidth > 0
+          ? swipe.viewDragOffset * (stageWidth / swipe.viewportWidth)
+          : swipe.viewDragOffset;
 
-      if (view === swipe.activeView) {
-        const displacement = (activeIndex - pendingIndex) * 100;
-        return `translate3d(${displacement}%, 0, 0)`;
-      }
-
-      return `translate3d(${(index - pendingIndex) * 100}%, 0, 0)`;
+      return `translate3d(calc(${relativePosition}% + ${transitionOffset}px), 0, 0)`;
     }
 
     if (view === swipe.activeView && swipe.viewDragOffset === 0) {
@@ -116,12 +115,12 @@ export function ClientViewStage({
       {views.map((view, index) => {
         const isActive = view === swipe.activeView;
         const isSwipeTarget = view === swipe.swipeTargetView;
+
         const isTransitionPath =
           pendingIndex !== -1 &&
           index > Math.min(activeIndex, pendingIndex) &&
           index < Math.max(activeIndex, pendingIndex);
-        const isParticipatingInTransition =
-          swipe.pendingView === view || (swipe.isDraggingView && isSwipeTarget);
+
         const transform = getTransform(view, index);
 
         return (
@@ -171,7 +170,14 @@ export function ClientViewStage({
                 onRemove={isActive ? cart.removeFromCart : doNothing}
                 onChoose={isActive ? onChooseBuffet : doNothingAsync}
                 isPreview={!isActive}
-                showSelectAction={isActive || isParticipatingInTransition}
+                showSelectAction={
+                  isActive &&
+                  !swipe.isDraggingView &&
+                  swipe.pendingView === null &&
+                  swipe.swipeTargetView === null &&
+                  swipe.isViewSettled &&
+                  Math.abs(swipe.viewDragOffset) < 1
+                }
                 selectActionTransform={getViewportTransform(view, index)}
                 isSelectActionDragging={swipe.isDraggingView}
               />

@@ -77,6 +77,27 @@ export function useClientRealtime({
     let reconnectDelay = INITIAL_RECONNECT_DELAY_MS;
     let isActive = true;
     let hasConnected = false;
+    let callbackFlushScheduled = false;
+    const pendingCallbacks = new Set<keyof RealtimeCallbacks>();
+
+    function scheduleCallback(callbackName: keyof RealtimeCallbacks): void {
+      pendingCallbacks.add(callbackName);
+
+      if (callbackFlushScheduled) return;
+      callbackFlushScheduled = true;
+
+      queueMicrotask(() => {
+        callbackFlushScheduled = false;
+        if (!isActive) return;
+
+        const callbacksToRun = [...pendingCallbacks];
+        pendingCallbacks.clear();
+
+        for (const name of callbacksToRun) {
+          callbacksRef.current[name]();
+        }
+      });
+    }
 
     function clearReconnectTimer(): void {
       if (reconnectTimer === null) {
@@ -144,19 +165,19 @@ export function useClientRealtime({
           break;
 
         case 'orders.changed':
-          callbacksRef.current.onOrdersChanged();
+          scheduleCallback('onOrdersChanged');
           break;
 
         case 'service_requests.changed':
-          callbacksRef.current.onServiceRequestsChanged();
+          scheduleCallback('onServiceRequestsChanged');
           break;
 
         case 'session.changed':
-          callbacksRef.current.onSessionChanged();
+          scheduleCallback('onSessionChanged');
           break;
 
         case 'menu.changed':
-          callbacksRef.current.onMenuChanged();
+          scheduleCallback('onMenuChanged');
           break;
 
         case 'pong':
@@ -228,6 +249,7 @@ export function useClientRealtime({
 
     return () => {
       isActive = false;
+      pendingCallbacks.clear();
 
       clearReconnectTimer();
       clearHeartbeat();

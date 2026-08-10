@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError } from '../../../services/api/client';
+import { ApiError, buildWebSocketUrl } from '../../../services/api/client';
 import * as kitchenService from '../services/kitchenService';
 import type { KitchenTicket } from '../types/kitchen.types';
 
@@ -21,8 +21,7 @@ function normalizeError(err: unknown): ApiError | Error {
 }
 
 function getWebSocketUrl(): string {
-  const apiBaseUrl = import.meta.env.VITE_API_URL as string;
-  return `${apiBaseUrl.replace(/^http/, 'ws')}/kitchen/ws`;
+  return buildWebSocketUrl('/kitchen/ws');
 }
 
 export function useKitchenTicketsFeed(backupPollIntervalMs = 30_000): KitchenTicketsFeed {
@@ -90,7 +89,9 @@ export function useKitchenTicketsFeed(backupPollIntervalMs = 30_000): KitchenTic
     connect();
 
     refetch();
-    const intervalId = setInterval(refetch, backupPollIntervalMs);
+    const intervalId = setInterval(() => {
+      if (document.visibilityState !== 'hidden') void refetch();
+    }, backupPollIntervalMs);
 
     // A connection can die silently (laptop sleep, network switch) without firing `onclose`,
     // so catch up when the tab is visible again: force a reconnect if the socket isn't OPEN, and refetch either way.

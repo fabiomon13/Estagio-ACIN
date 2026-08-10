@@ -1,6 +1,6 @@
 // frontend/src/features/client/hooks/useClientRealtime.test.ts
 
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../services/clientRealtime', () => ({
   buildClientWebSocketUrl: () => 'ws://test',
@@ -56,7 +56,7 @@ describe('useClientRealtime', () => {
     expect(result.current).toBe('disabled');
     expect(FakeWebSocket.instances).toHaveLength(0);
   });
-  it('autentica e encaminha eventos', () => {
+  it('autentica e encaminha eventos', async () => {
     const cb = callbacks();
     const { result } = renderHook(() =>
       useClientRealtime({ tableCode: 'mesa', enabled: true, ...cb }),
@@ -77,7 +77,22 @@ describe('useClientRealtime', () => {
         new MessageEvent('message', { data: JSON.stringify({ type: 'orders.changed' }) }),
       ),
     );
-    expect(cb.onOrdersChanged).toHaveBeenCalledOnce();
+    await waitFor(() => expect(cb.onOrdersChanged).toHaveBeenCalledOnce());
+  });
+  it('agrupa eventos repetidos recebidos no mesmo ciclo', async () => {
+    const cb = callbacks();
+    renderHook(() => useClientRealtime({ tableCode: 'mesa', enabled: true, ...cb }));
+    const socket = FakeWebSocket.instances[0];
+
+    act(() => {
+      for (let index = 0; index < 3; index += 1) {
+        socket.onmessage?.(
+          new MessageEvent('message', { data: JSON.stringify({ type: 'orders.changed' }) }),
+        );
+      }
+    });
+
+    await waitFor(() => expect(cb.onOrdersChanged).toHaveBeenCalledOnce());
   });
   it('trata uma recusa de autenticação como erro', () => {
     const { result } = renderHook(() =>

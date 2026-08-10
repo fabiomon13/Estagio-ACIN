@@ -1,6 +1,6 @@
 // frontend/src/features/client/hooks/useClientBootstrap.test.ts
 
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 // mocks used to control every resource loaded during client bootstrap
 const mocks = vi.hoisted(() => ({
@@ -75,6 +75,46 @@ describe('useClientBootstrap', () => {
     expect(result.setTable).toHaveBeenCalledWith(table);
     expect(result.setGuestCount).toHaveBeenCalledWith(2);
     expect(result.setSessionState).toHaveBeenCalledWith('ready');
+  });
+  it('carrega apenas uma vez os artigos do buffet inicial', async () => {
+    mocks.guest.mockResolvedValue({
+      id: 1,
+      buffet_id: 10,
+      allergy_tag_ids: [],
+      allergy_preferences_completed_at: null,
+    });
+    mocks.buffets.mockResolvedValue([{ id: 10, name: 'Buffet', price: '20.00' }]);
+
+    const result = setup();
+
+    await waitFor(() => expect(result.result.current.status).toBe('ready'));
+    await waitFor(() => expect(mocks.buffetItems).toHaveBeenCalledTimes(1));
+
+    expect(mocks.buffetItems).toHaveBeenCalledWith(10, expect.any(Object));
+  });
+  it('reutiliza os artigos ao regressar a um buffet já carregado', async () => {
+    mocks.guest.mockResolvedValue({
+      id: 1,
+      buffet_id: 10,
+      allergy_tag_ids: [],
+      allergy_preferences_completed_at: null,
+    });
+    mocks.buffets.mockResolvedValue([
+      { id: 10, name: 'Buffet A', price: '20.00' },
+      { id: 20, name: 'Buffet B', price: '25.00' },
+    ]);
+
+    const result = setup();
+
+    await waitFor(() => expect(result.result.current.status).toBe('ready'));
+
+    act(() => result.result.current.data.setSelectedBuffetId(20));
+    await waitFor(() => expect(mocks.buffetItems).toHaveBeenCalledTimes(2));
+
+    act(() => result.result.current.data.setSelectedBuffetId(10));
+    await waitFor(() => expect(result.result.current.data.selectedBuffetId).toBe(10));
+
+    expect(mocks.buffetItems).toHaveBeenCalledTimes(2);
   });
   it('entra em setup quando não existe sessão', async () => {
     mocks.session.mockRejectedValue(new ApiError(404, 'Não encontrada'));

@@ -28,6 +28,8 @@ export function MenuItemImage({
     <img
       src={resolvedSrc}
       alt={alt}
+      width={640}
+      height={360}
       className={className}
       draggable={false}
       loading={loading}
