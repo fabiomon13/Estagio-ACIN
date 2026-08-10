@@ -8,7 +8,7 @@ import {
   SettingsFilledIcon,
   SettingsIcon,
 } from '../../../../components/icons';
-import { useAuth } from '../../../auth/hooks/useAuth';
+import { useAuth } from '../../../auth/hooks/AuthContext';
 import { StaffProfileModal } from '../../../auth/components/StaffProfileModal';
 import KitchenSideBar from './kitchen-side-bar/KitchenSideBar';
 

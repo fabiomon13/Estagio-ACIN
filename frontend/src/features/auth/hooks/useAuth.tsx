@@ -1,36 +1,9 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ApiError, apiFetch } from '../../../services/api/client';
-
-export type StaffRole = 'admin' | 'waiter' | 'chef';
-
-export type AuthStaff = {
-  id: number;
-  name: string;
-  email: string;
-  role: StaffRole;
-  photo_url: string | null;
-  is_active: boolean;
-};
-
-export const ROLE_HOME_ROUTE: Record<StaffRole, string> = {
-  admin: '/admin',
-  waiter: '/staff',
-  chef: '/kitchen',
-};
-
-type AuthContextValue = {
-  staff: AuthStaff | null;
-  isLoading: boolean;
-  connectionError: boolean;
-  retryConnection: () => void;
-  login: (email: string, password: string) => Promise<AuthStaff>;
-  logout: () => Promise<void>;
-  updateShiftStatus: (isActive: boolean) => Promise<void>;
-};
-
-const AuthContext = createContext<AuthContextValue | null>(null);
+import { AuthContext } from './AuthContext';
+import type { AuthStaff } from './AuthContext';
 
 // Provides authentication state and actions to the entire application
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -116,14 +89,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-// Returns the current authentication state and actions
-// Must be used inside AuthProvider
-export function useAuth(): AuthContextValue {
-  const context = useContext(AuthContext);
-  if (context === null) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 }

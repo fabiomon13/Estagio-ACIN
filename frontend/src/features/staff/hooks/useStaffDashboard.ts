@@ -113,7 +113,7 @@ export function useStaffDashboard() {
     }
 
     connect();
-    void load();
+    void Promise.resolve().then(load);
 
     const pollTimer = setInterval(() => {
       void load();

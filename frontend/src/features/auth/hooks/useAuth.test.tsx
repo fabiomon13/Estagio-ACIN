@@ -3,7 +3,8 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as apiClient from '../../../services/api/client';
-import { AuthProvider, useAuth } from './useAuth';
+import { AuthProvider } from './useAuth';
+import { useAuth } from './AuthContext';
 
 vi.mock('../../../services/api/client', async () => {
   const actual = await vi.importActual<typeof import('../../../services/api/client')>(
