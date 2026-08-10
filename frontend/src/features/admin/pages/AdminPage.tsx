@@ -4,7 +4,7 @@ import Button from '../../../components/ui/button/Button';
 import Input from '../../../components/ui/input/Input';
 import Radio from '../../../components/ui/radio/Radio';
 import { ApiError, apiFetch } from '../../../services/api/client';
-import type { AuthStaff, StaffRole } from '../../auth/hooks/useAuth';
+import type { AuthStaff, StaffRole } from '../../auth/hooks/AuthContext';
 
 export function AdminPage() {
   const [name, setName] = useState('');

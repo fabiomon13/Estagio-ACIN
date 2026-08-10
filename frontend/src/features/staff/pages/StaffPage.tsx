@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useToast } from '../../../components/ui/toast/useToast';
-import { useAuth } from '../../auth/hooks/useAuth';
+import { useAuth } from '../../auth/hooks/AuthContext';
 import { useStaffDashboard } from '../hooks/useStaffDashboard';
 import { StaffMetrics } from '../components/StaffMetrics';
 import { StaffHeader } from '../components/StaffHeader';

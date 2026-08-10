@@ -1,4 +1,4 @@
-import type { StaffRole } from '../../../features/auth/hooks/useAuth';
+import type { StaffRole } from '../../../features/auth/hooks/AuthContext';
 
 export type ProfileMenuTriggerProps = {
   name: string;
