@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom';
+
 type ClientConfirmationModalProps = {
   title: string;
   description: string;
@@ -19,7 +21,7 @@ export function ClientConfirmationModal({
   onCancel,
   onConfirm,
 }: ClientConfirmationModalProps) {
-  return (
+  return createPortal(
     <div
       className={`client-buffet-modal-backdrop ${isOpen ? '' : 'is-closing'}`}
       role="presentation"
@@ -47,6 +49,7 @@ export function ClientConfirmationModal({
           </button>
         </div>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

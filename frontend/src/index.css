@@ -1,8 +1,8 @@
-@import '@fontsource/baloo-bhaijaan-2/600.css';
-@import '@fontsource/baloo-bhaijaan-2/700.css';
-@import '@fontsource/plus-jakarta-sans/400.css';
-@import '@fontsource/plus-jakarta-sans/500.css';
-@import '@fontsource/plus-jakarta-sans/600.css';
+@import '@fontsource/baloo-bhaijaan-2/latin-600.css';
+@import '@fontsource/baloo-bhaijaan-2/latin-700.css';
+@import '@fontsource/plus-jakarta-sans/latin-400.css';
+@import '@fontsource/plus-jakarta-sans/latin-500.css';
+@import '@fontsource/plus-jakarta-sans/latin-600.css';
 @import 'tailwindcss';
 
 @theme {

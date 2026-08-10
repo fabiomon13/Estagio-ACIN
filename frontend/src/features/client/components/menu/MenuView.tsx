@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { getCategoryConfig } from '../../clientConfig';
 import type { StationSection } from '../../clientTypes';
 import { MenuCategoryNavigation } from './MenuCategoryNavigation';
-import { ProductCard } from './ProductCard';
+import { ProductCardItem } from './ProductCardItem';
 
 type MenuViewProps = {
   stations: readonly StationSection[];
@@ -206,14 +206,14 @@ export function MenuView({
 
                   <div className="client-menu-grid grid gap-3">
                     {items.map((item) => (
-                      <ProductCard
+                      <ProductCardItem
                         key={item.alias}
                         item={item}
                         selectedAllergenTagIds={selectedAllergenTagIds}
                         quantity={cart[item.id] ?? 0}
-                        onAdd={() => onAdd(item.id)}
-                        onAddDetails={(quantity, notes) => onAddDetails?.(item.id, quantity, notes)}
-                        onRemove={() => onRemove(item.id)}
+                        onAddItem={onAdd}
+                        onAddItemDetails={onAddDetails}
+                        onRemoveItem={onRemove}
                       />
                     ))}
                   </div>

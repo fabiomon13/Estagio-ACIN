@@ -69,16 +69,22 @@ export function ClientViewStage({
 
   function getTransform(view: ClientView, index: number): string {
     if (pendingIndex !== -1) {
-      if (view === swipe.pendingView) return 'translate3d(0, 0, 0)';
+      const relativePosition = (index - activeIndex) * 100;
+      const transitionOffset =
+        swipe.viewportWidth > 0
+          ? swipe.viewDragOffset * (stageWidth / swipe.viewportWidth)
+          : swipe.viewDragOffset;
 
-      if (view === swipe.activeView) {
-        const direction = pendingIndex > activeIndex ? -100 : 100;
-        return `translate3d(${direction}%, 0, 0)`;
-      }
+      return `translate3d(calc(${relativePosition}% + ${transitionOffset}px), 0, 0)`;
     }
 
     if (view === swipe.activeView && swipe.viewDragOffset === 0) {
       return 'none';
+    }
+
+    if (view === swipe.swipeTargetView && swipe.isDraggingView) {
+      const direction = index > activeIndex ? 100 : -100;
+      return `translate3d(calc(${direction}% + ${swipe.viewDragOffset}px), 0, 0)`;
     }
 
     const relativePosition = (index - activeIndex) * 100;
@@ -109,8 +115,12 @@ export function ClientViewStage({
       {views.map((view, index) => {
         const isActive = view === swipe.activeView;
         const isSwipeTarget = view === swipe.swipeTargetView;
-        const isParticipatingInTransition =
-          swipe.pendingView === view || (swipe.isDraggingView && isSwipeTarget);
+
+        const isTransitionPath =
+          pendingIndex !== -1 &&
+          index > Math.min(activeIndex, pendingIndex) &&
+          index < Math.max(activeIndex, pendingIndex);
+
         const transform = getTransform(view, index);
 
         return (
@@ -119,6 +129,8 @@ export function ClientViewStage({
             className={[
               'client-view',
               isActive ? 'is-active' : 'is-inactive',
+              isSwipeTarget ? 'is-swipe-target' : '',
+              isTransitionPath ? 'is-transition-path' : '',
               swipe.isDraggingView ? 'is-dragging' : '',
               swipe.pendingView !== null ? 'is-settling' : '',
             ]
@@ -158,7 +170,14 @@ export function ClientViewStage({
                 onRemove={isActive ? cart.removeFromCart : doNothing}
                 onChoose={isActive ? onChooseBuffet : doNothingAsync}
                 isPreview={!isActive}
-                showSelectAction={isActive || isParticipatingInTransition}
+                showSelectAction={
+                  isActive &&
+                  !swipe.isDraggingView &&
+                  swipe.pendingView === null &&
+                  swipe.swipeTargetView === null &&
+                  swipe.isViewSettled &&
+                  Math.abs(swipe.viewDragOffset) < 1
+                }
                 selectActionTransform={getViewportTransform(view, index)}
                 isSelectActionDragging={swipe.isDraggingView}
               />

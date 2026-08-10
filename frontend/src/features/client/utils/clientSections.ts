@@ -56,7 +56,6 @@ export function buildCategorySections(
 export function groupCategorySections(sections: readonly CategorySection[]): StationSection[] {
   const groups = new Map<string, StationGroup>();
 
-  // Group category sections by station key and order them
   for (const section of sections) {
     const config = getCategoryConfig(section.category.alias, section.category.name);
 

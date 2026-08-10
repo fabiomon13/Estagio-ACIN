@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useToast } from '../../../components/ui/toast/useToast';
+import { buildWebSocketUrl } from '../../../services/api/client';
 import { getStaffDashboard } from '../api/staffApi';
 import type { StaffDashboard, StaffDashboardTable } from '../types/staff.types';
 
@@ -9,9 +10,7 @@ const INITIAL_RECONNECT_DELAY_MS = 1_000;
 const MAX_RECONNECT_DELAY_MS = 30_000;
 
 function getStaffWebSocketUrl(): string {
-  const apiBaseUrl = import.meta.env.VITE_API_URL as string;
-
-  return `${apiBaseUrl.replace(/^http/, 'ws')}/staff/ws`;
+  return buildWebSocketUrl('/staff/ws');
 }
 
 export function useStaffDashboard() {
@@ -20,6 +19,7 @@ export function useStaffDashboard() {
   const [data, setData] = useState<StaffDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [tablesView, setTablesView] = useState<StaffDashboardTable[]>([]);
+  const activeLoadRef = useRef<Promise<void> | null>(null);
 
   const applyDashboard = useCallback((dashboard: StaffDashboard) => {
     setData(dashboard);
@@ -54,18 +54,29 @@ export function useStaffDashboard() {
     });
   }, []);
 
-  const load = useCallback(async () => {
-    try {
-      const dashboard = await getStaffDashboard();
-      applyDashboard(dashboard);
-    } catch {
-      showToast({
-        variant: 'danger',
-        title: 'Erro ao carregar dashboard',
-      });
-    } finally {
-      setLoading(false);
-    }
+  const load = useCallback((): Promise<void> => {
+    if (activeLoadRef.current) return activeLoadRef.current;
+
+    const request = (async () => {
+      try {
+        const dashboard = await getStaffDashboard();
+        applyDashboard(dashboard);
+      } catch {
+        showToast({
+          variant: 'danger',
+          title: 'Erro ao carregar dashboard',
+        });
+      } finally {
+        setLoading(false);
+      }
+    })();
+
+    activeLoadRef.current = request;
+    void request.finally(() => {
+      if (activeLoadRef.current === request) activeLoadRef.current = null;
+    });
+
+    return request;
   }, [applyDashboard, showToast]);
 
   useEffect(() => {
@@ -116,12 +127,19 @@ export function useStaffDashboard() {
     void Promise.resolve().then(load);
 
     const pollTimer = setInterval(() => {
-      void load();
+      if (document.visibilityState !== 'hidden') void load();
     }, BACKUP_POLL_MS);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') void load();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       isMounted = false;
       clearInterval(pollTimer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
 
       if (reconnectTimer !== null) {
         clearTimeout(reconnectTimer);

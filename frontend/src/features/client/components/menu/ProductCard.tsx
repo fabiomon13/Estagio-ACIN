@@ -62,7 +62,10 @@ export function ProductCard({
 
   return (
     <>
-      <article className="client-product-card overflow-hidden rounded-2xl border border-border bg-surface shadow-lg shadow-black/20">
+      <article
+        className="client-product-card overflow-hidden rounded-2xl border border-border bg-surface shadow-lg shadow-black/20"
+        data-swipe-allow
+      >
         <button
           type="button"
           className="client-product-visual relative h-32 overflow-hidden bg-gradient-to-br from-surface-elevated via-primary-soft to-surface-raised"
