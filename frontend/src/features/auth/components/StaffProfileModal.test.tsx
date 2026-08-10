@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StaffProfileModal } from './StaffProfileModal';
 
-vi.mock('../hooks/useAuth', () => ({
+vi.mock('../hooks/AuthContext', () => ({
   useAuth: vi.fn(),
 }));
 vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }));
@@ -10,7 +10,8 @@ vi.mock('../../../components/ui/toast/useToast', () => ({
   useToast: vi.fn(),
 }));
 
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../hooks/AuthContext';
+import type { AuthContextValue } from '../hooks/AuthContext';
 import { useToast } from '../../../components/ui/toast/useToast';
 
 const staff = {
@@ -22,7 +23,7 @@ const staff = {
   is_active: true,
 };
 
-function mockAuth(overrides: any = {}) {
+function mockAuth(overrides: Partial<AuthContextValue> = {}) {
   vi.mocked(useAuth).mockReturnValue({
     staff,
     isLoading: false,

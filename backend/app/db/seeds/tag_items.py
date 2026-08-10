@@ -21,11 +21,45 @@ DEFAULT_ITEM_TAGS = {
         "sem-gluten",
         "sem-lactose",
     ],
+    "iced-matcha-tea": [
+        "vegetariano",
+        "vegan",
+        "sem-gluten",
+        "sem-lactose",
+    ],
+    "ramune-original": [
+        "vegetariano",
+        "vegan",
+        "sem-gluten",
+        "sem-lactose",
+    ],
+    "sparkling-water": [
+        "vegetariano",
+        "vegan",
+        "sem-gluten",
+        "sem-lactose",
+    ],
     "beer": [
         "alergenio-gluten",
     ],
+    "traditional-sake": [
+        "vegetariano",
+        "vegan",
+        "sem-gluten",
+        "sem-lactose",
+    ],
+    "choya-plum-wine": [
+        "vegetariano",
+        "vegan",
+        "sem-gluten",
+        "sem-lactose",
+        "alergenio-sulfitos",
+    ],
     "house-red-wine": [
         "alergenio-sulfitos",
+    ],
+    "kirin-beer": [
+        "alergenio-gluten",
     ],
     "chocolate-mousse": [
         "vegetariano",
@@ -38,6 +72,21 @@ DEFAULT_ITEM_TAGS = {
         "alergenio-ovos",
         "alergenio-leite",
     ],
+    "mochi-selection": [
+        "vegetariano",
+        "sem-gluten",
+        "alergenio-leite",
+    ],
+    "matcha-ice-cream": [
+        "vegetariano",
+        "sem-gluten",
+        "alergenio-leite",
+    ],
+    "dorayaki": [
+        "vegetariano",
+        "alergenio-gluten",
+        "alergenio-ovos",
+    ],
     "shrimp-tempura": [
         "alergenio-gluten",
         "alergenio-crustaceos",
@@ -46,6 +95,26 @@ DEFAULT_ITEM_TAGS = {
     "vegetable-tempura": [
         "vegetariano",
         "alergenio-gluten",
+    ],
+    "mixed-tempura": [
+        "alergenio-gluten",
+        "alergenio-crustaceos",
+        "alergenio-ovos",
+    ],
+    "sweet-potato-tempura": [
+        "vegetariano",
+        "alergenio-gluten",
+    ],
+    "soft-shell-crab-tempura": [
+        "alergenio-gluten",
+        "alergenio-crustaceos",
+        "alergenio-ovos",
+        "alergenio-soja",
+    ],
+    "squid-tempura": [
+        "alergenio-gluten",
+        "alergenio-moluscos",
+        "alergenio-ovos",
     ],
     "chicken-ramen": [
         "alergenio-gluten",
@@ -57,11 +126,47 @@ DEFAULT_ITEM_TAGS = {
         "alergenio-gluten",
         "alergenio-soja",
     ],
+    "tonkotsu-ramen": [
+        "alergenio-gluten",
+        "alergenio-ovos",
+        "alergenio-soja",
+    ],
+    "shoyu-ramen": [
+        "alergenio-gluten",
+        "alergenio-ovos",
+        "alergenio-soja",
+    ],
+    "spicy-seafood-ramen": [
+        "alergenio-gluten",
+        "alergenio-crustaceos",
+        "alergenio-peixe",
+        "alergenio-moluscos",
+        "alergenio-soja",
+    ],
+    "veggie-ramen": [
+        "vegetariano",
+        "vegan",
+        "alergenio-gluten",
+        "alergenio-soja",
+    ],
     "salmon-nigiri": [
         "alergenio-peixe",
     ],
     "tuna-nigiri": [
         "alergenio-peixe",
+    ],
+    "aburi-salmon-nigiri": [
+        "alergenio-peixe",
+        "alergenio-soja",
+        "alergenio-gluten",
+    ],
+    "ebi-nigiri": [
+        "alergenio-crustaceos",
+    ],
+    "unagi-nigiri": [
+        "alergenio-peixe",
+        "alergenio-soja",
+        "alergenio-gluten",
     ],
     "salmon-sashimi": [
         "sem-gluten",
@@ -73,7 +178,110 @@ DEFAULT_ITEM_TAGS = {
         "sem-lactose",
         "alergenio-peixe",
     ],
+    "seabass-sashimi": [
+        "sem-gluten",
+        "sem-lactose",
+        "alergenio-peixe",
+    ],
+    "mix-sashimi-12": [
+        "sem-gluten",
+        "sem-lactose",
+        "alergenio-peixe",
+    ],
+    "spring-rolls": [
+        "vegetariano",
+        "vegan",
+        "sem-gluten",
+        "sem-lactose",
+        "alergenio-soja",
+    ],
+    "edamame": [
+        "vegetariano",
+        "vegan",
+        "sem-gluten",
+        "sem-lactose",
+        "alergenio-soja",
+    ],
+    "chicken-gyoza": [
+        "alergenio-gluten",
+        "alergenio-soja",
+        "alergenio-sesamo",
+    ],
+    "veggie-gyoza": [
+        "vegetariano",
+        "alergenio-gluten",
+        "alergenio-soja",
+    ],
+    "miso-soup": [
+        "vegetariano",
+        "sem-lactose",
+        "alergenio-soja",
+    ],
+    "ebi-fry": [
+        "alergenio-gluten",
+        "alergenio-crustaceos",
+        "alergenio-ovos",
+    ],
+    "salmon-tartare": [
+        "alergenio-peixe",
+        "alergenio-soja",
+    ],
+    "takoyaki": [
+        "alergenio-gluten",
+        "alergenio-moluscos",
+        "alergenio-ovos",
+        "alergenio-soja",
+    ],
+    "salmon-carpaccio": [
+        "alergenio-peixe",
+        "alergenio-soja",
+    ],
+    "salmon-uramaki": [
+        "alergenio-peixe",
+        "alergenio-crustaceos",
+        "alergenio-sesamo",
+    ],
+    "california-uramaki": [
+        "alergenio-crustaceos",
+        "alergenio-ovos",
+        "alergenio-sesamo",
+        "alergenio-gluten",
+    ],
+    "spicy-tuna-uramaki": [
+        "alergenio-peixe",
+        "alergenio-sesamo",
+    ],
+    "ebi-fry-uramaki": [
+        "alergenio-gluten",
+        "alergenio-crustaceos",
+        "alergenio-soja",
+        "alergenio-sesamo",
+    ],
+    "dragon-uramaki": [
+        "alergenio-gluten",
+        "alergenio-crustaceos",
+        "alergenio-soja",
+        "alergenio-sesamo",
+    ],
+    "salmon-hosomaki": [
+        "alergenio-peixe",
+    ],
+    "tuna-hosomaki": [
+        "alergenio-peixe",
+    ],
+    "kappa-hosomaki": [
+        "vegetariano",
+        "vegan",
+        "sem-lactose",
+        "alergenio-sesamo",
+    ],
+    "avocado-hosomaki": [
+        "vegetariano",
+        "vegan",
+        "sem-lactose",
+    ],
 }
+
 
 
 def seed_tag_items() -> None:
