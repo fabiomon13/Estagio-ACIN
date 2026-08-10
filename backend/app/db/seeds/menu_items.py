@@ -6,6 +6,7 @@ from sqlalchemy import select
 from app.db.session import SessionLocal
 from app.models.category import Category
 from app.models.menu_item import MenuItem
+from app.models.station import Station
 
 STATIC_MENU_ITEMS_DIR = Path(__file__).resolve().parents[3] / "static" / "menu-items"
 
@@ -314,11 +315,10 @@ DEFAULT_MENU_ITEMS = [
     {
         "name": "Spring Rolls",
         "alias": "spring-rolls",
-        "category_alias": "starters", 
-        "description": "Favas de soja cozidas a vapor com flor de sal.",
+        "category_alias": "starters",
+        "description": "Rolinhos crocantes fritos recheados com vegetais, servidos com molho agridoce (4 unid.).",
         "price": Decimal("4.00"),
         "preparation_time": 5,
-        "photo_url": "/static/menu-items/edamame-beans.jpg",
     },
     {
         "name": "Edamame",
@@ -348,6 +348,7 @@ DEFAULT_MENU_ITEMS = [
         "name": "Sopa Miso",
         "alias": "miso-soup",
         "category_alias": "starters",
+        "station_alias": "hot-wok",
         "description": "Sopa tradicional de pasta de soja com tofu, algas wakame e cebolinho.",
         "price": Decimal("3.50"),
         "preparation_time": 3,
@@ -364,6 +365,7 @@ DEFAULT_MENU_ITEMS = [
         "name": "Tartar de Salmão",
         "alias": "salmon-tartare",
         "category_alias": "starters",
+        "station_alias": "cold-pantry",
         "description": "Salmão fresco picado com abacate, molho ponzu e ovas de massago.",
         "price": Decimal("9.00"),
         "preparation_time": 7,
@@ -380,6 +382,7 @@ DEFAULT_MENU_ITEMS = [
         "name": "Carpaccio de Salmão Trufado",
         "alias": "salmon-carpaccio",
         "category_alias": "starters",
+        "station_alias": "cold-pantry",
         "description": "Fatias finas de salmão com molho ponzu, azeite de trufa e flor de sal.",
         "price": Decimal("9.50"),
         "preparation_time": 6,
@@ -388,10 +391,9 @@ DEFAULT_MENU_ITEMS = [
         "name": "Salmon Uramaki",
         "alias": "salmon-uramaki",
         "category_alias": "uramaki",
-        "description": "Rolo de caranguejo, abacate, pepino e sementes de sésamo.",
+        "description": "Rolo de salmão fresco, queijo creme, pepino e sementes de sésamo (8 unid.).",
         "price": Decimal("8.50"),
         "preparation_time": 10,
-        "photo_url": "/static/menu-items/california-roll.jpg",
     },
     {
         "name": "California Roll",
@@ -429,10 +431,9 @@ DEFAULT_MENU_ITEMS = [
         "name": "Salmon Hosomaki",
         "alias": "salmon-hosomaki",
         "category_alias": "hosomaki",
-        "description": "Rolo fino tradicional com pepino fresco.",
+        "description": "Rolo fino tradicional de alga nori recheado com salmão fresco (8 unid.).",
         "price": Decimal("4.50"),
         "preparation_time": 6,
-        "photo_url": "/static/menu-items/kappa-maki.jpg",
     },
     {
         "name": "Hosomaki de Atum",
@@ -467,6 +468,11 @@ def seed_menu_items() -> None:
         item["category_alias"]
         for item in DEFAULT_MENU_ITEMS
     }
+    required_station_aliases = {
+        item["station_alias"]
+        for item in DEFAULT_MENU_ITEMS
+        if "station_alias" in item
+    }
 
     with SessionLocal() as session:
         categories = session.scalars(
@@ -486,6 +492,26 @@ def seed_menu_items() -> None:
                 f"Categorias não encontradas: {missing_aliases}. "
                 "Corre o seeder categories primeiro."
             )
+
+        stations_by_alias = {}
+        if required_station_aliases:
+            stations = session.scalars(
+                select(Station).where(
+                    Station.alias.in_(required_station_aliases)
+                )
+            ).all()
+            stations_by_alias = {
+                station.alias: station
+                for station in stations
+            }
+
+            missing_stations = required_station_aliases - stations_by_alias.keys()
+            if missing_stations:
+                missing_aliases = ", ".join(sorted(missing_stations))
+                raise RuntimeError(
+                    f"Stations não encontradas: {missing_aliases}. "
+                    "Corre o seeder stations primeiro."
+                )
 
         item_aliases = [
             item["alias"]
@@ -509,17 +535,31 @@ def seed_menu_items() -> None:
             existing_item = items_by_alias.get(item_data["alias"])
 
             photo_url = _photo_url(item_data["alias"])
+            station = stations_by_alias.get(item_data.get("station_alias"))
+            station_id = station.id if station is not None else None
 
             if existing_item is not None:
                 item_changed = False
+                if existing_item.name != item_data["name"]:
+                    existing_item.name = item_data["name"]
+                    item_changed = True
                 if existing_item.category_id != category.id:
                     existing_item.category_id = category.id
+                    item_changed = True
+                if existing_item.station_id != station_id:
+                    existing_item.station_id = station_id
                     item_changed = True
                 if existing_item.photo_url != photo_url:
                     existing_item.photo_url = photo_url
                     item_changed = True
                 if existing_item.description != item_data["description"]:
                     existing_item.description = item_data["description"]
+                    item_changed = True
+                if existing_item.base_price != item_data["price"]:
+                    existing_item.base_price = item_data["price"]
+                    item_changed = True
+                if existing_item.base_preparation_time != item_data["preparation_time"]:
+                    existing_item.base_preparation_time = item_data["preparation_time"]
                     item_changed = True
                 if item_changed:
                     updated_items += 1
@@ -528,6 +568,7 @@ def seed_menu_items() -> None:
             session.add(
                 MenuItem(
                     category_id=category.id,
+                    station_id=station_id,
                     name=item_data["name"],
                     alias=item_data["alias"],
                     description=item_data["description"],
