@@ -13,8 +13,6 @@ body:has(.client-shell) {
 .client-shell {
   width: 100%;
   min-width: 0;
-  min-height: 100vh;
-  min-height: 100dvh;
   overflow-x: clip;
   background: #080b10;
   padding-top: calc(7rem + env(safe-area-inset-top));
@@ -42,9 +40,14 @@ body:has(.client-shell) {
   position: absolute;
   top: 0;
   left: 0;
-  min-height: 100%;
+  height: max(100%, calc(100dvh - 7rem - env(safe-area-inset-top)));
+  overflow: clip;
   background: #080b10;
   pointer-events: none;
+}
+
+.client-view.is-inactive:not(.is-swipe-target):not(.is-transition-path) {
+  visibility: hidden;
 }
 
 .client-view.is-dragging,

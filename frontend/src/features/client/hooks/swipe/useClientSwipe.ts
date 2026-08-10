@@ -3,6 +3,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type TransitionEvent,
 } from 'react';
@@ -39,6 +40,12 @@ export function useClientSwipe({
   const [viewportWidth, setViewportWidth] = useState(getViewportWidth);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(getPrefersReducedMotion);
   const [availableViews, setAvailableViews] = useState<readonly ClientView[]>(CLIENT_VIEWS);
+  const activeViewRef = useRef<ClientView>(initialView);
+  const viewScrollPositions = useRef<Record<ClientView, number>>({
+    menu: 0,
+    buffet: 0,
+    orders: 0,
+  });
 
   const {
     isTransitionLocked,
@@ -85,6 +92,8 @@ export function useClientSwipe({
 
   const commitView = useCallback(
     (view: ClientView) => {
+      viewScrollPositions.current[activeViewRef.current] = window.scrollY;
+      activeViewRef.current = view;
       clearScheduledTransition();
       unlockTransition();
       setActiveView(view);
@@ -109,6 +118,7 @@ export function useClientSwipe({
         return;
       }
 
+      viewScrollPositions.current[targetView] = 0;
       lockTransition();
 
       if (prefersReducedMotion) {
@@ -152,13 +162,43 @@ export function useClientSwipe({
 
   const changeView = useCallback(
     (view: ClientView) => {
-      if (view === activeView || isTransitionLocked()) return;
+      if (isTransitionLocked()) return;
 
       if (!availableViews.includes(view)) return;
 
-      commitView(view);
+      viewScrollPositions.current[view] = 0;
+
+      if (view === activeView) {
+        window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+        return;
+      }
+
+      lockTransition();
+
+      if (prefersReducedMotion) {
+        commitView(view);
+        return;
+      }
+
+      const targetIndex = availableViews.indexOf(view);
+      const direction = targetIndex > activeViewIndex ? -1 : 1;
+
+      setTargetViewTopOffset(window.scrollY);
+      setPendingView(view);
+      setViewDragOffset(direction * viewportWidth);
+      scheduleCommit(() => commitView(view));
     },
-    [activeView, availableViews, commitView, isTransitionLocked],
+    [
+      activeView,
+      activeViewIndex,
+      availableViews,
+      commitView,
+      isTransitionLocked,
+      lockTransition,
+      prefersReducedMotion,
+      scheduleCommit,
+      viewportWidth,
+    ],
   );
 
   const handleViewTransitionEnd = useCallback(
@@ -188,7 +228,11 @@ export function useClientSwipe({
   }, []);
 
   useLayoutEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    window.scrollTo({
+      top: viewScrollPositions.current[activeView],
+      left: 0,
+      behavior: 'auto',
+    });
   }, [activeView]);
 
   return {

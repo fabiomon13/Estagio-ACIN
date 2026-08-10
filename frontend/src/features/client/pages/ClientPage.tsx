@@ -419,7 +419,7 @@ export function ClientPage() {
         onEditAllergies={() => setIsAllergyModalOpen(true)}
       />
       <main
-        className="client-shell min-h-screen bg-[#080b10] pb-24 text-content"
+        className="client-shell bg-[#080b10] pb-24 text-content"
         onPointerDown={swipe.handlePointerDown}
         onPointerMove={swipe.handlePointerMove}
         onPointerUp={swipe.handlePointerUp}
