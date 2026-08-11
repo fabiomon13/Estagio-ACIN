@@ -25,7 +25,8 @@ def _payload(item, request_id=None, **item_overrides):
         "items": [{"item_id": item.id, "quantity": 1, **item_overrides}],
     }
 
-
+# tests for the client menu endpoints, including filtering, pagination, and data integrity
+# Verifies price snapshots, note normalization, and sequential order rounds.
 def test_create_order_snapshots_price_normalizes_notes_and_increments_round(
     client, db_session, order_item_statuses, make_staff, make_table,
     make_session, make_guest, make_menu_item
@@ -45,7 +46,8 @@ def test_create_order_snapshots_price_normalizes_notes_and_increments_round(
     assert second.status_code == 201
     assert second.json()["round_number"] == 2
 
-
+# tests for the client menu endpoints, including filtering, pagination, and data integrity
+# Verifies that retrying the same client request does not create a second order.
 def test_create_order_is_idempotent(
     client, order_item_statuses, make_staff, make_table, make_session, make_guest, make_menu_item
 ):
@@ -60,6 +62,7 @@ def test_create_order_is_idempotent(
     assert retry.json()["id"] == first.json()["id"]
 
 
+# Verifies that missing, unavailable, duplicated, or excessive items are rejected.
 def test_create_order_rejects_missing_unavailable_and_invalid_items(
     client, db_session, order_item_statuses, make_staff, make_table,
     make_session, make_guest, make_menu_item
@@ -80,6 +83,7 @@ def test_create_order_rejects_missing_unavailable_and_invalid_items(
     assert client.post(_url(table), json=_payload(item, quantity=21), headers=_headers()).status_code == 422
 
 
+# Verifies that a guest cannot list or retrieve another guest's orders.
 def test_orders_are_isolated_between_guests(
     client, order_item_statuses, make_staff, make_table, make_session,
     make_guest, make_menu_item
@@ -95,6 +99,7 @@ def test_orders_are_isolated_between_guests(
     assert client.get(_url(table, f"/orders/{created['id']}"), headers=second_headers).status_code == 404
 
 
+# Verifies ownership and status rules when cancelling an order item.
 def test_cancel_only_own_pending_item_and_publish_updates(
     client, order_item_statuses, make_staff, make_table, make_session,
     make_guest, make_menu_item, monkeypatch

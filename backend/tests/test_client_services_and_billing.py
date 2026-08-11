@@ -36,6 +36,7 @@ def _request_reference_data(db_session):
     return pending, cancelled, request_type
 
 
+# Verifies creation, listing, duplicate prevention, and cancellation of requests.
 def test_service_request_lifecycle_and_duplicate_guard(
     client, db_session, make_staff, make_table, make_session, make_guest, monkeypatch
 ):
@@ -61,6 +62,7 @@ def test_service_request_lifecycle_and_duplicate_guard(
     assert client.patch(url + f"/{created.json()['id']}/cancel", headers=_headers()).status_code == 409
 
 
+# Verifies that service requests cannot be cancelled from another session.
 def test_cannot_cancel_another_sessions_request(
     client, db_session, make_staff, make_table, make_session, make_guest
 ):
@@ -81,6 +83,7 @@ def test_cannot_cancel_another_sessions_request(
     assert response.status_code == 404
 
 
+# Verifies that the bill combines every charge without billing buffet items twice.
 def test_bill_combines_buffet_extras_waste_and_tip(
     client, db_session, order_item_statuses, make_staff, make_table, make_session,
     make_guest, make_buffet, make_menu_item, make_order, make_order_item
@@ -118,6 +121,7 @@ def test_bill_combines_buffet_extras_waste_and_tip(
     assert bill["is_paid"] is True
 
 
+# Verifies that cancelled and returned items are excluded from billable extras.
 def test_billing_excludes_cancelled_and_returned_items(
     db_session, order_item_statuses, make_guest, make_order, make_order_item, make_menu_item
 ):

@@ -29,6 +29,7 @@ def _headers(token=TOKEN):
     return {"X-Device-Token": token}
 
 
+# Verifies successful table lookup and the response for an invalid public code.
 def test_get_table_and_missing_table(client, make_table):
     table = make_table()
 
@@ -38,6 +39,7 @@ def test_get_table_and_missing_table(client, make_table):
     assert client.get("/api/client/tables/not-a-uuid").status_code == 404
 
 
+# Verifies session creation, table capacity, and the single-active-session rule.
 def test_create_session_and_reject_capacity_or_duplicate(client, make_table):
     table = make_table()
     table.max_capacity = 3
@@ -54,11 +56,13 @@ def test_create_session_and_reject_capacity_or_duplicate(client, make_table):
     assert duplicate.status_code == 409
 
 
+# Verifies that session lookup fails when the table has no active session.
 def test_active_session_must_exist(client, make_table):
     table = make_table()
     assert client.get(_url(table, "/session")).status_code == 404
 
 
+# Verifies that guests cannot join a session before waiter approval.
 def test_create_guest_requires_approved_session(client, make_table, make_session):
     table = make_table()
     make_session(table, is_approved=False)
@@ -70,6 +74,7 @@ def test_create_guest_requires_approved_session(client, make_table, make_session
     assert response.status_code == 409
 
 
+# Verifies device uniqueness and the maximum guest capacity of a session.
 def test_create_guest_is_unique_and_respects_capacity(
     client, make_staff, make_table, make_session
 ):
@@ -96,6 +101,7 @@ def test_create_guest_is_unique_and_respects_capacity(
     assert full.status_code == 409
 
 
+# Verifies that a guest cannot select a buffet that does not exist.
 def test_create_guest_rejects_unknown_buffet(
     client, make_staff, make_table, make_session
 ):
@@ -109,6 +115,7 @@ def test_create_guest_rejects_unknown_buffet(
     assert response.status_code == 404
 
 
+# Verifies rejection of missing, invalid, and cross-session device tokens.
 def test_guest_auth_rejects_missing_wrong_and_cross_session_tokens(
     client, make_staff, make_table, make_session, make_guest
 ):
@@ -133,6 +140,7 @@ def test_guest_auth_rejects_missing_wrong_and_cross_session_tokens(
     ).status_code == 401
 
 
+# Verifies compatibility with device tokens stored using the legacy hash.
 def test_legacy_device_token_is_accepted(
     client, db_session, make_staff, make_table, make_session, make_guest
 ):
@@ -145,6 +153,7 @@ def test_legacy_device_token_is_accepted(
     assert client.get(_url(table, "/guests/me"), headers=_headers()).status_code == 200
 
 
+# Verifies that an existing guest is blocked if the session loses approval.
 def test_unapproved_session_blocks_existing_guest(
     client, db_session, make_staff, make_table, make_session, make_guest
 ):
@@ -158,6 +167,7 @@ def test_unapproved_session_blocks_existing_guest(
     assert client.get(_url(table, "/guests/me"), headers=_headers()).status_code == 409
 
 
+# Verifies that allergy preferences accept only valid allergen tags.
 def test_update_allergies_accepts_only_allergen_tags(
     client, db_session, make_staff, make_table, make_session, make_guest
 ):
@@ -186,6 +196,7 @@ def test_update_allergies_accepts_only_allergen_tags(
     assert rejected.status_code == 422
 
 
+# Verifies that buffet selection becomes immutable after the first order.
 def test_change_buffet_before_but_not_after_first_order(
     client, make_staff, make_table, make_session, make_guest, make_buffet, make_order
 ):

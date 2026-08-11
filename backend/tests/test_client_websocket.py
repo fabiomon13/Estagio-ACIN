@@ -13,6 +13,7 @@ def _context(make_staff, make_table, make_session, make_guest):
     return table, session, guest
 
 
+# Verifies WebSocket authentication and the ping-pong keepalive exchange.
 def test_client_socket_authenticates_and_responds_to_ping(
     client, make_staff, make_table, make_session, make_guest
 ):
@@ -24,6 +25,7 @@ def test_client_socket_authenticates_and_responds_to_ping(
         assert socket.receive_json() == {"type": "pong"}
 
 
+# Verifies that malformed or invalid WebSocket authentication is rejected.
 @pytest.mark.parametrize(
     "message",
     [
