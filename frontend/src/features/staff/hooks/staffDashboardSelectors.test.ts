@@ -109,6 +109,41 @@ describe('staff dashboard selectors', () => {
     expect(result.current.map((group) => group.table_number)).toEqual([1]);
   });
 
+  it('shows ready items from every table for an admin, regardless of waiter assignment', () => {
+    const tables = [table(1, 7), table(2, 8), table(3, 7)];
+    const data = dashboard({
+      ready_to_serve: [
+        { table_number: 1, items: [{ id: 10, name: 'Soup', quantity: 1 }] },
+        { table_number: 2, items: [{ id: 11, name: 'Rice', quantity: 1 }] },
+        { table_number: 3, items: [] },
+      ],
+    });
+
+    const { result } = renderHook(() => useStaffReadyToServe(data, tables, 99, true));
+    expect(result.current.map((group) => group.table_number)).toEqual([1, 2]);
+  });
+
+  it('shows preparing orders from every table for an admin, regardless of waiter assignment', () => {
+    const tables = [table(1, 7), table(2, 8)];
+    const preparingItem = {
+      id: 20,
+      name: 'Soup',
+      quantity: 1,
+      status: 'preparing' as const,
+      preparation_started_at: '2026-08-11T10:00:00Z',
+      estimated_ready_at: '2026-08-11T10:10:00Z',
+    };
+    const data = dashboard({
+      preparing_orders: [
+        { table_number: 1, waiter_id: 7, items: [preparingItem] },
+        { table_number: 2, waiter_id: 8, items: [preparingItem] },
+      ],
+    });
+
+    const { result } = renderHook(() => useStaffPreparingOrders(data, tables, 99, true));
+    expect(result.current.map((group) => group.table_number)).toEqual([1, 2]);
+  });
+
   it('returns no waiter-specific groups without a staff id', () => {
     const data = dashboard({
       ready_to_serve: [{ table_number: 1, items: [{ id: 1, name: 'Soup', quantity: 1 }] }],

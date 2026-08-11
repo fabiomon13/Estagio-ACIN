@@ -44,9 +44,11 @@ export function StaffPage() {
   const { showToast } = useToast();
   const { data, loading, tablesView, load } = useStaffDashboard();
 
-  const waiterReadyToServe = useStaffReadyToServe(data, tablesView, staff?.id);
+  const isAdmin = staff?.role === 'admin';
 
-  const staffPreparingOrders = useStaffPreparingOrders(data, tablesView, staff?.id);
+  const waiterReadyToServe = useStaffReadyToServe(data, tablesView, staff?.id, isAdmin);
+
+  const staffPreparingOrders = useStaffPreparingOrders(data, tablesView, staff?.id, isAdmin);
 
   const {
     assistanceTables,
