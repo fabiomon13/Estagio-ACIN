@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import ChevronIcon from '../../../components/icons/ChevronIcon';
-import { EyeIcon, EyeOffIcon } from '../../../components/icons';
+import { AvatarIcon, EyeIcon, EyeOffIcon } from '../../../components/icons';
 import Button from '../../../components/ui/button/Button';
 import Input from '../../../components/ui/input/Input';
+import ProfileMenuTrigger from '../../../components/ui/profile-menu-trigger/ProfileMenuTrigger';
 import Radio from '../../../components/ui/radio/Radio';
 import { useToast } from '../../../components/ui/toast/useToast';
 import { apiFetch } from '../../../services/api/client';
+import { StaffProfileModal } from '../../auth/components/StaffProfileModal';
+import { useAuth } from '../../auth/hooks/AuthContext';
 import type { AuthStaff, StaffRole } from '../../auth/hooks/AuthContext';
 import { getAdminCreateStaffError } from '../utils/adminErrors';
 
@@ -18,7 +19,7 @@ const ROLE_OPTIONS: { value: StaffRole; label: string }[] = [
 ];
 
 export function AdminPage() {
-  const navigate = useNavigate();
+  const { staff } = useAuth();
   const { showToast } = useToast();
 
   const [name, setName] = useState('');
@@ -28,6 +29,7 @@ export function AdminPage() {
   const [role, setRole] = useState<StaffRole>('waiter');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -59,28 +61,49 @@ export function AdminPage() {
   return (
     <div className="min-h-screen bg-background px-6 py-10 sm:px-8 lg:px-12">
       <header className="flex flex-col gap-3 md:gap-5">
-        <div>
-          <p className="text-xs font-semibold tracking-widest text-primary uppercase">
-            Staff Portal
-          </p>
-          <h1 className="mt-2 text-3xl font-bold text-content sm:text-4xl">Admin</h1>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold tracking-widest text-primary uppercase">
+              Staff Portal
+            </p>
+            <h1 className="mt-2 text-3xl font-bold text-content sm:text-4xl">Admin</h1>
+          </div>
+
+          {staff && (
+            <>
+              {/* Mobile: avatar-only, the full trigger doesn't fit next to the title */}
+              <button
+                type="button"
+                onClick={() => setIsProfileOpen(true)}
+                aria-label="Abrir perfil"
+                className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-surface-raised sm:hidden"
+              >
+                {staff.photo_url ? (
+                  <img
+                    src={staff.photo_url}
+                    alt={`Fotografia de ${staff.name}`}
+                    className="size-full rounded-full object-cover"
+                  />
+                ) : (
+                  <AvatarIcon size={22} className="text-content-muted" />
+                )}
+              </button>
+
+              <div className="hidden w-56 shrink-0 sm:block">
+                <ProfileMenuTrigger
+                  name={staff.name}
+                  role={staff.role}
+                  profileImageUrl={staff.photo_url ?? undefined}
+                  onClick={() => setIsProfileOpen(true)}
+                />
+              </div>
+            </>
+          )}
         </div>
 
-        <div className="md:flex justify-between items-center">
-          <p className="text-content-subtle text-md">
-            Gere os acessos da equipa e cria novas contas para os diferentes espaços da aplicação.
-          </p>
-          <nav className="flex flex-wrap gap-3 pt-7 md:pt-0" aria-label="Atalhos">
-            <Button variant="outline" size="sm" onClick={() => navigate('/staff')}>
-              Ir para Staff
-              <ChevronIcon size={16} className="-rotate-90" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate('/kitchen')}>
-              Ir para Cozinha
-              <ChevronIcon size={16} className="-rotate-90" />
-            </Button>
-          </nav>
-        </div>
+        <p className="text-content-subtle text-md">
+          Gere os acessos da equipa e cria novas contas para os diferentes espaços da aplicação.
+        </p>
         <div className="w-full h-0.5 bg-border rounded-full"></div>
       </header>
 
@@ -164,6 +187,8 @@ export function AdminPage() {
           </form>
         </div>
       </div>
+
+      <StaffProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
     </div>
   );
 }

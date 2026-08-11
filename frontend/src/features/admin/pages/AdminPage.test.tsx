@@ -28,6 +28,22 @@ vi.mock('../../../components/ui/toast/useToast', () => ({
   useToast: () => ({ showToast: showToastMock }),
 }));
 
+vi.mock('../../auth/hooks/AuthContext', () => ({
+  useAuth: () => ({
+    staff: {
+      id: 1,
+      name: 'Dev Admin',
+      email: 'admin@scanandserve.dev',
+      role: 'admin',
+      photo_url: null,
+      is_active: true,
+    },
+    logout: vi.fn(),
+    updateShiftStatus: vi.fn(),
+  }),
+  ROLE_HOME_ROUTE: { admin: '/admin', waiter: '/staff', chef: '/kitchen' },
+}));
+
 function fillForm(role: 'Waiter' | 'Chef' | 'Admin' = 'Waiter') {
   fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Ana Silva' } });
   fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ana@test.dev' } });

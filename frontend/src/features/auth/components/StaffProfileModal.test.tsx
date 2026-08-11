@@ -4,8 +4,13 @@ import { StaffProfileModal } from './StaffProfileModal';
 
 vi.mock('../hooks/AuthContext', () => ({
   useAuth: vi.fn(),
+  ROLE_HOME_ROUTE: { admin: '/admin', waiter: '/staff', chef: '/kitchen' },
 }));
-vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }));
+const useLocationMock = vi.fn(() => ({ pathname: '/kitchen' }));
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => vi.fn(),
+  useLocation: () => useLocationMock(),
+}));
 vi.mock('../../../components/ui/toast/useToast', () => ({
   useToast: vi.fn(),
 }));
@@ -40,6 +45,7 @@ describe('StaffProfileModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(useToast).mockReturnValue({ showToast: vi.fn() });
+    useLocationMock.mockReturnValue({ pathname: '/kitchen' });
   });
 
   afterEach(() => {
@@ -111,5 +117,43 @@ describe('StaffProfileModal', () => {
     const { container } = render(<StaffProfileModal isOpen={false} onClose={vi.fn()} />);
 
     expect(container.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it('does not show area shortcuts for a non-admin staff member', () => {
+    mockAuth();
+    render(<StaffProfileModal isOpen onClose={vi.fn()} />);
+
+    expect(screen.queryByText('Atalhos')).toBeNull();
+  });
+
+  it('shows shortcuts to the other two areas for an admin, excluding the current one', () => {
+    useLocationMock.mockReturnValue({ pathname: '/kitchen' });
+    mockAuth({ staff: { ...staff, role: 'admin' } });
+    render(<StaffProfileModal isOpen onClose={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: /ir para staff/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /ir para admin/i })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /ir para cozinha/i })).toBeNull();
+  });
+
+  it('shows all three shortcuts when the admin is on a page outside those areas', () => {
+    useLocationMock.mockReturnValue({ pathname: '/login' });
+    mockAuth({ staff: { ...staff, role: 'admin' } });
+    render(<StaffProfileModal isOpen onClose={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: /ir para staff/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /ir para cozinha/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /ir para admin/i })).toBeDefined();
+  });
+
+  it('closes the modal and navigates when a shortcut is clicked', () => {
+    useLocationMock.mockReturnValue({ pathname: '/admin' });
+    mockAuth({ staff: { ...staff, role: 'admin' } });
+    const onClose = vi.fn();
+    render(<StaffProfileModal isOpen onClose={onClose} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /ir para staff/i }));
+
+    expect(onClose).toHaveBeenCalled();
   });
 });
