@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { getOrders, type ClientOrder } from '../services/orderApi';
 import { getDeviceToken } from '../utils/deviceToken';
@@ -18,6 +18,20 @@ export function useClientOrders(tableCode: string | undefined) {
       setRefreshError('Não foi possível atualizar os pedidos.');
     }
   }, [tableCode]);
+
+  useEffect(() => {
+    const handleVisibilityChange = (): void => {
+      if (document.visibilityState === 'visible') {
+        void refetch();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [refetch]);
 
   const hydrateOrders = useCallback((nextOrders: ClientOrder[]) => setOrders(nextOrders), []);
   const prependOrder = useCallback(
