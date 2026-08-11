@@ -24,6 +24,9 @@ from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.order_item_status import OrderItemStatus
 from app.models.restaurant_table import RestaurantTable
+from app.models.service_request import ServiceRequest
+from app.models.service_request_status import ServiceRequestStatus
+from app.models.service_request_type import ServiceRequestType
 from app.models.staff import Staff
 from app.models.staff_role import StaffRole
 from app.models.station import Station
@@ -118,6 +121,39 @@ def staff_roles(db_session) -> dict[str, StaffRole]:
     db_session.add_all(roles.values())
     db_session.commit()
     return roles
+
+
+@pytest.fixture
+def service_request_statuses(db_session) -> dict[str, ServiceRequestStatus]:
+    """Create the service-request states used by staff workflows."""
+    names = ["Pending", "Resolved", "Cancelled"]
+    statuses = {
+        name: ServiceRequestStatus(name=name, alias=name.lower())
+        for name in names
+    }
+    db_session.add_all(statuses.values())
+    db_session.commit()
+    return statuses
+
+
+@pytest.fixture
+def service_request_types(db_session) -> dict[str, ServiceRequestType]:
+    """Create the request types supported by the staff contract."""
+    types = {
+        "assistance": ServiceRequestType(
+            name="Assistance",
+            alias="assistance",
+            is_high_priority=True,
+        ),
+        "payment_request": ServiceRequestType(
+            name="Payment request",
+            alias="payment_request",
+            is_high_priority=False,
+        ),
+    }
+    db_session.add_all(types.values())
+    db_session.commit()
+    return types
 
 
 # ---- Factories ---------------------------------------------------------
@@ -224,6 +260,33 @@ def make_buffet(db_session):
         db_session.add(buffet)
         db_session.commit()
         return buffet
+
+    return _make
+
+
+@pytest.fixture
+def make_service_request(
+    db_session,
+    make_session,
+    service_request_statuses,
+    service_request_types,
+):
+    def _make(
+        session: DiningSession | None = None,
+        *,
+        type_alias: str = "assistance",
+        status_name: str = "Pending",
+        resolved_at: datetime | None = None,
+    ) -> ServiceRequest:
+        request = ServiceRequest(
+            session_id=(session or make_session()).id,
+            type_id=service_request_types[type_alias].id,
+            status_id=service_request_statuses[status_name].id,
+            resolved_at=resolved_at,
+        )
+        db_session.add(request)
+        db_session.commit()
+        return request
 
     return _make
 
