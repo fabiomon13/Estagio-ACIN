@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { ApiError } from '../../../services/api/client';
 import { useToast } from '../../../components/ui/toast/useToast';
 import { useAuth } from '../../auth/hooks/AuthContext';
 import { useStaffDashboard } from '../hooks/useStaffDashboard';
@@ -282,10 +283,10 @@ export function StaffPage() {
 
       setPaymentDialog(null);
       await load();
-    } catch {
+    } catch (err) {
       showToast({
         variant: 'danger',
-        title: 'Não foi possível registar pagamento',
+        title: err instanceof ApiError ? err.detail : 'Não foi possível registar pagamento',
       });
     }
   };
