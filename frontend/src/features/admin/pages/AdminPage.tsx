@@ -3,8 +3,9 @@ import type { FormEvent } from 'react';
 import Button from '../../../components/ui/button/Button';
 import Input from '../../../components/ui/input/Input';
 import Radio from '../../../components/ui/radio/Radio';
-import { ApiError, apiFetch } from '../../../services/api/client';
+import { apiFetch } from '../../../services/api/client';
 import type { AuthStaff, StaffRole } from '../../auth/hooks/AuthContext';
+import { getAdminCreateStaffError } from '../utils/adminErrors';
 
 export function AdminPage() {
   const [name, setName] = useState('');
@@ -33,7 +34,7 @@ export function AdminPage() {
       setPassword('');
       setRole('waiter');
     } catch (err) {
-      setError(err instanceof ApiError ? err.detail : 'Erro ao criar conta.');
+      setError(getAdminCreateStaffError(err));
     } finally {
       setIsSubmitting(false);
     }
