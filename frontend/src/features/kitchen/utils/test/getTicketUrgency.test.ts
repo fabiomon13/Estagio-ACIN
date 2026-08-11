@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { getElapsedMinutes, getTicketUrgency, sortTicketsByUrgency } from './getTicketUrgency';
-import type { KitchenTicket } from '../types/kitchen.types';
+import { getElapsedMinutes, getTicketUrgency, sortTicketsByUrgency } from '../getTicketUrgency';
+import type { KitchenTicket } from '../../types/kitchen.types';
 
 describe('getElapsedMinutes', () => {
   it('returns 0 for a ticket created right now', () => {

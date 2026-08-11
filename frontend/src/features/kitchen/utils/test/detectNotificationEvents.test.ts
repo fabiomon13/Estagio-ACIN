@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { detectNotificationEvents } from './detectNotificationEvents';
-import type { KitchenOrderItem, KitchenTicket } from '../types/kitchen.types';
+import { detectNotificationEvents } from '../detectNotificationEvents';
+import type { KitchenOrderItem, KitchenTicket } from '../../types/kitchen.types';
 
 function makeItem(overrides: Partial<KitchenOrderItem> = {}): KitchenOrderItem {
   return {

@@ -1,21 +1,21 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError } from '../../../services/api/client';
-import * as kitchenService from '../services/kitchenService';
-import { useKitchenTickets } from './useKitchenTickets';
-import { useKitchenTicketsFeed } from './useKitchenTicketsFeed';
-import type { KitchenTicket } from '../types/kitchen.types';
+import { ApiError } from '../../../../services/api/client';
+import * as kitchenService from '../../services/kitchenService';
+import { useKitchenTickets } from '../useKitchenTickets';
+import { useKitchenTicketsFeed } from '../useKitchenTicketsFeed';
+import type { KitchenTicket } from '../../types/kitchen.types';
 
-vi.mock('../services/kitchenService');
-vi.mock('./useKitchenTicketsFeed');
+vi.mock('../../services/kitchenService');
+vi.mock('../useKitchenTicketsFeed');
 
 const showToastMock = vi.fn();
-vi.mock('../../../components/ui/toast/useToast', () => ({
+vi.mock('../../../../components/ui/toast/useToast', () => ({
   useToast: () => ({ showToast: showToastMock }),
 }));
 
 const notifyMock = vi.fn();
-vi.mock('../components/kitchen-notification/useKitchenNotifications', () => ({
+vi.mock('../../components/kitchen-notification/useKitchenNotifications', () => ({
   useKitchenNotifications: () => ({ notify: notifyMock }),
 }));
 
@@ -376,5 +376,103 @@ describe('useKitchenTickets', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('updateStatusAsync resolves true on success and keeps the optimistic state', async () => {
+    mockFeed([makeTicket('Pending')]);
+    vi.mocked(kitchenService.updateItemStatus).mockResolvedValue({} as never);
+
+    const { result } = renderHook(() => useKitchenTickets());
+
+    let resolvedValue: boolean | undefined;
+    await act(async () => {
+      resolvedValue = await result.current.updateStatusAsync(501, 'Preparing');
+    });
+
+    expect(resolvedValue).toBe(true);
+    expect(result.current.tickets[0].items[0].status).toBe('Preparing');
+  });
+
+  it('updateStatusAsync resolves false, reverts, and toasts on failure', async () => {
+    mockFeed([makeTicket('Pending')]);
+    vi.mocked(kitchenService.updateItemStatus).mockRejectedValue(new Error('network error'));
+
+    const { result } = renderHook(() => useKitchenTickets());
+
+    let resolvedValue: boolean | undefined;
+    await act(async () => {
+      resolvedValue = await result.current.updateStatusAsync(501, 'Preparing');
+    });
+
+    expect(resolvedValue).toBe(false);
+    expect(result.current.tickets[0].items[0].status).toBe('Pending');
+    expect(showToastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: 'danger' }));
+  });
+
+  it('updateStatusAsync resolves false without a network call when the item already has one in flight', async () => {
+    mockFeed([makeTicket('Pending')]);
+    let resolveUpdate!: () => void;
+    vi.mocked(kitchenService.updateItemStatus).mockReturnValue(
+      new Promise((resolve) => {
+        resolveUpdate = () => resolve({} as never);
+      }),
+    );
+
+    const { result } = renderHook(() => useKitchenTickets());
+
+    act(() => {
+      result.current.updateStatus(501, 'Preparing');
+    });
+
+    let secondCallResolved: boolean | undefined;
+    await act(async () => {
+      secondCallResolved = await result.current.updateStatusAsync(501, 'Ready');
+    });
+
+    expect(secondCallResolved).toBe(false);
+    expect(kitchenService.updateItemStatus).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveUpdate();
+      await Promise.resolve();
+    });
+  });
+
+  it('updateStatusAsync with an optimistic override displays the override status, not the requested one', async () => {
+    mockFeed([makeTicket('Pending')]);
+    vi.mocked(kitchenService.updateItemStatus).mockResolvedValue({} as never);
+
+    const { result } = renderHook(() => useKitchenTickets());
+
+    await act(async () => {
+      await result.current.updateStatusAsync(501, 'Preparing', {
+        display: 'Ready',
+        revertTo: 'Pending',
+      });
+    });
+
+    // Requested status was "Preparing" (what the backend was asked for),
+    // but the display override means the UI shows "Ready" the whole time.
+    expect(kitchenService.updateItemStatus).toHaveBeenCalledWith(501, 'Preparing');
+    expect(result.current.tickets[0].items[0].status).toBe('Ready');
+  });
+
+  it('updateStatusAsync with an optimistic override reverts to revertTo (not the pre-call status) on failure', async () => {
+    mockFeed([makeTicket('Pending')]);
+    vi.mocked(kitchenService.updateItemStatus).mockRejectedValue(new Error('network error'));
+
+    const { result } = renderHook(() => useKitchenTickets());
+
+    await act(async () => {
+      await result.current.updateStatusAsync(501, 'Ready', {
+        display: 'Ready',
+        revertTo: 'Preparing',
+      });
+    });
+
+    // Even though the item's status right before this call was "Pending",
+    // revertTo says the real backend truth is "Preparing" -- that's where
+    // it must settle, not back at "Pending".
+    expect(result.current.tickets[0].items[0].status).toBe('Preparing');
   });
 });
