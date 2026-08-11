@@ -828,7 +828,7 @@ def register_payment_and_close_session(
     if session is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Dining session not found.",
+            detail="Sessão não encontrada.",
         )
 
     _ensure_session_owner_or_admin(session, current_staff)
@@ -836,13 +836,40 @@ def register_payment_and_close_session(
     if not session.is_active:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Dining session is already closed.",
+            detail="Esta sessão já está fechada.",
         )
 
     if session.payment is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="This session already has a payment.",
+            detail="Esta sessão já tem um pagamento registado.",
+        )
+
+    # A Pending/Preparing/Ready item means the kitchen is still working on
+    # something this guest already ordered. Closing anyway would either
+    # leave it stuck on the kitchen board forever (session gone, nothing
+    # to serve it to) or, if auto-cancelled, charge the guest for a dish
+    # that quietly never arrives. Force the waiter to serve or cancel it
+    # first -- an explicit decision, not one made silently on their behalf.
+    unresolved_item_exists = (
+        db.query(OrderItem)
+        .join(Order, OrderItem.order_id == Order.id)
+        .join(Guest, Order.guest_id == Guest.id)
+        .join(OrderItemStatus, OrderItem.status_id == OrderItemStatus.id)
+        .filter(
+            Guest.session_id == session.id,
+            func.lower(OrderItemStatus.alias).in_(["pending", "preparing", "ready"]),
+        )
+        .first()
+        is not None
+    )
+    if unresolved_item_exists:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Ainda há pratos por resolver na cozinha para esta mesa. "
+                "Marca-os como servidos antes de fechar a conta."
+            ),
         )
 
     session_guests = session.guests
