@@ -756,6 +756,9 @@ def get_session_bill(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Dining session not found.",
         )
+
+    _ensure_session_owner_or_admin(session, current_staff)
+
     payment = session.payment
     guests_data: list[StaffSessionBillGuest] = []
 
