@@ -1,9 +1,18 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError, apiFetch } from '../../../services/api/client';
 import { getAdminCreateStaffError } from '../utils/adminErrors';
 import { AdminPage } from './AdminPage';
+
+function renderAdminPage() {
+  return render(
+    <MemoryRouter>
+      <AdminPage />
+    </MemoryRouter>,
+  );
+}
 
 vi.mock('../../../services/api/client', async () => {
   const actual = await vi.importActual<typeof import('../../../services/api/client')>(
@@ -14,6 +23,27 @@ vi.mock('../../../services/api/client', async () => {
 
 const apiFetchMock = vi.mocked(apiFetch);
 
+const showToastMock = vi.fn();
+vi.mock('../../../components/ui/toast/useToast', () => ({
+  useToast: () => ({ showToast: showToastMock }),
+}));
+
+vi.mock('../../auth/hooks/AuthContext', () => ({
+  useAuth: () => ({
+    staff: {
+      id: 1,
+      name: 'Dev Admin',
+      email: 'admin@scanandserve.dev',
+      role: 'admin',
+      photo_url: null,
+      is_active: true,
+    },
+    logout: vi.fn(),
+    updateShiftStatus: vi.fn(),
+  }),
+  ROLE_HOME_ROUTE: { admin: '/admin', waiter: '/staff', chef: '/kitchen' },
+}));
+
 function fillForm(role: 'Waiter' | 'Chef' | 'Admin' = 'Waiter') {
   fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Ana Silva' } });
   fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ana@test.dev' } });
@@ -22,9 +52,12 @@ function fillForm(role: 'Waiter' | 'Chef' | 'Admin' = 'Waiter') {
 }
 
 describe('AdminPage', () => {
-  beforeEach(() => apiFetchMock.mockReset());
+  beforeEach(() => {
+    apiFetchMock.mockReset();
+    showToastMock.mockReset();
+  });
 
-  it('creates a staff account with the selected role and displays the result', async () => {
+  it('creates a staff account with the selected role and shows a success toast', async () => {
     apiFetchMock.mockResolvedValue({
       id: 4,
       name: 'Ana Silva',
@@ -33,10 +66,10 @@ describe('AdminPage', () => {
       photo_url: null,
       is_active: true,
     });
-    render(<AdminPage />);
+    renderAdminPage();
     fillForm('Chef');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create staff' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Criar conta' }));
 
     await waitFor(() =>
       expect(apiFetchMock).toHaveBeenCalledWith('/staff', {
@@ -50,7 +83,13 @@ describe('AdminPage', () => {
         }),
       }),
     );
-    expect(await screen.findByText(/Created: Ana Silva/)).toBeTruthy();
+    await waitFor(() =>
+      expect(showToastMock).toHaveBeenCalledWith({
+        variant: 'success',
+        title: 'Conta criada',
+        description: 'Ana Silva (ana@test.dev, chef)',
+      }),
+    );
     expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText('Waiter') as HTMLInputElement).checked).toBe(true);
   });
@@ -68,10 +107,10 @@ describe('AdminPage', () => {
       photo_url: null,
       is_active: true,
     });
-    render(<AdminPage />);
+    renderAdminPage();
     fillForm(label);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create staff' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Criar conta' }));
 
     await waitFor(() =>
       expect(apiFetchMock).toHaveBeenCalledWith(
@@ -79,7 +118,11 @@ describe('AdminPage', () => {
         expect.objectContaining({ body: expect.stringContaining(`"role":"${role}"`) }),
       ),
     );
-    expect(await screen.findByText(/Created: Ana Silva/)).toBeTruthy();
+    await waitFor(() =>
+      expect(showToastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: 'success', title: 'Conta criada' }),
+      ),
+    );
   });
 
   it('uses the backend detail for an API error', () => {
@@ -99,12 +142,12 @@ describe('AdminPage', () => {
         resolveRequest = resolve;
       }),
     );
-    render(<AdminPage />);
+    renderAdminPage();
     fillForm();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create staff' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Criar conta' }));
 
-    const button = await screen.findByRole('button', { name: 'Creating...' });
+    const button = await screen.findByRole('button', { name: 'A criar...' });
     expect((button as HTMLButtonElement).disabled).toBe(true);
     expect(apiFetchMock).toHaveBeenCalledTimes(1);
 
@@ -116,6 +159,10 @@ describe('AdminPage', () => {
       photo_url: null,
       is_active: true,
     } as never);
-    expect(await screen.findByText(/Created: Ana Silva/)).toBeTruthy();
+    await waitFor(() =>
+      expect(showToastMock).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: 'success', title: 'Conta criada' }),
+      ),
+    );
   });
 });

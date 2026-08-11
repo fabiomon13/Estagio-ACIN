@@ -11,10 +11,25 @@ from app.modules.staff.staff_contract import (
 from app.modules.staff import staff_service
 
 from app.api.deps import get_current_staff, require_role
+from app.api.routes.auth import staff_to_out
 from app.core.roles import StaffRoleEnum
 from app.models.staff import Staff
+from app.schemas.auth import CreateStaffRequest, StaffOut
 
 router = APIRouter(prefix="/staff")
+
+
+# Staff management (Admin-only)
+@router.post(
+    "",
+    response_model=StaffOut,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Staff - Management"],
+    dependencies=[Depends(require_role())],
+)
+def create_staff(payload: CreateStaffRequest, db: Session = Depends(get_db)) -> StaffOut:
+    staff = staff_service.create_staff(db, payload)
+    return staff_to_out(staff)
 
 
 # Dashboard

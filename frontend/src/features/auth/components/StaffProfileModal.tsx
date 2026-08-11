@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import ChevronIcon from '../../../components/icons/ChevronIcon';
 import { AvatarIcon, CloseIcon } from '../../../components/icons';
 import Badge from '../../../components/ui/badge/Badge';
 import Button from '../../../components/ui/button/Button';
 import ConfirmDialog from '../../../components/ui/confirm-dialog/ConfirmDialog';
 import { useToast } from '../../../components/ui/toast/useToast';
-import { useAuth } from '../hooks/AuthContext';
+import { ROLE_HOME_ROUTE, useAuth } from '../hooks/AuthContext';
 
 type StaffProfileModalProps = {
   isOpen: boolean;
@@ -18,10 +19,19 @@ const ROLE_LABELS: Record<string, string> = {
   waiter: 'Garçom',
 };
 
+// Admin-only shortcuts to the other role areas -- filtered down to whichever
+// ones aren't the page the modal was opened from.
+const AREA_SHORTCUTS = [
+  { path: ROLE_HOME_ROUTE.waiter, label: 'Ir para Staff' },
+  { path: ROLE_HOME_ROUTE.chef, label: 'Ir para Cozinha' },
+  { path: ROLE_HOME_ROUTE.admin, label: 'Ir para Admin' },
+];
+
 export function StaffProfileModal({ isOpen, onClose }: StaffProfileModalProps) {
   const { staff, logout, updateShiftStatus } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isTogglingShift, setIsTogglingShift] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [shouldRender, setShouldRender] = useState(isOpen);
@@ -125,6 +135,15 @@ export function StaffProfileModal({ isOpen, onClose }: StaffProfileModalProps) {
   }
 
   const roleLabel = ROLE_LABELS[staff.role] ?? staff.role;
+  const areaShortcuts =
+    staff.role === 'admin'
+      ? AREA_SHORTCUTS.filter((shortcut) => !location.pathname.startsWith(shortcut.path))
+      : [];
+
+  function handleNavigateToArea(path: string) {
+    onClose();
+    navigate(path);
+  }
 
   return (
     <>
@@ -203,6 +222,28 @@ export function StaffProfileModal({ isOpen, onClose }: StaffProfileModalProps) {
             >
               {staff.is_active ? 'Fechar Turno' : 'Iniciar Turno'}
             </Button>
+
+            {areaShortcuts.length > 0 && (
+              <div className="mb-6 flex flex-col gap-2 pt-8">
+                <span className="text-xs font-semibold uppercase tracking-wider text-content-muted">
+                  Atalhos
+                </span>
+                <div className="flex gap-2">
+                  {areaShortcuts.map((shortcut) => (
+                    <Button
+                      key={shortcut.path}
+                      size="sm"
+                      variant="outline"
+                      fullWidth
+                      onClick={() => handleNavigateToArea(shortcut.path)}
+                    >
+                      {shortcut.label}
+                      <ChevronIcon size={16} className="-rotate-90" />
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <Button variant="outline" fullWidth onClick={() => setShowLogoutConfirm(true)}>

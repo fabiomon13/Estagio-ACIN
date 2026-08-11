@@ -38,6 +38,8 @@ from app.models.service_request_status import ServiceRequestStatus
 from app.models.staff import Staff
 from app.models.staff_role import StaffRole
 from app.core.roles import StaffRoleEnum, staff_role
+from app.core.security import hash_password
+from app.schemas.auth import CreateStaffRequest, PASSWORD_REQUIREMENTS_DETAIL, is_password_strong
 import random
 
 from app.modules.staff.websockets.staff_realtime import broadcast_staff_dashboard
@@ -106,6 +108,50 @@ def get_service_request_status_by_alias(db: Session, alias: str) -> ServiceReque
     if row is None:
         raise HTTPException(status_code=500, detail=f"Service request status '{alias}' is not configured")
     return row
+
+def create_staff(db: Session, data: CreateStaffRequest) -> Staff:
+    """
+    Creates a new staff account. Admin-only (enforced at the router).
+    Raises HTTP 409 if the email is already in use.
+    """
+    if not is_password_strong(data.password):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=PASSWORD_REQUIREMENTS_DETAIL,
+        )
+
+    existing = db.query(Staff).filter(Staff.email == data.email).first()
+    if existing is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Já existe uma conta de staff com este email.",
+        )
+
+    role_row = (
+        db.query(StaffRole)
+        .filter(func.lower(StaffRole.alias) == data.role.value)
+        .first()
+    )
+    if role_row is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Staff role '{data.role.value}' not configured.",
+        )
+
+    staff = Staff(
+        staff_role_id=role_row.id,
+        name=data.name.strip(),
+        email=data.email,
+        password_hash=hash_password(data.password),
+        photo_url=data.photo_url,
+        is_active=True,
+    )
+    db.add(staff)
+    db.commit()
+    db.refresh(staff)
+
+    return staff
+
 
 def get_staff_dashboard(db: Session, current_staff: Staff) -> StaffDashboard:
     """
