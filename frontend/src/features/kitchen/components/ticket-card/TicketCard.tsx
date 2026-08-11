@@ -50,7 +50,7 @@ export default function TicketCard({
       {hasAllergyMatch && (
         <div className={styles.allergenBanner}>
           <WarningFilledIcon size={14} />
-          <span>Alergia real neste pedido — confirmar antes de servir</span>
+          <span>Alergia neste pedido — confirmar antes de servir</span>
         </div>
       )}
 
