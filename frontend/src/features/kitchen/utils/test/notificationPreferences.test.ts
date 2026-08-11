@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   loadNotificationPreferences,
   saveNotificationPreferences,
-} from './notificationPreferences';
+} from '../notificationPreferences';
 
 describe('notificationPreferences', () => {
   beforeEach(() => {

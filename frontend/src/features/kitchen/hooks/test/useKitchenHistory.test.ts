@@ -1,9 +1,9 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import * as kitchenHistoryService from '../services/kitchenHistoryService';
-import { useKitchenHistory } from './useKitchenHistory';
+import * as kitchenHistoryService from '../../services/kitchenHistoryService';
+import { useKitchenHistory } from '../useKitchenHistory';
 
-vi.mock('../services/kitchenHistoryService');
+vi.mock('../../services/kitchenHistoryService');
 
 const emptyFilterOptions = { items: [], stations: [] };
 const emptySummary = { counts: {}, busiest_station: null, peak_hour: null };

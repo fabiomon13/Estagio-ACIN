@@ -4,20 +4,35 @@ import {
   loadNotificationPreferences,
   saveNotificationPreferences,
 } from '../utils/notificationPreferences';
+import { loadInteractionMode, saveInteractionMode } from '../utils/interactionModePreferences';
 import type { NotificationPreferences } from '../types/notification.types';
+import type { KitchenInteractionMode } from '../types/interactionMode.types';
 
 export function KitchenSettingsPage() {
   const [preferences, setPreferences] = useState<NotificationPreferences>(() =>
     loadNotificationPreferences(),
+  );
+  const [interactionMode, setInteractionMode] = useState<KitchenInteractionMode>(() =>
+    loadInteractionMode(),
   );
 
   useEffect(() => {
     saveNotificationPreferences(preferences);
   }, [preferences]);
 
+  useEffect(() => {
+    saveInteractionMode(interactionMode);
+  }, [interactionMode]);
+
   return (
     <div className="flex flex-col gap-4 p-5">
       <h1 className="text-content text-2xl">Configuração</h1>
+
+      <Switch
+        label="Arrastar para atualizar pedidos"
+        checked={interactionMode === 'drag'}
+        onChange={(event) => setInteractionMode(event.target.checked ? 'drag' : 'buttons')}
+      />
 
       <Switch
         label="Notificações"

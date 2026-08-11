@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { groupTicketsByColumn } from './getTicketColumn';
-import type { KitchenOrderItem, KitchenTicket } from '../types/kitchen.types';
+import { groupTicketsByColumn } from '../getTicketColumn';
+import type { KitchenOrderItem, KitchenTicket } from '../../types/kitchen.types';
 
 // Factories: sensible defaults + `overrides` for whatever a test cares about --
 // used in the Arrange step below, so tests don't repeat the full object shape.

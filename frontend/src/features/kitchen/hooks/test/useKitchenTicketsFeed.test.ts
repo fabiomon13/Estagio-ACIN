@@ -1,11 +1,11 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError } from '../../../services/api/client';
-import * as kitchenService from '../services/kitchenService';
-import { useKitchenTicketsFeed } from './useKitchenTicketsFeed';
-import type { KitchenTicket } from '../types/kitchen.types';
+import { ApiError } from '../../../../services/api/client';
+import * as kitchenService from '../../services/kitchenService';
+import { useKitchenTicketsFeed } from '../useKitchenTicketsFeed';
+import type { KitchenTicket } from '../../types/kitchen.types';
 
-vi.mock('../services/kitchenService');
+vi.mock('../../services/kitchenService');
 
 class FakeWebSocket {
   static instances: FakeWebSocket[] = [];

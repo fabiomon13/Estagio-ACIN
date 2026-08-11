@@ -17,7 +17,19 @@ export type UseKitchenTickets = {
   isLoading: boolean;
   error: ApiError | Error | null;
   updateStatus: (orderItemId: number, nextStatus: KitchenPatchableStatus) => void;
+  updateStatusAsync: (
+    orderItemId: number,
+    nextStatus: KitchenPatchableStatus,
+    optimisticOverride?: OptimisticOverride,
+  ) => Promise<boolean>;
 };
+
+// Lets a caller show a different status than the one being requested from
+// the backend (e.g. paint "Ready" immediately while a hop to "Preparing" is
+// still in flight underneath), and say exactly what to settle back to if
+// this specific request fails -- which may not be what was on screen before
+// the call, if an earlier optimistic override already moved it.
+type OptimisticOverride = { display: KitchenItemStatus; revertTo: KitchenItemStatus };
 
 function setItemStatus(
   tickets: KitchenTicket[],
@@ -175,60 +187,70 @@ export function useKitchenTickets(): UseKitchenTickets {
     return () => clearInterval(intervalId);
   }, [runNotificationDetection]);
 
-  const updateStatus = useCallback(
-    (orderItemId: number, nextStatus: KitchenPatchableStatus) => {
-      // Ignore repeated clicks while this item's request is still pending.
+  const submitStatusUpdate = useCallback(
+    async (
+      orderItemId: number,
+      nextStatus: KitchenPatchableStatus,
+      optimisticOverride?: OptimisticOverride,
+    ): Promise<boolean> => {
+      // Ignore repeated calls while this item's request is still pending.
       if (pendingItemIdsRef.current.has(orderItemId)) {
-        return;
+        return false;
       }
 
       const currentItem = tickets
         .flatMap((ticket) => ticket.items)
         .find((item) => item.order_item_id === orderItemId);
 
-      if (!currentItem) return;
+      if (!currentItem) return false;
 
-      const previousStatus = currentItem.status;
+      const displayStatus = optimisticOverride?.display ?? nextStatus;
+      const revertStatus = optimisticOverride?.revertTo ?? currentItem.status;
 
       pendingItemIdsRef.current.add(orderItemId);
-      pendingOptimisticStatusRef.current.set(orderItemId, nextStatus);
+      pendingOptimisticStatusRef.current.set(orderItemId, displayStatus);
 
-      setTickets((current) => setItemStatus(current, orderItemId, nextStatus));
+      setTickets((current) => setItemStatus(current, orderItemId, displayStatus));
 
-      // Fire-and-forget: updateStatus itself must return immediately so the
-      // optimistic change above shows up right away, so this inner async
-      // function is declared and called without being awaited.
-      async function submitStatusUpdate() {
-        try {
-          await kitchenService.updateItemStatus(orderItemId, nextStatus);
-        } catch (err: unknown) {
-          setTickets((current) =>
-            revertItemStatusIfUnchanged(current, orderItemId, nextStatus, previousStatus),
-          );
+      try {
+        await kitchenService.updateItemStatus(orderItemId, nextStatus);
+        return true;
+      } catch (err: unknown) {
+        setTickets((current) =>
+          revertItemStatusIfUnchanged(current, orderItemId, displayStatus, revertStatus),
+        );
 
-          if (err instanceof ApiError && err.status === 409) {
-            // 409: server state changed before this request landed -- resync now.
-            showToast({
-              variant: 'danger',
-              title: err.detail,
-            });
+        if (err instanceof ApiError && err.status === 409) {
+          // 409: server state changed before this request landed -- resync now.
+          showToast({
+            variant: 'danger',
+            title: err.detail,
+          });
 
-            feed.refetch();
-          } else {
-            showToast({
-              variant: 'danger',
-              title: 'Não foi possível atualizar o estado do item.',
-            });
-          }
-        } finally {
-          pendingItemIdsRef.current.delete(orderItemId);
-          pendingOptimisticStatusRef.current.delete(orderItemId);
+          feed.refetch();
+        } else {
+          showToast({
+            variant: 'danger',
+            title: 'Não foi possível atualizar o estado do item.',
+          });
         }
-      }
 
-      submitStatusUpdate();
+        return false;
+      } finally {
+        pendingItemIdsRef.current.delete(orderItemId);
+        pendingOptimisticStatusRef.current.delete(orderItemId);
+      }
     },
     [tickets, feed, showToast],
+  );
+
+  const updateStatus = useCallback(
+    (orderItemId: number, nextStatus: KitchenPatchableStatus) => {
+      // Fire-and-forget: updateStatus itself must return immediately so the
+      // optimistic change shows up right away.
+      void submitStatusUpdate(orderItemId, nextStatus);
+    },
+    [submitStatusUpdate],
   );
 
   return {
@@ -236,5 +258,6 @@ export function useKitchenTickets(): UseKitchenTickets {
     isLoading: feed.isLoading,
     error: feed.error,
     updateStatus,
+    updateStatusAsync: submitStatusUpdate,
   };
 }
