@@ -1,7 +1,7 @@
-import heroImage from '../imagens/hero.png';
-import clientImage from '../imagens/cliente.png';
-import waiterImage from '../imagens/empregado.png';
-import kitchenImage from '../imagens/cozinha.png';
+import heroImage from '../assets/hero.png';
+import clientImage from '../assets/cliente.png';
+import waiterImage from '../assets/empregado.png';
+import kitchenImage from '../assets/cozinha.png';
 import Button from '../../../components/ui/button/Button';
 import { useNavigate } from 'react-router-dom';
 export default function LandingPage() {
