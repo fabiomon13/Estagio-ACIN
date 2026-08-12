@@ -18,6 +18,7 @@ type UseClientRealtimeOptions = {
   onOrdersChanged: () => void;
   onServiceRequestsChanged: () => void;
   onSessionChanged: () => void;
+  onPaymentCompleted: () => void;
   onMenuChanged: () => void;
   onReconnect: () => void;
 };
@@ -27,6 +28,7 @@ type RealtimeCallbacks = Pick<
   | 'onOrdersChanged'
   | 'onServiceRequestsChanged'
   | 'onSessionChanged'
+  | 'onPaymentCompleted'
   | 'onMenuChanged'
   | 'onReconnect'
 >;
@@ -37,6 +39,7 @@ export function useClientRealtime({
   onOrdersChanged,
   onServiceRequestsChanged,
   onSessionChanged,
+  onPaymentCompleted,
   onMenuChanged,
   onReconnect,
 }: UseClientRealtimeOptions): ClientRealtimeStatus {
@@ -46,6 +49,7 @@ export function useClientRealtime({
     onOrdersChanged,
     onServiceRequestsChanged,
     onSessionChanged,
+    onPaymentCompleted,
     onMenuChanged,
     onReconnect,
   });
@@ -55,10 +59,18 @@ export function useClientRealtime({
       onOrdersChanged,
       onServiceRequestsChanged,
       onSessionChanged,
+      onPaymentCompleted,
       onMenuChanged,
       onReconnect,
     };
-  }, [onMenuChanged, onOrdersChanged, onReconnect, onServiceRequestsChanged, onSessionChanged]);
+  }, [
+    onMenuChanged,
+    onOrdersChanged,
+    onPaymentCompleted,
+    onReconnect,
+    onServiceRequestsChanged,
+    onSessionChanged,
+  ]);
 
   useEffect(() => {
     if (!enabled || !tableCode) {
@@ -174,6 +186,10 @@ export function useClientRealtime({
 
         case 'session.changed':
           scheduleCallback('onSessionChanged');
+          break;
+
+        case 'payment.completed':
+          scheduleCallback('onPaymentCompleted');
           break;
 
         case 'menu.changed':

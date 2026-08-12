@@ -1,5 +1,5 @@
 import { apiFetch } from '../../../services/api/client';
-import { buildClientTablePath } from './clientRequest';
+import { buildClientTablePath, createDeviceHeaders } from './clientRequest';
 
 export type Category = {
   id: number;
@@ -62,6 +62,11 @@ export type DiningSession = {
   is_active: boolean;
   is_approved: boolean;
   approved_at: string | null;
+};
+
+export type ClientSessionState = {
+  session: DiningSession;
+  status: 'active' | 'completed' | 'closed';
 };
 
 export type Buffet = {
@@ -129,6 +134,21 @@ export function getActiveSession(
   options: MenuRequestOptions = {},
 ): Promise<DiningSession> {
   return apiFetch<DiningSession>(`${buildClientTablePath(tableCode)}/session`, options);
+}
+
+export function getSessionState(
+  tableCode: string,
+  sessionId: number,
+  deviceToken: string,
+  options: MenuRequestOptions = {},
+): Promise<ClientSessionState> {
+  return apiFetch<ClientSessionState>(
+    `${buildClientTablePath(tableCode)}/sessions/${sessionId}/state`,
+    {
+      headers: createDeviceHeaders(deviceToken),
+      signal: options.signal,
+    },
+  );
 }
 
 // Creates a new dining session for the specified table code, including the number of clients in the request body

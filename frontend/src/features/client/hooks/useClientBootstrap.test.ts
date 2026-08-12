@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   table: vi.fn(),
   session: vi.fn(),
+  sessionState: vi.fn(),
   guest: vi.fn(),
   categories: vi.fn(),
   menu: vi.fn(),
@@ -17,6 +18,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../services/menuApi', () => ({
   getTable: mocks.table,
   getActiveSession: mocks.session,
+  getSessionState: mocks.sessionState,
   getCategories: mocks.categories,
   getMenu: mocks.menu,
   getBuffets: mocks.buffets,
@@ -31,12 +33,13 @@ import { useClientBootstrap } from './useClientBootstrap';
 
 // example table and approved session used in the tests
 const table = { id: 1, table_number: 1, max_capacity: 4, public_code: 'mesa' };
-const session = { is_approved: true, waiter_id: 2 };
+const session = { id: 7, is_approved: true, waiter_id: 2 };
 // describe the test suite for initial client data loading
 describe('useClientBootstrap', () => {
   // configure successful default responses before every test
   beforeEach(() => {
     Object.values(mocks).forEach((mock) => mock.mockReset());
+    sessionStorage.clear();
     mocks.table.mockResolvedValue(table);
     mocks.session.mockResolvedValue(session);
     mocks.guest.mockResolvedValue({

@@ -3,7 +3,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const { apiFetch } = vi.hoisted(() => ({ apiFetch: vi.fn() }));
 vi.mock('../../../services/api/client', () => ({ apiFetch }));
-import { createSession, getBuffetItems, getCategories, getMenu, getTable } from './menuApi';
+import {
+  createSession,
+  getBuffetItems,
+  getCategories,
+  getMenu,
+  getSessionState,
+  getTable,
+} from './menuApi';
 
 // describe the test suite for menu, buffet, table, and session requests
 describe('menuApi', () => {
@@ -38,6 +45,16 @@ describe('menuApi', () => {
     expect(apiFetch).toHaveBeenCalledWith(
       '/client/tables/mesa/session',
       expect.objectContaining({ method: 'POST', body: JSON.stringify({ num_clients: 4 }) }),
+    );
+  });
+  it('consulta o estado da sessao com o token do dispositivo', () => {
+    getSessionState('mesa', 12, 'device-token');
+
+    expect(apiFetch).toHaveBeenCalledWith(
+      '/client/tables/mesa/sessions/12/state',
+      expect.objectContaining({
+        headers: { 'X-Device-Token': 'device-token' },
+      }),
     );
   });
 });

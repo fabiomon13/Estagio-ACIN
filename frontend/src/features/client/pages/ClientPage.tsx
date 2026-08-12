@@ -9,6 +9,7 @@ import { AllergyPreferencesModal } from '../components/shared/AllergyPreferences
 import { ClientHeader } from '../components/shared/ClientHeader';
 import { ClientMessage } from '../components/shared/ClientMessage';
 import { SessionSetup } from '../components/shared/SessionSetup';
+import { ThankYouScreen } from '../components/shared/ThankYouScreen';
 import { CLIENT_VIEWS } from '../clientTypes';
 import { useClientBootstrap } from '../hooks/useClientBootstrap';
 import { useClientCart } from '../hooks/useClientCart';
@@ -18,7 +19,7 @@ import { useClientServiceRequests } from '../hooks/useClientServiceRequests';
 import { useClientSession } from '../hooks/useClientSession';
 import { useClientSwipe } from '../hooks/swipe/useClientSwipe';
 import { updateGuestAllergyPreferences, updateGuestBuffet } from '../services/guestApi';
-import { createSession } from '../services/menuApi';
+import { createSession, getSessionState } from '../services/menuApi';
 import { cancelOrderItem, createOrder } from '../services/orderApi';
 import { getDeviceToken } from '../utils/deviceToken';
 import { ClientConfirmationModal } from './components/ClientConfirmationModal';
@@ -32,6 +33,7 @@ export function ClientPage() {
   const { tableCode } = useParams<{ tableCode: string }>();
   const { showToast } = useToast();
   const session = useClientSession();
+  const { sessionState: clientSessionState, setSessionState: setClientSessionState } = session;
   const cart = useClientCart();
   const swipe = useClientSwipe();
   const clientOrders = useClientOrders(tableCode);
@@ -54,6 +56,7 @@ export function ClientPage() {
     onOrdersChanged: clientOrders.refetch,
     onServiceRequestsChanged: serviceRequests.refetch,
     onSessionChanged: reload,
+    onPaymentCompleted: () => session.setSessionState('completed'),
     onMenuChanged: reload,
     onReconnect: () => {
       void serviceRequests.refetch();
@@ -79,6 +82,39 @@ export function ClientPage() {
     count: cart.cartCount,
   });
   const pendingOrderRequestId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!tableCode || clientSessionState !== 'ready' || data.sessionId === null) return;
+
+    let isActive = true;
+    const activeSessionId = data.sessionId;
+
+    const checkSessionState = async () => {
+      try {
+        const currentSession = await getSessionState(tableCode, activeSessionId, getDeviceToken());
+
+        if (isActive && currentSession.status === 'completed') {
+          setClientSessionState('completed');
+        }
+      } catch {
+        // A transient request failure must not remove the client from the menu.
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') void checkSessionState();
+    };
+
+    void checkSessionState();
+    const stateTimer = window.setInterval(checkSessionState, 3_000);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      isActive = false;
+      window.clearInterval(stateTimer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [clientSessionState, data.sessionId, setClientSessionState, tableCode]);
 
   const needsAllergySetup =
     data.guest !== null && data.guest.allergy_preferences_completed_at === null;
@@ -399,6 +435,10 @@ export function ClientPage() {
         message={`Mesa ${session.table.table_number}: a aguardar aprovação de um funcionário.`}
       />
     );
+  }
+
+  if (session.sessionState === 'completed') {
+    return <ThankYouScreen tableNumber={session.table?.table_number} />;
   }
 
   return (

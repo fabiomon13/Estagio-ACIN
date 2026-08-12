@@ -919,6 +919,7 @@ def register_payment_and_close_session(
     db.refresh(payment)
 
     broadcast_staff_dashboard(db, session_id=session.id)
+    publish_session_event(session.id, "payment.completed")
 
     return StaffPaymentResponse(
         session_id=session.id,

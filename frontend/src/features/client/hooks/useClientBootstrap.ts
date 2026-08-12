@@ -18,6 +18,7 @@ import {
   getBuffets,
   getCategories,
   getMenu,
+  getSessionState,
   getTags,
   getTable,
   type Buffet,
@@ -56,6 +57,7 @@ export function useClientBootstrap({
   const [categories, setCategories] = useState<CategorySection['category'][]>([]);
   const [selectedBuffetId, setSelectedBuffetId] = useState<number | null>(null);
   const [guest, setGuest] = useState<Guest | null>(null);
+  const [sessionId, setSessionId] = useState<number | null>(null);
   const [allergenTags, setAllergenTags] = useState<MenuTag[]>([]);
   const buffetItemsCacheRef = useRef(new Map<number, MenuItem[]>());
 
@@ -134,6 +136,8 @@ export function useClientBootstrap({
         setGuestCount(Math.min(2, currentTable.max_capacity));
         try {
           const activeSession = await getActiveSession(tableCode, { signal: controller.signal });
+          setSessionId(activeSession.id);
+          sessionStorage.setItem(`client-session:${tableCode}`, String(activeSession.id));
           if (!activeSession.is_approved || activeSession.waiter_id === null) {
             setSessionState('waiting');
             setStatus('ready');
@@ -143,6 +147,30 @@ export function useClientBootstrap({
           }
         } catch (requestError) {
           if (requestError instanceof ApiError && requestError.status === 404) {
+            const storedSessionId = Number(sessionStorage.getItem(`client-session:${tableCode}`));
+
+            if (Number.isSafeInteger(storedSessionId) && storedSessionId > 0) {
+              try {
+                const previousSession = await getSessionState(
+                  tableCode,
+                  storedSessionId,
+                  getDeviceToken(),
+                  { signal: controller.signal },
+                );
+
+                if (previousSession.status === 'completed') {
+                  setSessionId(storedSessionId);
+                  setSessionState('completed');
+                  setStatus('ready');
+                  return;
+                }
+
+                sessionStorage.removeItem(`client-session:${tableCode}`);
+              } catch {
+                sessionStorage.removeItem(`client-session:${tableCode}`);
+              }
+            }
+
             setSessionState('setup');
             setStatus('ready');
             return;
@@ -239,6 +267,7 @@ export function useClientBootstrap({
       setSelectedBuffetId,
       guest,
       setGuest,
+      sessionId,
       allergenTags,
       selectedAllergenTagIds,
       menuStations,
