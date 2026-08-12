@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   BillFilledIcon,
@@ -8,7 +8,8 @@ import {
   SettingsFilledIcon,
   SettingsIcon,
 } from '../../../../components/icons';
-import { useAuth } from '../../../auth/hooks/useAuth';
+import { useAuth } from '../../../auth/hooks/AuthContext';
+import { StaffProfileModal } from '../../../auth/components/StaffProfileModal';
 import KitchenSideBar from './kitchen-side-bar/KitchenSideBar';
 
 const TABS = [
@@ -37,11 +38,14 @@ const TABS = [
 
 export function KitchenLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const { staff, logout } = useAuth();
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const { staff } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
   const activeTabId = TABS.find((tab) => tab.path === location.pathname)?.id ?? TABS[0].id;
+
+  const closeProfileModal = useCallback(() => setIsProfileModalOpen(false), []);
 
   return (
     <div className="flex h-screen bg-background">
@@ -59,13 +63,16 @@ export function KitchenLayout() {
         profile={{
           name: staff?.name ?? '',
           role: staff?.role ?? 'chef',
-          onClick: () => logout(),
+          profileImageUrl: staff?.photo_url ?? undefined,
+          onClick: () => setIsProfileModalOpen(true),
         }}
       />
 
       <main className="flex-1 overflow-y-auto">
         <Outlet />
       </main>
+
+      <StaffProfileModal isOpen={isProfileModalOpen} onClose={closeProfileModal} />
     </div>
   );
 }

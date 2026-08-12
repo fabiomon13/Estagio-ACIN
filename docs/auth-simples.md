@@ -17,11 +17,13 @@ Cada pessoa da equipa faz login e só vê as páginas do seu papel:
 1. Fazes login com email + password.
 2. O backend confirma a password e devolve um "crachá digital" (um cookie), guardado automaticamente pelo navegador.
 3. Esse crachá acompanha, sozinho, todos os pedidos seguintes que o navegador faz ao backend.
-4. **A parte importante:** em cada pedido, o backend não confia só no crachá — vai sempre confirmar na base de dados: "esta conta ainda existe? ainda está ativa? qual é o papel dela *agora*?"
+4. **A parte importante:** em cada pedido, o backend não confia só no crachá — vai sempre confirmar na base de dados: "esta conta ainda existe? qual é o papel dela *agora*?"
 
 ## Porque é feito assim
 
-Se um Admin desativar alguém, ou mudar o papel de alguém, isso aplica-se **imediatamente** — mesmo que essa pessoa já tenha um crachá válido nas próximas horas. Não precisa de fazer logout/login outra vez para o sistema "perceber" a mudança. Isto foi decidido de propósito: a segurança está sempre atualizada, nunca desatualizada.
+Se um Admin mudar o papel de alguém, isso aplica-se **imediatamente** — mesmo que essa pessoa já tenha um crachá válido nas próximas horas. Não precisa de fazer logout/login outra vez para o sistema "perceber" a mudança. Isto foi decidido de propósito: a segurança está sempre atualizada, nunca desatualizada.
+
+**Nota sobre `is_active`:** este campo já não tem nada a ver com autenticação. É apenas uma flag de "estou de turno agora", que cada pessoa da equipa liga/desliga a si própria (`PATCH /api/auth/me/shift`). Uma conta com `is_active=false` continua a conseguir fazer login e a usar tudo o que o seu papel permite — não é um "conta desativada".
 
 ## O que precisas de saber para desenvolveres a tua parte
 
@@ -58,8 +60,7 @@ def ver_algo(staff: Staff = Depends(get_current_staff)):
 Já existe: `POST /api/staff`, só o Admin pode chamá-lo. Recebe nome, email, password e o papel (`admin`/`waiter`/`chef`), e cria a conta (com a password já em hash, como as outras). Já há um formulário de teste em `/admin` que o chama — simples, ainda por melhorar visualmente.
 
 **O que ainda falta neste endpoint:**
-- Toda conta nova fica sempre **ativa** (`is_active=True`) — não há forma de a criar desativada, nem de a desativar/reativar depois.
-- Não dá para ver se uma conta está ativa através da API (`StaffOut` não inclui esse campo) — só olhando diretamente na base de dados, ou tentando fazer login com essa conta (se estiver desativada, o login dá o erro "Conta desativada...").
+- Toda conta nova fica sempre com `is_active=True`. Como explicado acima, isto já não é "conta ativa/desativada" — é só o estado inicial do turno (cada pessoa muda o seu próprio via `PATCH /api/auth/me/shift`).
 - Também não existe nenhum endpoint para **listar** todo o staff — só se vê consultando a base de dados diretamente.
 
 ### Se estás a criar uma página nova no frontend

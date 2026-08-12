@@ -1,24 +1,39 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { AvatarIcon, EyeIcon, EyeOffIcon } from '../../../components/icons';
 import Button from '../../../components/ui/button/Button';
 import Input from '../../../components/ui/input/Input';
+import ProfileMenuTrigger from '../../../components/ui/profile-menu-trigger/ProfileMenuTrigger';
 import Radio from '../../../components/ui/radio/Radio';
-import { ApiError, apiFetch } from '../../../services/api/client';
-import type { AuthStaff, StaffRole } from '../../auth/hooks/useAuth';
+import { useToast } from '../../../components/ui/toast/useToast';
+import { apiFetch } from '../../../services/api/client';
+import { StaffProfileModal } from '../../auth/components/StaffProfileModal';
+import { useAuth } from '../../auth/hooks/AuthContext';
+import type { AuthStaff, StaffRole } from '../../auth/hooks/AuthContext';
+import { getAdminCreateStaffError } from '../utils/adminErrors';
+
+const ROLE_OPTIONS: { value: StaffRole; label: string }[] = [
+  { value: 'waiter', label: 'Waiter' },
+  { value: 'chef', label: 'Chef' },
+  { value: 'admin', label: 'Admin' },
+];
 
 export function AdminPage() {
+  const { staff } = useAuth();
+  const { showToast } = useToast();
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [role, setRole] = useState<StaffRole>('waiter');
   const [error, setError] = useState<string | null>(null);
-  const [createdStaff, setCreatedStaff] = useState<AuthStaff | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
-    setCreatedStaff(null);
     setIsSubmitting(true);
 
     try {
@@ -27,81 +42,153 @@ export function AdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password, role }),
       });
-      setCreatedStaff(staff);
+      showToast({
+        variant: 'success',
+        title: 'Conta criada',
+        description: `${staff.name} (${staff.email}, ${staff.role})`,
+      });
       setName('');
       setEmail('');
       setPassword('');
       setRole('waiter');
     } catch (err) {
-      setError(err instanceof ApiError ? err.detail : 'Erro ao criar conta.');
+      setError(getAdminCreateStaffError(err));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="p-5 flex flex-col gap-4 max-w-sm">
-      <h1>Admin</h1>
+    <div className="min-h-screen bg-background px-6 py-10 sm:px-8 lg:px-12">
+      <header className="flex flex-col gap-3 md:gap-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold tracking-widest text-primary uppercase">
+              Staff Portal
+            </p>
+            <h1 className="mt-2 text-3xl font-bold text-content sm:text-4xl">Admin</h1>
+          </div>
 
-      <h2 className="font-semibold">Create staff account (test form)</h2>
+          {staff && (
+            <>
+              {/* Mobile: avatar-only, the full trigger doesn't fit next to the title */}
+              <button
+                type="button"
+                onClick={() => setIsProfileOpen(true)}
+                aria-label="Abrir perfil"
+                className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-surface-raised sm:hidden"
+              >
+                {staff.photo_url ? (
+                  <img
+                    src={staff.photo_url}
+                    alt={`Fotografia de ${staff.name}`}
+                    className="size-full rounded-full object-cover"
+                  />
+                ) : (
+                  <AvatarIcon size={22} className="text-content-muted" />
+                )}
+              </button>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <Input
-          label="Name"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          required
-        />
-
-        <Input
-          label="Email"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          required
-        />
-
-        <Input
-          label="Password"
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          required
-        />
-
-        <div className="flex flex-col gap-2">
-          <Radio
-            name="staff-role"
-            label="Waiter"
-            checked={role === 'waiter'}
-            onChange={() => setRole('waiter')}
-          />
-          <Radio
-            name="staff-role"
-            label="Chef"
-            checked={role === 'chef'}
-            onChange={() => setRole('chef')}
-          />
-          <Radio
-            name="staff-role"
-            label="Admin"
-            checked={role === 'admin'}
-            onChange={() => setRole('admin')}
-          />
+              <div className="hidden w-56 shrink-0 sm:block">
+                <ProfileMenuTrigger
+                  name={staff.name}
+                  role={staff.role}
+                  profileImageUrl={staff.photo_url ?? undefined}
+                  onClick={() => setIsProfileOpen(true)}
+                />
+              </div>
+            </>
+          )}
         </div>
 
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+        <p className="text-content-subtle text-md">
+          Gere os acessos da equipa e cria novas contas para os diferentes espaços da aplicação.
+        </p>
+        <div className="w-full h-0.5 bg-border rounded-full"></div>
+      </header>
 
-        {createdStaff && (
-          <p className="text-green-500 text-sm">
-            Created: {createdStaff.name} ({createdStaff.email}, {createdStaff.role})
+      <div className="flex flex-col justify-center items-center mt-6">
+        <div className="w-full max-w-xl rounded-xl border border-border bg-surface-raised p-5 sm:p-6 md:p-8">
+          <h2 className="text-lg font-semibold text-content">Criar conta de staff</h2>
+          <p className="mt-1 text-sm text-content-subtle">
+            Cria uma nova conta de staff com acesso à cozinha, ao serviço de mesas ou à
+            administração.
           </p>
-        )}
+          <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+            <Input
+              label="Name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              required
+            />
 
-        <Button type="submit" variant="primary" disabled={isSubmitting}>
-          {isSubmitting ? 'Creating...' : 'Create staff'}
-        </Button>
-      </form>
+            <Input
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+            />
+
+            <Input
+              label="Password"
+              type={isPasswordVisible ? 'text' : 'password'}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              helperText="Mínimo 8 caracteres, com maiúscula, minúscula, número e símbolo."
+              required
+              endAdornment={
+                <button
+                  type="button"
+                  onClick={() => setIsPasswordVisible((visible) => !visible)}
+                  aria-label={isPasswordVisible ? 'Hide password' : 'Show password'}
+                  aria-pressed={isPasswordVisible}
+                  className="flex size-5 items-center justify-center text-content-subtle transition-colors hover:text-content"
+                >
+                  {isPasswordVisible ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+                </button>
+              }
+            />
+
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-content">Função</span>
+              <div className="flex gap-2">
+                {ROLE_OPTIONS.map((option) => (
+                  <div
+                    key={option.value}
+                    className={`p-4 w-full rounded-xl items-center ${role === option.value ? 'border border-primary/40 bg-primary/10' : 'border border-border bg-surface'}`}
+                  >
+                    <Radio
+                      name="staff-role"
+                      label={option.label}
+                      checked={role === option.value}
+                      onChange={() => setRole(option.value)}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {error && (
+              <p role="alert" aria-live="polite" className="text-sm text-danger">
+                {error}
+              </p>
+            )}
+
+            <Button
+              className="mt-6"
+              type="submit"
+              variant="primary"
+              fullWidth
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'A criar...' : 'Criar conta'}
+            </Button>
+          </form>
+        </div>
+      </div>
+
+      <StaffProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
     </div>
   );
 }

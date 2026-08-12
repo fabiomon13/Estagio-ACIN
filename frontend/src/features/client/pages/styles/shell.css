@@ -1,0 +1,245 @@
+﻿/* Page shell and animated views */
+body:has(.client-shell) {
+  width: 100%;
+  min-width: 20rem;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0;
+  overflow-x: hidden;
+  background: #080b10;
+  overscroll-behavior: none;
+}
+
+.client-shell {
+  width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+  background: #080b10;
+  padding-top: calc(7rem + env(safe-area-inset-top));
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  color: var(--color-content);
+  touch-action: pan-y;
+}
+
+.client-view-stage {
+  position: relative;
+  width: 100%;
+  overflow-x: clip;
+  overflow-y: visible;
+  isolation: isolate;
+}
+
+.client-view {
+  width: 100%;
+  overflow: clip;
+  background: #080b10;
+  isolation: isolate;
+  backface-visibility: hidden;
+  transform-style: flat;
+  transition: transform 260ms cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.client-view.is-active {
+  position: relative;
+  z-index: 1;
+}
+
+.client-view.is-inactive {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: max(100%, calc(100dvh - 7rem - env(safe-area-inset-top)));
+  overflow: clip;
+  background: #080b10;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.client-view.is-inactive:not(.is-swipe-target):not(.is-transition-path) {
+  visibility: hidden;
+}
+
+.client-view.is-dragging,
+.client-view.is-settling {
+  will-change: transform;
+}
+
+.client-view.is-dragging {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .client-view {
+    transition: none;
+    animation: none;
+  }
+}
+
+.client-shell,
+.client-shell *,
+.client-shell *::before,
+.client-shell *::after,
+.client-header,
+.client-header *,
+.client-header *::before,
+.client-header *::after {
+  box-sizing: border-box;
+}
+
+.client-shell *,
+.client-header * {
+  min-width: 0;
+}
+
+.client-buffet,
+.client-orders,
+.client-swipe-menu-preview {
+  max-width: 66rem;
+}
+
+.client-station-section {
+  padding-top: 0.8rem;
+  scroll-margin-top: calc(10.75rem + env(safe-area-inset-top));
+}
+
+.client-station-section + .client-station-section {
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 1.5rem;
+}
+
+.client-station-heading {
+  margin: 0;
+  font-size: 1.4rem;
+  line-height: 1.15;
+}
+
+.client-menu-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 42rem;
+  padding-top: 0.75rem;
+  scroll-margin-top: calc(10.75rem + env(safe-area-inset-top));
+}
+
+.client-menu-section + .client-menu-section {
+  margin-top: 1.5rem;
+}
+
+.client-menu-section h3 {
+  font-size: 1.1rem;
+  line-height: 1.25;
+}
+
+/* Full-screen client messages */
+.client-message-screen {
+  display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
+  place-items: center;
+  background: #0d1419;
+  padding: max(2rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right))
+    max(2rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left));
+  color: var(--color-content);
+  text-align: center;
+}
+
+.client-message-content {
+  display: grid;
+  width: min(100%, 28rem);
+  justify-items: center;
+  gap: 2rem;
+}
+
+.client-message-logo {
+  width: min(15rem, 70vw);
+  height: auto;
+}
+
+.client-message-text {
+  max-width: 26rem;
+  margin: 0;
+  color: var(--color-content-muted);
+  font-size: clamp(1.05rem, 4.5vw, 1.25rem);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.client-message-text.is-error {
+  color: #fca5a5;
+}
+
+.client-message-action {
+  min-width: 11rem;
+  padding-inline: 1.75rem;
+}
+
+/* Final state shown after the waiter closes a paid table. */
+.client-thank-you-screen {
+  display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
+  place-items: center;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 38%, rgb(255 87 87 / 14%), transparent 15rem), #080b10;
+  padding: max(2rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right))
+    max(2rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left));
+  color: var(--color-content);
+  text-align: center;
+}
+
+.client-thank-you-content {
+  display: grid;
+  width: min(100%, 27rem);
+  justify-items: center;
+  gap: clamp(1.75rem, 5vh, 2.75rem);
+}
+
+.client-thank-you-logo {
+  width: min(13rem, 62vw);
+}
+
+.client-thank-you-icon {
+  display: grid;
+  width: 5.5rem;
+  height: 5.5rem;
+  place-items: center;
+  border: 1px solid rgb(255 87 87 / 35%);
+  border-radius: 50%;
+  background: rgb(255 87 87 / 10%);
+  color: var(--color-primary);
+  box-shadow: 0 0 3rem rgb(255 87 87 / 18%);
+}
+
+.client-thank-you-icon svg {
+  width: 2.75rem;
+}
+
+.client-thank-you-eyebrow {
+  margin: 0 0 0.65rem;
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.client-thank-you-content h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 8vw, 2.75rem);
+  line-height: 1.1;
+}
+
+.client-thank-you-content div > p:last-child {
+  max-width: 22rem;
+  margin: 1rem auto 0;
+  color: var(--color-content-muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.client-thank-you-farewell {
+  margin: 0;
+  color: var(--color-content-subtle);
+  font-size: 0.9rem;
+}

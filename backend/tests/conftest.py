@@ -16,6 +16,7 @@ from app.db.base import Base
 from app.db.dependencies import get_db as get_db_dependencies
 from app.main import app
 from app.models.category import Category
+from app.models.buffet import Buffet
 from app.models.dining_session import DiningSession
 from app.models.guest import Guest
 from app.models.menu_item import MenuItem
@@ -23,9 +24,13 @@ from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.order_item_status import OrderItemStatus
 from app.models.restaurant_table import RestaurantTable
+from app.models.service_request import ServiceRequest
+from app.models.service_request_status import ServiceRequestStatus
+from app.models.service_request_type import ServiceRequestType
 from app.models.staff import Staff
 from app.models.staff_role import StaffRole
 from app.models.station import Station
+from app.modules.client.security import hash_device_token
 
 # Require a separate test database.
 if not settings.test_database_url:
@@ -118,6 +123,39 @@ def staff_roles(db_session) -> dict[str, StaffRole]:
     return roles
 
 
+@pytest.fixture
+def service_request_statuses(db_session) -> dict[str, ServiceRequestStatus]:
+    """Create the service-request states used by staff workflows."""
+    names = ["Pending", "Resolved", "Cancelled"]
+    statuses = {
+        name: ServiceRequestStatus(name=name, alias=name.lower())
+        for name in names
+    }
+    db_session.add_all(statuses.values())
+    db_session.commit()
+    return statuses
+
+
+@pytest.fixture
+def service_request_types(db_session) -> dict[str, ServiceRequestType]:
+    """Create the request types supported by the staff contract."""
+    types = {
+        "assistance": ServiceRequestType(
+            name="Assistance",
+            alias="assistance",
+            is_high_priority=True,
+        ),
+        "payment_request": ServiceRequestType(
+            name="Payment request",
+            alias="payment_request",
+            is_high_priority=False,
+        ),
+    }
+    db_session.add_all(types.values())
+    db_session.commit()
+    return types
+
+
 # ---- Factories ---------------------------------------------------------
 
 @pytest.fixture
@@ -162,12 +200,21 @@ def make_table(db_session):
 
 @pytest.fixture
 def make_session(db_session, make_table):
-    def _make(table: RestaurantTable | None = None) -> DiningSession:
+    def _make(
+        table: RestaurantTable | None = None,
+        *,
+        num_clients: int = 1,
+        is_active: bool = True,
+        is_approved: bool = True,
+        waiter: Staff | None = None,
+    ) -> DiningSession:
         dining_session = DiningSession(
             table_id=(table or make_table()).id,
-            num_clients=1,
-            is_active=True,
-            is_approved=True,
+            waiter_id=waiter.id if waiter else None,
+            num_clients=num_clients,
+            is_active=is_active,
+            is_approved=is_approved,
+            approved_at=(datetime.now(timezone.utc) if is_approved and waiter else None),
         )
         db_session.add(dining_session)
         db_session.commit()
@@ -181,15 +228,65 @@ def make_guest(db_session, make_session):
     def _make(
         session: DiningSession | None = None,
         created_at: datetime | None = None,
+        device_token: str | None = None,
+        buffet: Buffet | None = None,
     ) -> Guest:
         guest = Guest(
             session_id=(session or make_session()).id,
-            device_token_hash=_unique("token"),
+            device_token_hash=(
+                hash_device_token(device_token)
+                if device_token is not None
+                else _unique("token")
+            ),
+            buffet_id=buffet.id if buffet else None,
             created_at=created_at or datetime.now(timezone.utc),
         )
         db_session.add(guest)
         db_session.commit()
         return guest
+
+    return _make
+
+
+@pytest.fixture
+def make_buffet(db_session):
+    def _make(*, price: str = "25.00", waste_charge: str = "6.00") -> Buffet:
+        buffet = Buffet(
+            name=_unique("Test Buffet"),
+            alias=_unique("test-buffet").replace(" ", "-"),
+            price=price,
+            waste_charge=waste_charge,
+        )
+        db_session.add(buffet)
+        db_session.commit()
+        return buffet
+
+    return _make
+
+
+@pytest.fixture
+def make_service_request(
+    db_session,
+    make_session,
+    service_request_statuses,
+    service_request_types,
+):
+    def _make(
+        session: DiningSession | None = None,
+        *,
+        type_alias: str = "assistance",
+        status_name: str = "Pending",
+        resolved_at: datetime | None = None,
+    ) -> ServiceRequest:
+        request = ServiceRequest(
+            session_id=(session or make_session()).id,
+            type_id=service_request_types[type_alias].id,
+            status_id=service_request_statuses[status_name].id,
+            resolved_at=resolved_at,
+        )
+        db_session.add(request)
+        db_session.commit()
+        return request
 
     return _make
 

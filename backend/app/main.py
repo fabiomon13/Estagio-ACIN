@@ -1,14 +1,16 @@
 import asyncio
 from contextlib import asynccontextmanager
-
+from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
-
+from fastapi.staticfiles import StaticFiles
 from app.api.deps import ACCESS_TOKEN_COOKIE_NAME, InvalidSessionError
 from app.api.router import api_router
+from app.core.cache_policy import get_cache_control
+from app.core.config import settings
 from app.core.websocket_manager import connection_manager
 
 
@@ -29,12 +31,39 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+        "http://localhost:5174",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def add_public_cache_headers(request: Request, call_next):
+    """Cache only public catalogue data and static assets.
+
+    Session, order, billing and staff responses deliberately remain uncached.
+    """
+    response = await call_next(request)
+
+    if request.method in {"GET", "HEAD"} and response.status_code == 200:
+        cache_control = get_cache_control(request.url.path)
+
+        if cache_control is not None:
+            response.headers["Cache-Control"] = cache_control
+
+    return response
+
+# Serves whatever image files a teammate drops into static/menu-items/ at
+# /static/menu-items/<filename> -- e.g. static/menu-items/salmon-nigiri.jpg
+# becomes http://localhost:8000/static/menu-items/salmon-nigiri.jpg. No code
+# change needed per image, see app/db/seeds/menu_items.py for the naming
+# convention (filename == the menu item's alias).
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+STATIC_DIR.mkdir(parents=True, exist_ok=True)
+(STATIC_DIR / "menu-items").mkdir(parents=True, exist_ok=True)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 @app.exception_handler(InvalidSessionError)
 async def handle_invalid_session(request: Request, exc: InvalidSessionError) -> JSONResponse:

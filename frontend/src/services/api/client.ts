@@ -1,4 +1,24 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '');
+
+export function buildWebSocketUrl(path: string): string {
+  const url = new URL(API_BASE_URL);
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  url.pathname = `${url.pathname.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
+  url.search = '';
+  url.hash = '';
+
+  return url.toString();
+}
+
+// Backend fields like MenuItem.photo_url store a root-relative path
+// (e.g. "/static/menu-items/still-water.jpg") -- resolving it directly as
+// an <img src> would resolve against the FRONTEND's own origin, not the
+// backend's, so it must be prefixed with the API's origin explicitly.
+export function toMediaUrl(path: string | null): string | null {
+  if (!path) return null;
+  return /^https?:\/\//.test(path) ? path : `${API_ORIGIN}${path}`;
+}
 
 export class ApiError extends Error {
   status: number;

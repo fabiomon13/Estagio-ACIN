@@ -54,6 +54,39 @@ def test_returns_items_within_the_date_range(
     assert [row["order_item_id"] for row in body["items"]] == [item_today.id]
 
 
+def test_date_range_uses_lisbon_time_not_utc(
+    client, login_as, make_staff, db_session,
+    order_item_statuses, staff_roles,
+    make_table, make_session, make_guest, make_order, make_order_item, make_menu_item,
+):
+    """The DB session runs in UTC. In August, Lisbon is UTC+1 (WEST/DST), so
+    an item updated shortly after UTC midnight is still "yesterday" in
+    Lisbon, and an item updated shortly before UTC midnight is already
+    "today" in Lisbon. A naive UTC comparison gets both of these backwards."""
+    chef = make_staff(role_name="Chef")
+    login_as(chef)
+
+    # 2026-08-03 23:30 UTC = 2026-08-04 00:30 Lisbon -- "today" locally,
+    # even though it's still "2026-08-03" in UTC.
+    just_after_lisbon_midnight, _, _ = _make_dish_at_table(
+        db_session, make_table, make_session, make_guest, make_order, make_order_item, make_menu_item,
+        table_number=1, when=datetime(2026, 8, 3, 23, 30, tzinfo=timezone.utc),
+    )
+    # 2026-08-03 21:00 UTC = 2026-08-03 22:00 Lisbon -- still "yesterday"
+    # locally, well before the Lisbon day boundary.
+    _make_dish_at_table(
+        db_session, make_table, make_session, make_guest, make_order, make_order_item, make_menu_item,
+        table_number=2, when=datetime(2026, 8, 3, 21, 0, tzinfo=timezone.utc),
+    )
+
+    response = client.get("/api/kitchen/history", params={"date_from": "2026-08-04"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total_count"] == 1
+    assert [row["order_item_id"] for row in body["items"]] == [just_after_lisbon_midnight.id]
+
+
 def test_filters_by_status_table_dish_and_station(
     client, login_as, make_staff, db_session,
     order_item_statuses, staff_roles,
@@ -158,6 +191,23 @@ def test_rejects_date_to_before_date_from(client, login_as, make_staff, staff_ro
     response = client.get(
         "/api/kitchen/history",
         params={"date_from": "2026-08-04", "date_to": "2026-08-01"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_rejects_a_status_filter_that_does_not_match_a_real_status_name(
+    client, login_as, make_staff, staff_roles,
+):
+    chef = make_staff(role_name="Chef")
+    login_as(chef)
+
+    # Wrong case -- OrderItemStatus.name is "Pending", not "pending". Before
+    # the fix this silently matched zero rows (200, empty list) instead of
+    # rejecting the request.
+    response = client.get(
+        "/api/kitchen/history",
+        params={"date_from": "2026-08-04", "status": "pending"},
     )
 
     assert response.status_code == 422

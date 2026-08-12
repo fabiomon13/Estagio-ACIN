@@ -7,7 +7,7 @@ from app.core.roles import staff_role
 from app.core.security import create_access_token, verify_password
 from app.db.dependencies import get_db
 from app.models.staff import Staff
-from app.schemas.auth import LoginRequest, StaffOut
+from app.schemas.auth import LoginRequest, StaffOut, UpdateShiftStatusRequest
 
 router = APIRouter(prefix="/auth")
 
@@ -19,6 +19,7 @@ def staff_to_out(staff: Staff) -> StaffOut:
         email=staff.email,
         role=staff_role(staff),
         photo_url=staff.photo_url,
+        is_active=staff.is_active,
     )
 
 
@@ -41,12 +42,6 @@ def login(credentials: LoginRequest, response: Response, db: Session = Depends(g
     if staff is None or not verify_password(credentials.password, staff.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=INVALID_CREDENTIALS_DETAIL)
 
-    if not staff.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Conta desativada. Contacta um administrador.",
-        )
-
     token = create_access_token(staff.id)
     _set_access_token_cookie(response, token)
     return staff_to_out(staff)
@@ -59,4 +54,16 @@ def logout(response: Response) -> None:
 
 @router.get("/me", response_model=StaffOut)
 def me(staff: Staff = Depends(get_current_staff)) -> StaffOut:
+    return staff_to_out(staff)
+
+
+@router.patch("/me/shift", response_model=StaffOut)
+def update_my_shift_status(
+    payload: UpdateShiftStatusRequest,
+    staff: Staff = Depends(get_current_staff),
+    db: Session = Depends(get_db),
+) -> StaffOut:
+    staff.is_active = payload.is_active
+    db.commit()
+    db.refresh(staff)
     return staff_to_out(staff)

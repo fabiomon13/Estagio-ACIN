@@ -32,9 +32,12 @@ def test_creating_an_order_broadcasts_the_active_tickets(
 
     create_order(order_data=order_data, guest=guest, db=db_session)
 
-    assert len(broadcasts) == 1
-    topic, message = broadcasts[0]
-    assert topic == "kitchen"
+    # Other topics (e.g. a client-facing notification) may also broadcast on
+    # order creation -- only the kitchen board's own broadcast is this
+    # test's concern, so pick it out instead of assuming it's the only one.
+    kitchen_broadcasts = [(topic, message) for topic, message in broadcasts if topic == "kitchen"]
+    assert len(kitchen_broadcasts) == 1
+    _topic, message = kitchen_broadcasts[0]
     assert "tickets" in message
     assert any(
         order_item["menu_item_name"] == menu_item.name
@@ -69,4 +72,5 @@ def test_a_duplicate_order_request_does_not_broadcast_again(
     create_order(order_data=order_data, guest=guest, db=db_session)
     create_order(order_data=order_data, guest=guest, db=db_session)  # retry, same client_request_id
 
-    assert len(broadcasts) == 1
+    kitchen_broadcasts = [topic for topic, _message in broadcasts if topic == "kitchen"]
+    assert len(kitchen_broadcasts) == 1

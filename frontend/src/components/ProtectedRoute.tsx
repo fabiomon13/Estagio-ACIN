@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
-import { ROLE_HOME_ROUTE, useAuth } from '../features/auth/hooks/useAuth';
-import type { StaffRole } from '../features/auth/hooks/useAuth';
+import { ROLE_HOME_ROUTE, useAuth } from '../features/auth/hooks/AuthContext';
+import type { StaffRole } from '../features/auth/hooks/AuthContext';
 import Button from './ui/button/Button';
 import Loader from './ui/loader/Loader';
 import { useToast } from './ui/toast/useToast';

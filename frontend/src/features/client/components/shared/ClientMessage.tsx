@@ -1,0 +1,39 @@
+import LogoIcon from '../../../../components/icons/Logo';
+
+type ClientMessageProps = {
+  message: string;
+  isError?: boolean;
+  actionLabel?: string;
+  onAction?: () => void;
+};
+
+export function ClientMessage({
+  message,
+  isError = false,
+  actionLabel,
+  onAction,
+}: ClientMessageProps) {
+  const hasAction = Boolean(actionLabel && onAction);
+
+  return (
+    <main className="client-message-screen">
+      <div className="client-message-content">
+        <LogoIcon className="client-message-logo" />
+
+        <p
+          className={['client-message-text', isError ? 'is-error' : ''].filter(Boolean).join(' ')}
+          role={isError ? 'alert' : 'status'}
+          aria-live={isError ? 'assertive' : 'polite'}
+        >
+          {message}
+        </p>
+
+        {hasAction && (
+          <button type="button" className="session-submit client-message-action" onClick={onAction}>
+            {actionLabel}
+          </button>
+        )}
+      </div>
+    </main>
+  );
+}

@@ -1,58 +1,102 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
-import { AdminPage } from '../features/admin/pages/AdminPage';
 import { AuthProvider } from '../features/auth/hooks/useAuth';
-import { LoginPage } from '../features/auth/pages/LoginPage';
-import { ClientPage } from '../features/client/pages/ClientPage';
-import { KitchenLayout } from '../features/kitchen/components/kitchen-layout/KitchenLayout';
-import { KitchenHistoryPage } from '../features/kitchen/pages/KitchenHistoryPage';
-import { KitchenPage } from '../features/kitchen/pages/KitchenPage';
-import { KitchenSettingsPage } from '../features/kitchen/pages/KitchenSettingsPage';
-import { NotFoundPage } from '../features/not-found/pages/NotFoundPage';
-import { StaffPage } from '../features/staff/pages/StaffPage';
 import { ProtectedRoute } from '../components/ProtectedRoute';
+
+const AdminPage = lazy(() =>
+  import('../features/admin/pages/AdminPage').then(({ AdminPage }) => ({ default: AdminPage })),
+);
+const ClientPage = lazy(() =>
+  import('../features/client/pages/ClientPage').then(({ ClientPage }) => ({ default: ClientPage })),
+);
+const KitchenLayout = lazy(() =>
+  import('../features/kitchen/components/kitchen-layout/KitchenLayout').then(
+    ({ KitchenLayout }) => ({ default: KitchenLayout }),
+  ),
+);
+const KitchenHistoryPage = lazy(() =>
+  import('../features/kitchen/pages/KitchenHistoryPage').then(({ KitchenHistoryPage }) => ({
+    default: KitchenHistoryPage,
+  })),
+);
+const KitchenPage = lazy(() =>
+  import('../features/kitchen/pages/KitchenPage').then(({ KitchenPage }) => ({
+    default: KitchenPage,
+  })),
+);
+const KitchenSettingsPage = lazy(() =>
+  import('../features/kitchen/pages/KitchenSettingsPage').then(({ KitchenSettingsPage }) => ({
+    default: KitchenSettingsPage,
+  })),
+);
+const LandingPage = lazy(() => import('../features/landing-page/pages/LandingPage'));
+const LoginPage = lazy(() =>
+  import('../features/auth/pages/LoginPage').then(({ LoginPage }) => ({ default: LoginPage })),
+);
+const NotFoundPage = lazy(() =>
+  import('../features/not-found/pages/NotFoundPage').then(({ NotFoundPage }) => ({
+    default: NotFoundPage,
+  })),
+);
+const StaffPage = lazy(() =>
+  import('../features/staff/pages/StaffPage').then(({ StaffPage }) => ({ default: StaffPage })),
+);
+
+function RouteFallback() {
+  return (
+    <div
+      className="grid min-h-dvh place-items-center bg-app px-6 text-center text-content-muted"
+      role="status"
+    >
+      A carregar…
+    </div>
+  );
+}
 
 export function AppRouter() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
 
-          <Route path="/table/:tableCode" element={<ClientPage />} />
+            <Route path="/table/:tableCode" element={<ClientPage />} />
 
-          <Route path="/login" element={<LoginPage />} />
-          <Route
-            path="/kitchen"
-            element={
-              <ProtectedRoute roles={['chef']}>
-                <KitchenLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<KitchenPage />} />
-            <Route path="historial" element={<KitchenHistoryPage />} />
-            <Route path="configuracao" element={<KitchenSettingsPage />} />
-          </Route>
-          <Route
-            path="/staff"
-            element={
-              <ProtectedRoute roles={['waiter']}>
-                <StaffPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminPage />
-              </ProtectedRoute>
-            }
-          />
+            <Route path="/login" element={<LoginPage />} />
+            <Route
+              path="/kitchen"
+              element={
+                <ProtectedRoute roles={['chef']}>
+                  <KitchenLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<KitchenPage />} />
+              <Route path="historial" element={<KitchenHistoryPage />} />
+              <Route path="configuracao" element={<KitchenSettingsPage />} />
+            </Route>
+            <Route
+              path="/staff"
+              element={
+                <ProtectedRoute roles={['waiter']}>
+                  <StaffPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute roles={['admin']}>
+                  <AdminPage />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Suspense>
       </AuthProvider>
     </BrowserRouter>
   );

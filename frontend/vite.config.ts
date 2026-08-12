@@ -14,8 +14,12 @@ export default defineConfig({
         ws: true,
       },
     },
+    port: 5174,
+    strictPort: true,
   },
   test: {
     environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    clearMocks: true,
   },
 });

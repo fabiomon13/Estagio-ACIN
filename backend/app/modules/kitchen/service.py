@@ -3,11 +3,15 @@
 # (update_item_status). Kept separate from router.py so it can be unit
 # tested with a plain db_session, without going through HTTP/auth.
 
+import logging
 from datetime import date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.orm import Session, aliased, joinedload, selectinload
+
+from app.modules.staff.websockets.staff_realtime import broadcast_staff_dashboard
 
 from app.models.category import Category
 from app.models.dining_session import DiningSession
@@ -31,6 +35,9 @@ from app.modules.kitchen.schemas import (
     KitchenTicketOut,
 )
 from app.modules.kitchen.websocket import KITCHEN_TOPIC, connection_manager
+from app.modules.client.realtime import publish_guest_event
+
+logger = logging.getLogger(__name__)
 
 # An item is "active" while it's in one of these statuses. Served/Cancelled/Returned are terminal: once
 # every item on a ticket is terminal, the ticket drops off the board
@@ -63,6 +70,7 @@ def get_active_tickets(db: Session) -> list[KitchenTicketOut]:
                 joinedload(Order.guest)
                 .joinedload(Guest.dining_session)
                 .joinedload(DiningSession.restaurant_table),
+                joinedload(Order.guest).joinedload(Guest.allergy_tags),
                 selectinload(Order.items).joinedload(OrderItem.status),
                 selectinload(Order.items)
                 .joinedload(OrderItem.menu_item)
@@ -132,12 +140,15 @@ def _build_ticket(order: Order, guest_numbers: dict[int, int]) -> KitchenTicketO
 
 def _build_item(item: OrderItem) -> KitchenOrderItemOut:
     station = item.menu_item.effective_station
+    dish_tag_names = sorted(link.tag.name for link in item.menu_item.tag_links)
+    guest_allergy_names = {tag.name for tag in item.order.guest.allergy_tags}
     return KitchenOrderItemOut(
         order_item_id=item.id,
         menu_item_name=item.menu_item.name,
         quantity=item.quantity,
         notes=item.notes,
-        tags=sorted(link.tag.name for link in item.menu_item.tag_links),
+        tags=dish_tag_names,
+        matched_allergens=[name for name in dish_tag_names if name in guest_allergy_names],
         station_id=station.id,
         station=station.name,
         status=item.status.name,
@@ -160,6 +171,7 @@ def update_item_status(db: Session, order_item_id: int, new_status: str) -> Kitc
         order_item_id,
         options=[
             joinedload(OrderItem.status),
+            joinedload(OrderItem.order),
             joinedload(OrderItem.menu_item).joinedload(MenuItem.station),
             joinedload(OrderItem.menu_item)
             .joinedload(MenuItem.category)
@@ -167,6 +179,7 @@ def update_item_status(db: Session, order_item_id: int, new_status: str) -> Kitc
             joinedload(OrderItem.menu_item)
             .selectinload(MenuItem.tag_links)
             .joinedload(TagItem.tag),
+            joinedload(OrderItem.order).joinedload(Order.guest).joinedload(Guest.allergy_tags),
         ],
     )
 
@@ -206,6 +219,12 @@ def update_item_status(db: Session, order_item_id: int, new_status: str) -> Kitc
     db.refresh(item)
 
     broadcast_active_tickets(db)
+    broadcast_staff_dashboard(db, session_id=item.order.guest.session_id)
+    
+    try:
+        publish_guest_event(item.order.guest_id, "orders.changed")
+    except Exception:
+        logger.exception("publish_guest_event failed after a successful commit")
 
     return _build_item(item)
 
@@ -213,21 +232,34 @@ def update_item_status(db: Session, order_item_id: int, new_status: str) -> Kitc
 def broadcast_active_tickets(db: Session) -> None:
     """Pushes a fresh board snapshot to every connected kitchen client. Called
     after any commit that can change what the board shows -- an item's status
-    changing, or a new order arriving from the client module."""
-    tickets = get_active_tickets(db)
-    connection_manager.broadcast(
-        KITCHEN_TOPIC,
-        {"tickets": [ticket.model_dump(mode="json") for ticket in tickets]},  # full snapshot, not a diff
-    )
+    changing, or a new order arriving from the client module.
+
+    Failures are logged and swallowed, not raised: the triggering write already
+    committed, so a broken broadcast shouldn't 500 an otherwise-successful request.
+    """
+    try:
+        tickets = get_active_tickets(db)
+        connection_manager.broadcast(
+            KITCHEN_TOPIC,
+            {"tickets": [ticket.model_dump(mode="json") for ticket in tickets]},  # full snapshot, not a diff
+        )
+    except Exception:
+        logger.exception("broadcast_active_tickets failed after a successful commit")
 
 
 def _date_range_bounds(date_from: date, date_to: date | None) -> tuple[datetime, datetime]:
     """Half-open [start, end) range covering every moment of every day from
-    date_from through date_to (inclusive), avoiding time.max microsecond
-    edge cases."""
+    date_from through date_to (inclusive), avoiding time.max microsecond edge cases.
+
+    Built as Europe/Lisbon-aware datetimes, not naive ones: the DB session runs
+    in UTC, so a naive bound here would be read as UTC midnight instead of
+    Lisbon midnight, shifting the day's boundary by the UTC offset.
+    """
     end_date = date_to or date_from
-    range_start = datetime.combine(date_from, time.min)
-    range_end = datetime.combine(end_date + timedelta(days=1), time.min)
+    range_start = datetime.combine(date_from, time.min, tzinfo=ZoneInfo("Europe/Lisbon"))
+    range_end = datetime.combine(
+        end_date + timedelta(days=1), time.min, tzinfo=ZoneInfo("Europe/Lisbon")
+    )
     return range_start, range_end
 
 

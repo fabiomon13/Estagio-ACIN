@@ -1,3 +1,5 @@
+import os
+
 from sqlalchemy import func, select
 
 from app.core.security import hash_password
@@ -6,12 +8,18 @@ from app.models.staff import Staff
 from app.models.staff_role import StaffRole
 
 DEV_ADMIN_EMAIL = "admin@scanandserve.dev"
-DEV_ADMIN_PASSWORD = "ChangeMe123!"
+
+# Overridable so a presentation database can seed a different password
+# without touching the shared dev default documented in docs/auth.md --
+# set SEED_STAFF_PASSWORD in backend/.env.presentation before reseeding.
+SEED_PASSWORD = os.environ.get("SEED_STAFF_PASSWORD", "ChangeMe123!")
+
+DEV_ADMIN_PASSWORD = SEED_PASSWORD
 
 DEV_WAITERS = [
-    {"name": "Waiter 1", "email": "waiter1@scanandserve.dev", "password": "ChangeMe123!"},
-    {"name": "Waiter 2", "email": "waiter2@scanandserve.dev", "password": "ChangeMe123!"},
-    {"name": "Waiter 3", "email": "waiter3@scanandserve.dev", "password": "ChangeMe123!"}
+    {"name": "Waiter 1", "email": "waiter1@scanandserve.dev", "password": SEED_PASSWORD},
+    {"name": "Waiter 2", "email": "waiter2@scanandserve.dev", "password": SEED_PASSWORD},
+    {"name": "Waiter 3", "email": "waiter3@scanandserve.dev", "password": SEED_PASSWORD}
 ]
 
 def seed_dev_admin() -> None:

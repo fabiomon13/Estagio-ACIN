@@ -9,7 +9,7 @@ Design rationale and the full decision history live in `backend/docs/superpowers
 ## The short version
 
 - Staff log in with email + password. The backend sets an `httpOnly` cookie holding a JWT.
-- The JWT carries **only the staff's id** — never their role, never their active/inactive status. Every request re-reads both from the database.
+- The JWT carries **only the staff's id** — never their role. Every request re-reads the role from the database. (`is_active` isn't an auth concept at all — it's a self-service shift-status flag; see "Shift status" below.)
 - Roles are `admin`, `waiter`, `chef`. **Admin can access everything**, regardless of what a route or page declares.
 - Backend routes are protected with a `require_role(...)` dependency. Frontend pages are protected with a `<ProtectedRoute roles={[...]}>` wrapper.
 
@@ -17,9 +17,11 @@ Design rationale and the full decision history live in `backend/docs/superpowers
 
 This is the one decision worth understanding before touching anything else here.
 
-If the JWT carried the role, a staff member's access would be frozen at whatever it was when they logged in — for up to 8 hours (the token's lifetime), even if an Admin deactivates their account or changes their role five minutes later. There would be no way to revoke access without also invalidating the token itself.
+If the JWT carried the role, a staff member's access would be frozen at whatever it was when they logged in — for up to 8 hours (the token's lifetime), even if an Admin changes their role five minutes later. There would be no way to revoke access without also invalidating the token itself.
 
-Instead, the token only proves *who* someone is (their staff id). On every single request, the backend loads that `Staff` row fresh and checks its **current** role and **current** `is_active` value. Deactivate someone or change their role, and it takes effect on their very next request — no re-login required, no token blacklist needed.
+Instead, the token only proves *who* someone is (their staff id). On every single request, the backend loads that `Staff` row fresh and checks its **current** role. Change someone's role, and it takes effect on their very next request — no re-login required, no token blacklist needed.
+
+Note: `is_active` is **not** part of this — see "Shift status (`is_active`)" below. It's not an auth gate; it plays no part in `get_current_staff` or `require_role(...)`.
 
 ## Request flow
 
@@ -28,17 +30,27 @@ Instead, the token only proves *who* someone is (their staff id). On every singl
 1. `POST /api/auth/login` with `{ email, password }`.
 2. Backend verifies the password (Argon2, via `pwdlib`) against `Staff.password_hash`.
 3. On success, it issues a JWT containing only `sub` (the staff id), `iat`, and `exp` — and sets it as an `access_token` cookie: `httpOnly`, `SameSite=Lax`, `Secure` in production only, `path=/`, `max_age` matching the token's expiry (8h by default).
-4. Response body is the logged-in staff's public info: `{ id, name, email, role }`.
+4. Response body is the logged-in staff's public info (`StaffOut`): `{ id, name, email, role, photo_url, is_active }`.
 
 **Every subsequent request to a protected route**
 
 1. The browser sends the `access_token` cookie automatically (no frontend code needed for this, beyond `credentials: 'include'` on the fetch).
-2. `get_current_staff` (backend) decodes the JWT to get the staff id, then loads that `Staff` row from the database. If the cookie is missing, the token is invalid/expired, the staff no longer exists, or `is_active` is `false` → `401`.
+2. `get_current_staff` (backend) decodes the JWT to get the staff id, then loads that `Staff` row from the database. If the cookie is missing, the token is invalid/expired, or the staff no longer exists → `401`.
 3. `require_role(...)` compares that staff's **current** role (read in step 2, not from the token) against the roles the route allows. Admin always passes. Anyone else who doesn't match → `403`.
 
 **Logout**
 
 `POST /api/auth/logout` clears the cookie (same name and path it was set with) and returns `204`.
+
+**Shift status (`is_active`)**
+
+`is_active` on `Staff` is a self-service "am I currently on shift" flag, not an account-enabled/disabled gate. It has no bearing on authentication or authorization — `get_current_staff` and `require_role(...)` never look at it, and a staff member with `is_active=False` can still log in and use every route their role allows.
+
+`PATCH /api/auth/me/shift` lets the logged-in staff member toggle their own status:
+
+- Request body: `{ "is_active": boolean }`
+- Response: the full, updated `StaffOut` (same shape as login/`/me`)
+- No role restriction beyond being logged in — anyone can set their own shift status; there's no way to set someone else's.
 
 ## File map
 
@@ -50,7 +62,7 @@ Instead, the token only proves *who* someone is (their staff id). On every singl
 | `core/security.py` | `hash_password` / `verify_password` (Argon2), `create_access_token` / `decode_access_token` (JWT). |
 | `core/config.py` | `jwt_secret_key`, `jwt_algorithm`, `jwt_expire_minutes`, `cookie_secure` — all read from `.env`. |
 | `api/deps.py` | `get_current_staff` and `require_role(...)` — the two dependencies everything else is built on. Also `ACCESS_TOKEN_COOKIE_NAME`, `INVALID_CREDENTIALS_DETAIL`, `FORBIDDEN_DETAIL`. |
-| `api/routes/auth.py` | `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`. |
+| `api/routes/auth.py` | `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `PATCH /auth/me/shift`. |
 | `api/routes/staff.py` | `GET /staff/ping` — a minimal example of a role-protected route (see below for how to write your own). |
 | `db/seeds/staff.py` | Creates the dev Admin account (see "Local setup"). |
 
@@ -59,7 +71,7 @@ Instead, the token only proves *who* someone is (their staff id). On every singl
 | File | What it's for |
 |---|---|
 | `services/api/client.ts` | `apiFetch<T>(path, init?)` — the only function that should be used to call the API. Always sends the cookie, throws `ApiError` (with `status` and `detail`) on failure, handles `204` responses. |
-| `features/auth/hooks/useAuth.tsx` | `AuthProvider` (wraps the whole app in `AppRouter.tsx`) and the `useAuth()` hook: `{ staff, isLoading, login, logout }`. Also exports the `StaffRole` type and `ROLE_HOME_ROUTE` (which page is "home" for each role). |
+| `features/auth/hooks/useAuth.tsx` | `AuthProvider` (wraps the whole app in `AppRouter.tsx`) and the `useAuth()` hook: `{ staff, isLoading, connectionError, retryConnection, login, logout, updateShiftStatus }`. Also exports the `StaffRole` type and `ROLE_HOME_ROUTE` (which page is "home" for each role). |
 | `features/auth/pages/LoginPage.tsx` | The login form. |
 | `components/ProtectedRoute.tsx` | Wraps a route element; redirects to `/login` if there's no session, or to the user's own role-home page (with a toast) if they're logged in but the role doesn't match. |
 
@@ -104,8 +116,7 @@ def my_tables(staff: Staff = Depends(get_current_staff)):
 It hashes the password with the same `hash_password()` used everywhere else, rejects an already-used email with `409`, and looks up the matching `StaffRole` row via `role_display_name()` (the enum→DB-name counterpart of `staff_role()`, both in `app/core/roles.py`). `AdminPage.tsx` has a bare-bones test form calling it — functional, but not styled/finished.
 
 **Known limitations of this endpoint (not yet built):**
-- New accounts are always created with `is_active=True` — there's no way to create a deactivated account, and no way to deactivate/reactivate one afterward. There's no `PATCH /api/staff/{id}` (or similar) yet.
-- `is_active` isn't exposed anywhere in the API — `StaffOut` only has `id`, `name`, `email`, `role`. The only ways to check an account's active status today are querying the database directly, or trying to log in as that account (a deactivated account gets the `403` "Conta desativada..." response — that's the only user-facing signal).
+- New accounts are always created with `is_active=True`. As covered above, `is_active` is a self-service shift-status flag, not an account-enabled gate — there's no concept of a "deactivated account" to create or restore, and no admin-side way to disable someone else's account.
 - There's no `GET /api/staff` (list) endpoint either, so there's no way to see all staff accounts through the API — only by querying the database.
 
 ## Using this in new frontend pages
@@ -182,7 +193,6 @@ The app's UI text is European Portuguese (pt-PT), including these auth-related m
 | Situation | Message |
 |---|---|
 | Wrong password, or no account with that email | `Credenciais inválidas` |
-| Correct password, but the account is deactivated | `Conta desativada. Contacta um administrador.` |
 | Logged in, but role doesn't allow this page/action | `Não tens permissão para aceder a esta página.` |
 
 The first message is intentionally identical for "wrong password" and "no such email" — this avoids revealing whether a given email belongs to a real account.
