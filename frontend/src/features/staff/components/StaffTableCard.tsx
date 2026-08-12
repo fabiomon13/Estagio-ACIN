@@ -2,6 +2,7 @@ import Badge from '../../../components/ui/badge/Badge';
 import Button from '../../../components/ui/button/Button';
 import type { StaffDashboardTable } from '../types/staff.types';
 import { formatTimeSince, tableBorder, translateState } from '../utils/staffDashboard.utils';
+import { formatPrice } from '../../client/utils/formatPrice';
 
 type TableRequest = {
   id: number;
@@ -14,6 +15,7 @@ type DeactivateConfirmation = {
 
 type StaffTableCardProps = {
   table: StaffDashboardTable;
+  canManage: boolean;
   hasUrgentAssistance: boolean;
   assistanceRequest?: TableRequest;
   paymentRequest?: TableRequest;
@@ -41,6 +43,7 @@ type StaffTableCardProps = {
 
 export function StaffTableCard({
   table,
+  canManage,
   hasUrgentAssistance,
   assistanceRequest,
   paymentRequest,
@@ -73,9 +76,11 @@ export function StaffTableCard({
           return;
         }
 
-        onOpenDetails(table);
+        if (canManage) {
+          onOpenDetails(table);
+        }
       }}
-      className={`cursor-pointer rounded-3xl border-2 p-4 transition-opacity hover:opacity-90 ${
+      className={`${canManage ? 'cursor-pointer hover:opacity-90' : 'cursor-default'} rounded-3xl border-2 p-4 transition-opacity ${
         hasUrgentAssistance
           ? 'border-danger bg-danger/10 shadow-[0_0_0_1px_var(--color-danger)]'
           : hasPaymentRequest
@@ -111,7 +116,9 @@ export function StaffTableCard({
           {translateState(table.state)}
         </Badge>
 
-        <span className="text-sm text-content-muted">{table.total}</span>
+        <span className="text-sm text-content-muted">
+          {formatPrice(table.total.replace('$', ''))}
+        </span>
       </div>
 
       {table.state === 'awaiting_approval' && sessionId !== null && (
@@ -147,7 +154,7 @@ export function StaffTableCard({
       )}
 
       <div className="mt-4 flex gap-2">
-        {table.state === 'active' && sessionId !== null && (
+        {canManage && table.state === 'active' && sessionId !== null && (
           <Button
             size="sm"
             variant="danger"
@@ -159,6 +166,7 @@ export function StaffTableCard({
       </div>
 
       {table.state !== 'inactive' &&
+        canManage &&
         sessionId !== null &&
         confirmingDeactivate?.sessionId === sessionId && (
           <div className="mt-4 rounded-2xl border border-border-strong bg-surface p-4">
@@ -184,7 +192,7 @@ export function StaffTableCard({
           </div>
         )}
 
-      {hasAssistance && assistanceRequest && (
+      {canManage && hasAssistance && assistanceRequest && (
         <div className="mt-4 rounded-2xl border border-danger bg-danger/10 p-3">
           <div className="flex items-center justify-between">
             <div>
@@ -223,7 +231,7 @@ export function StaffTableCard({
         </div>
       )}
 
-      {hasPaymentRequest && !hasAssistance && paymentRequest && sessionId !== null && (
+      {canManage && hasPaymentRequest && !hasAssistance && paymentRequest && sessionId !== null && (
         <div className="mt-4 rounded-2xl border border-info bg-info/10 p-3">
           <div className="flex items-center justify-between">
             <div>

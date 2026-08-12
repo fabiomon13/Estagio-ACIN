@@ -2,6 +2,7 @@ import Modal from '../../../components/ui/modal/Modal';
 import Button from '../../../components/ui/button/Button';
 import type { StaffDashboardTable, StaffSessionBill } from '../types/staff.types';
 import { formatTimeSince, translateState } from '../utils/staffDashboard.utils';
+import { formatPrice } from '../../client/utils/formatPrice';
 
 type StaffTableDetailsModalProps = {
   table: StaffDashboardTable;
@@ -10,10 +11,6 @@ type StaffTableDetailsModalProps = {
   onClose: () => void;
   onCloseAccount: () => void;
 };
-
-function money(value: string | number) {
-  return `$${Number(value).toFixed(2)}`;
-}
 
 export function StaffTableDetailsModal({
   table,
@@ -44,7 +41,7 @@ export function StaffTableDetailsModal({
 
         {!canManage && (
           <div className="mt-4 rounded-xl border border-info bg-info/10 p-3 text-sm text-info">
-            Read-only view. This table is assigned to another waiter.
+            Vista apenas de leitura. Esta mesa está atribuída a outro empregado.
           </div>
         )}
 
@@ -56,17 +53,17 @@ export function StaffTableDetailsModal({
             >
               <div className="flex items-center justify-between">
                 <p className="font-semibold">{guest.label}</p>
-                <p className="font-semibold">{money(guest.total)}</p>
+                <p className="font-semibold">{formatPrice(guest.total)}</p>
               </div>
 
               <div className="mt-2 flex justify-between text-sm text-content-muted">
                 <span>Buffet</span>
-                <span>{money(guest.buffet_total)}</span>
+                <span>{formatPrice(guest.buffet_total)}</span>
               </div>
 
               <div className="mt-1 flex justify-between text-sm text-content-muted">
                 <span>Extras</span>
-                <span>{money(guest.extras_total)}</span>
+                <span>{formatPrice(guest.extras_total)}</span>
               </div>
             </article>
           ))}
@@ -74,20 +71,20 @@ export function StaffTableDetailsModal({
 
         <div className="mt-4 rounded-xl bg-surface-raised p-4">
           <div className="flex justify-between text-sm text-content-muted">
-            <span>Guests subtotal</span>
-            <span>{money(bill.subtotal)}</span>
+            <span>Subtotal dos clientes</span>
+            <span>{formatPrice(bill.subtotal)}</span>
           </div>
 
           <div className="mt-2 flex justify-between border-t border-border pt-3 text-lg font-semibold">
-            <span>Table total</span>
-            <span>{money(bill.total)}</span>
+            <span>Total da mesa</span>
+            <span>{formatPrice(bill.total)}</span>
           </div>
         </div>
 
         {canManage && table.session_id !== null && (
           <div className="mt-4">
             <Button className="w-full" variant="danger" onClick={onCloseAccount}>
-              Close account
+              Fechar conta
             </Button>
           </div>
         )}

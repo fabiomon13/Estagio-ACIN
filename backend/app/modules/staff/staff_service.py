@@ -709,21 +709,21 @@ def list_staff_sessions(
     if only_active:
         q = q.filter(DiningSession.is_active == True)
 
-        sessions = q.order_by(DiningSession.start_time.desc()).limit(limit).offset(offset).all()
+    sessions = q.order_by(DiningSession.start_time.desc()).limit(limit).offset(offset).all()
 
-        items = []
-        for s in sessions:
-            items.append({
-                "id": s.id,
-                "table_number": s.restaurant_table.table_number if s.restaurant_table else None,
-                "is_active": s.is_active,
-                "is_approved": s.is_approved,
-                "guests_count": s.num_clients,
-                "start_time": s.start_time,
-                "end_time": s.end_time
-            })
+    items = []
+    for s in sessions:
+        items.append({
+            "id": s.id,
+            "table_number": s.restaurant_table.table_number if s.restaurant_table else None,
+            "is_active": s.is_active,
+            "is_approved": s.is_approved,
+            "guests_count": s.num_clients,
+            "start_time": s.start_time,
+            "end_time": s.end_time
+        })
 
-        return items
+    return items
 
 def associate_staff_to_tables(db: Session) -> tuple[Staff, int]:
     """

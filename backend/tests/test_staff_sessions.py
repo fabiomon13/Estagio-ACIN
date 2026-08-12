@@ -67,6 +67,24 @@ def test_list_staff_sessions_returns_only_active_sessions_by_default(
     assert [item["id"] for item in response.json()["items"]] == [active.id]
 
 
+def test_list_staff_sessions_includes_inactive_sessions_when_requested(
+    client,
+    login_as,
+    make_staff,
+    make_table,
+    make_session,
+):
+    waiter = make_staff("Waiter")
+    active = make_session(make_table(), waiter=waiter)
+    inactive = make_session(make_table(), waiter=waiter, is_active=False)
+    login_as(waiter)
+
+    response = client.get("/api/staff/sessions?only_active=false")
+
+    assert response.status_code == 200
+    assert {item["id"] for item in response.json()["items"]} == {active.id, inactive.id}
+
+
 # Verifies that a waiter can inspect an assigned session but not another table.
 def test_session_detail_is_restricted_to_assigned_waiter_or_admin(
     client,
