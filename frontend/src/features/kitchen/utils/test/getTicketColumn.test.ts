@@ -13,7 +13,7 @@ function makeItem(overrides: Partial<KitchenOrderItem> = {}): KitchenOrderItem {
     tags: [],
     matched_allergens: [],
     station_id: 1,
-    station: 'Hot / Wok',
+    station: 'Hot/Wok',
     status: 'Pending',
     created_at: '2026-07-30T12:00:00Z',
     ...overrides,
