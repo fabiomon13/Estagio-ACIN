@@ -1,7 +1,10 @@
 import type { TicketUrgency } from '../components/ticket-card/TicketCard.types';
 
-const WARNING_THRESHOLD_MINUTES = 10;
-const DANGER_THRESHOLD_MINUTES = 20;
+// Overridable per Vite mode (e.g. frontend/.env.presentation) so a live
+// demo can shorten these without touching the real dev/prod defaults --
+// see VITE_KITCHEN_WARNING_MINUTES / VITE_KITCHEN_DANGER_MINUTES.
+const WARNING_THRESHOLD_MINUTES = Number(import.meta.env.VITE_KITCHEN_WARNING_MINUTES) || 10;
+const DANGER_THRESHOLD_MINUTES = Number(import.meta.env.VITE_KITCHEN_DANGER_MINUTES) || 20;
 
 const URGENCY_RANK: Record<TicketUrgency, number> = {
   danger: 2,

@@ -30,6 +30,27 @@ HISTORY_ROUNDS = [
     (4, 19, 3, [("beer", 2, "served"), ("chocolate-mousse", 2, "served")]),
     (5, 13, 5, [("salmon-nigiri", 2, "served"), ("miso-ramen", 1, "served")]),
     (5, 20, 6, [("shrimp-tempura", 2, "served"), ("beer", 1, "cancelled")]),
+    (6, 13, 7, [("tonkotsu-ramen", 1, "served"), ("edamame", 1, "served")]),
+    (6, 19, 8, [("tuna-sashimi", 1, "served"), ("house-red-wine", 1, "served")]),
+    (7, 13, 9, [("chicken-gyoza", 2, "served"), ("cheesecake", 1, "served")]),
+    (7, 20, 10, [("spicy-tuna-uramaki", 1, "served"), ("kirin-beer", 1, "served")]),
+    (8, 12, 1, [("veggie-ramen", 1, "served"), ("mochi-selection", 1, "served")]),
+    (8, 19, 7, [("aburi-salmon-nigiri", 2, "served"), ("miso-soup", 1, "served")]),
+    (9, 13, 8, [("mix-sashimi-12", 1, "served"), ("traditional-sake", 1, "served")]),
+    (9, 21, 9, [("takoyaki", 1, "cancelled"), ("dragon-uramaki", 1, "served")]),
+    (10, 13, 10, [("salmon-carpaccio", 1, "served"), ("matcha-ice-cream", 1, "served")]),
+    (10, 20, 1, [("soft-shell-crab-tempura", 1, "returned"), ("dorayaki", 1, "served")]),
+    # Extra rounds appended (not inserted above) so existing rows stay keyed
+    # to the same round_index on a re-seed -- these pile more items onto day
+    # 1 specifically, so filtering the Kitchen History page to just
+    # "yesterday" is enough to see pagination kick in (18 items > PAGE_SIZE).
+    (1, 9, 8, [("edamame", 1, "served"), ("still-water", 2, "served")]),
+    (1, 10, 5, [("chicken-ramen", 1, "served"), ("cheesecake", 1, "served")]),
+    (1, 11, 3, [("tuna-nigiri", 2, "served"), ("sparkling-water", 1, "served")]),
+    (1, 12, 9, [("veggie-gyoza", 2, "served"), ("ramune-original", 1, "served")]),
+    (1, 14, 7, [("spring-rolls", 1, "served"), ("iced-matcha-tea", 1, "served")]),
+    (1, 15, 10, [("ebi-nigiri", 2, "cancelled"), ("choya-plum-wine", 1, "served")]),
+    (1, 16, 6, [("salmon-uramaki", 1, "served"), ("dorayaki", 1, "returned")]),
 ]
 
 
@@ -38,16 +59,18 @@ def _local_datetime(days_ago: int, hour: int) -> datetime:
     return datetime(target_day.year, target_day.month, target_day.day, hour, 0, tzinfo=LISBON)
 
 
-def _any_waiter(session: Session) -> Staff:
-    waiter = session.scalar(
-        select(Staff)
-        .join(StaffRole, Staff.staff_role_id == StaffRole.id)
-        .where(func.lower(StaffRole.alias) == "waiter")
-        .order_by(Staff.id)
+def _all_waiters(session: Session) -> list[Staff]:
+    waiters = list(
+        session.scalars(
+            select(Staff)
+            .join(StaffRole, Staff.staff_role_id == StaffRole.id)
+            .where(func.lower(StaffRole.alias) == "waiter")
+            .order_by(Staff.id)
+        )
     )
-    if waiter is None:
+    if not waiters:
         raise RuntimeError("No waiter staff found. Run the staff seeder first.")
-    return waiter
+    return waiters
 
 
 def seed_order_history() -> None:
@@ -56,7 +79,7 @@ def seed_order_history() -> None:
     (is_active=False), so none of this shows up as a live table -- safe to
     run on a presentation database, unlike order_items.py's live demo data."""
     with SessionLocal() as session:
-        waiter = _any_waiter(session)
+        waiters = _all_waiters(session)
 
         tables_by_number = {
             table.table_number: table for table in session.scalars(select(RestaurantTable)).all()
@@ -97,6 +120,7 @@ def seed_order_history() -> None:
                 continue
 
             when = _local_datetime(days_ago, hour)
+            waiter = waiters[round_index % len(waiters)]
 
             dining_session = DiningSession(
                 table_id=table.id,

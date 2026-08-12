@@ -1,7 +1,8 @@
 import type { KitchenTicket } from '../types/kitchen.types';
 import type { KitchenNotificationType } from '../types/notification.types';
 
-const READY_TOO_LONG_THRESHOLD_MS = 1 * 60_000;
+const READY_TOO_LONG_THRESHOLD_MINUTES = import.meta.env.MODE === 'development' ? 5 : 1;
+const READY_TOO_LONG_THRESHOLD_MS = READY_TOO_LONG_THRESHOLD_MINUTES * 60_000;
 
 export type DetectedNotificationEvent = {
   type: KitchenNotificationType;
@@ -65,7 +66,7 @@ export function detectNotificationEvents(
         notifiedReadyTooLongItemIds.add(item.order_item_id);
         events.push({
           type: 'ready-too-long',
-          message: `${item.menu_item_name} pronto há mais de 1 min — Mesa ${ticket.table_number}`,
+          message: `${item.menu_item_name} pronto há mais de ${READY_TOO_LONG_THRESHOLD_MINUTES} min — Mesa ${ticket.table_number}`,
         });
       }
     }
