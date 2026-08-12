@@ -99,7 +99,9 @@ function createWebSocketBaseUrl(apiBaseUrl: string): URL {
 
   // Attempt to create a URL object from the API base URL, throwing an error for invalid URLs
   try {
-    url = new URL(apiBaseUrl);
+    url = apiBaseUrl.startsWith('/')
+      ? new URL(apiBaseUrl, window.location.origin)
+      : new URL(apiBaseUrl);
   } catch {
     throw new Error('VITE_API_URL contém um URL inválido');
   }

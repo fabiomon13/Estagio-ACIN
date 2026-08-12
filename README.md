@@ -10,7 +10,7 @@ Internship group project. Frontend in React + TypeScript + Tailwind + React Rout
 
 `mise.toml` pins the Node and Python versions for anyone using [mise](https://mise.jdx.dev/). It's optional — if you don't use mise, just make sure you have Node 24 and Python 3.13 installed however you prefer (nvm, pyenv, system install, etc.).
 
-## Docker (recommended for local development)
+## Docker
 
 Set `DATABASE_URL` and the remaining secrets in `backend/.env`. With Docker
 Desktop running, start the frontend and backend from the repository root:

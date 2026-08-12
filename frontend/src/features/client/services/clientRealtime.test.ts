@@ -24,6 +24,14 @@ describe('buildClientWebSocketUrl', () => {
     expect(buildClientWebSocketUrl('mesa')).toBe('wss://example.test/api/client/tables/mesa/ws');
   });
 
+  it('resolve um caminho relativo usando a origem atual', () => {
+    vi.stubEnv('VITE_API_URL', '/api');
+
+    expect(buildClientWebSocketUrl('mesa')).toBe(
+      `${window.location.origin.replace(/^http/, 'ws')}/api/client/tables/mesa/ws`,
+    );
+  });
+
   // test case to check if empty table codes, missing configuration, invalid URLs, and insecure protocols are rejected
   it('rejeita código vazio, configuração ausente, URL inválido e protocolo inseguro', () => {
     vi.stubEnv('VITE_API_URL', 'http://localhost:8000/api');
