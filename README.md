@@ -10,6 +10,26 @@ Internship group project. Frontend in React + TypeScript + Tailwind + React Rout
 
 `mise.toml` pins the Node and Python versions for anyone using [mise](https://mise.jdx.dev/). It's optional — if you don't use mise, just make sure you have Node 24 and Python 3.13 installed however you prefer (nvm, pyenv, system install, etc.).
 
+## Docker
+
+Set `DATABASE_URL` and the remaining secrets in `backend/.env`. With Docker
+Desktop running, start the frontend and backend from the repository root:
+
+```bash
+docker compose down
+docker compose up --build -d
+docker run --rm cloudflare/cloudflared:latest tunnel --no-autoupdate --url http://host.docker.internal:5173
+```
+
+The frontend is available at `http://localhost:5173`, the API at
+`http://localhost:8000/api`, and the interactive API docs at
+`http://localhost:8000/docs`. Alembic migrations run automatically when the
+backend container starts.
+
+The backend connects to the PostgreSQL database configured in `backend/.env`
+(Neon in the current development setup). Stop the containers with
+`docker compose down`.
+
 ## Backend
 
 ```bash

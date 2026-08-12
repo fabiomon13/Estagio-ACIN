@@ -2,7 +2,7 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:80
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '');
 
 export function buildWebSocketUrl(path: string): string {
-  const url = new URL(API_BASE_URL);
+  const url = new URL(API_BASE_URL, window.location.origin);
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
   url.pathname = `${url.pathname.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
   url.search = '';
