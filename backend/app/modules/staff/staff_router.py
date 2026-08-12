@@ -37,6 +37,16 @@ def create_staff(payload: CreateStaffRequest, db: Session = Depends(get_db)) -> 
     return staff_to_out(staff)
 
 
+@router.get(
+    "",
+    response_model=list[StaffOut],
+    tags=["Staff - Management"],
+    dependencies=[Depends(require_role())],
+)
+def list_staff(db: Session = Depends(get_db)) -> list[StaffOut]:
+    return [staff_to_out(staff) for staff in staff_service.list_staff(db)]
+
+
 # Dashboard
 @router.get(
     "/dashboard",

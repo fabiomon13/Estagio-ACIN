@@ -159,6 +159,16 @@ def create_staff(db: Session, data: CreateStaffRequest) -> Staff:
     return staff
 
 
+def list_staff(db: Session) -> list[Staff]:
+    """List every staff account. Admin-only (enforced at the router)."""
+    return (
+        db.query(Staff)
+        .options(joinedload(Staff.staff_role))
+        .order_by(Staff.name)
+        .all()
+    )
+
+
 def get_staff_dashboard(db: Session, current_staff: Staff) -> StaffDashboard:
     """
     Fetches and formats all data for the staff dashboard[cite: 1].
