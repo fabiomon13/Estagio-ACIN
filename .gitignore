@@ -2,11 +2,13 @@
 .DS_Store
 
 # Python / backend
-backend/.venv
+.venv/
+backend/.venv/
 backend/**/__pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
+pytest-cache-files-*/
 
 # Environment variables
 .env
@@ -14,20 +16,29 @@ backend/**/__pycache__/
 !.env.example
 
 # Node / frontend
-frontend/node_modules
-frontend/dist
-frontend/dist-ssr
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/coverage/
 *.local
+
+# Temporary logs
+frontend/vite-dev.log
+frontend/vite-dev-error.log
+*.log
 
 # Editor
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 
-# Installed agent skills (personal, not part of the project)
+# Installed agent skills
 **/.claude/skills/
 **/.agents/
 **/skills-lock.json
 
-# Superpowers specs/plans (working docs, not part of the project)
+# Superpowers specs/plans
 docs/superpowers/
+
+# Claude Code project context
+CLAUDE.md

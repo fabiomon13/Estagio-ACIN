@@ -1,53 +1,84 @@
 // frontend/src/features/client/utils/deviceToken.ts
 
-const STORAGE_KEY = 'device_token';
+import { createUuid } from '../../../utils/createUuid';
+
+const STORAGE_KEY = 'scan-and-serve.device-token';
+const LEGACY_STORAGE_KEY = 'device_token';
 
 let memoryToken: string | null = null;
 
+// Retrieves the device token from memory, local storage, or generates a new one if not found.
 export function getDeviceToken(): string {
-  if (memoryToken) {
+  // Check if the token is already stored in memory
+  if (memoryToken !== null) {
     return memoryToken;
   }
 
-  try {
-    const storedToken =
-      typeof window === 'undefined' ? null : window.localStorage.getItem(STORAGE_KEY);
+  // Attempt to read the token from local storage
+  const storedToken = readStoredToken();
 
-    if (storedToken) {
-      memoryToken = storedToken;
-      return storedToken;
-    }
-  } catch {
-    // Continue with an in-memory token.
+  // If a token is found in local storage, store it in memory and return it
+  if (storedToken !== null) {
+    memoryToken = storedToken;
+    return storedToken;
   }
 
-  const token = createSecureToken();
+  // If no token is found, generate a new one, store it in memory and local storage, and return it
+  const newToken = createUuid();
 
-  memoryToken = token;
+  memoryToken = newToken;
+  persistToken(newToken);
 
-  try {
-    if (typeof window !== 'undefined') window.localStorage.setItem(STORAGE_KEY, token);
-  } catch {
-    // The token remains stable in memory for this session.
-  }
-
-  return token;
+  return newToken;
 }
 
-function createSecureToken(): string {
-  if (typeof globalThis.crypto?.randomUUID === 'function') {
-    return globalThis.crypto.randomUUID();
+function readStoredToken(): string | null {
+  // If running in a non-browser environment, return null
+  if (typeof window === 'undefined') {
+    return null;
   }
 
-  if (typeof globalThis.crypto?.getRandomValues !== 'function') {
-    throw new Error('Secure random number generation is unavailable.');
+  // Attempt to read the token from local storage, handling any potential errors
+  try {
+    const currentToken = normalizeToken(window.localStorage.getItem(STORAGE_KEY));
+
+    if (currentToken !== null) {
+      return currentToken;
+    }
+
+    const legacyToken = normalizeToken(window.localStorage.getItem(LEGACY_STORAGE_KEY));
+
+    if (legacyToken !== null) {
+      persistToken(legacyToken);
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+
+      return legacyToken;
+    }
+  } catch {
+    // If an error occurs while accessing local storage, return null
   }
 
-  const bytes = globalThis.crypto.getRandomValues(new Uint8Array(16));
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0'));
-  return `${hex.slice(0, 4).join('')}-${hex.slice(4, 6).join('')}-${hex
-    .slice(6, 8)
-    .join('')}-${hex.slice(8, 10).join('')}-${hex.slice(10).join('')}`;
+  return null;
+}
+
+// Persists the device token to local storage, handling any potential errors
+function persistToken(token: string): void {
+  // If running in a non-browser environment, do not attempt to persist the token
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  // Attempt to write the token to local storage, handling any potential errors
+  try {
+    window.localStorage.setItem(STORAGE_KEY, token);
+  } catch {
+    // If an error occurs while accessing local storage, return null
+  }
+}
+
+// Normalizes the token by trimming whitespace and returning null for empty strings
+function normalizeToken(token: string | null): string | null {
+  const normalizedToken = token?.trim();
+
+  return normalizedToken ? normalizedToken : null;
 }

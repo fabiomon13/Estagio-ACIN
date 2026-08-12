@@ -59,25 +59,31 @@ export type OrderRequestOptions = Readonly<{
   signal?: AbortSignal;
 }>;
 
+// Builds the URL path for the orders endpoint based on the provided table code
 function buildOrdersPath(tableCode: string): string {
   return `${buildClientTablePath(tableCode)}/orders`;
 }
 
+// Builds the URL path for a specific order item based on the provided table code, order ID, and order item ID
 function buildOrderItemPath(tableCode: string, orderId: OrderId, orderItemId: OrderItemId): string {
   return `${buildOrdersPath(tableCode)}/${orderId}/items/${orderItemId}`;
 }
 
+// Fetches the list of orders for the specified table code and device token, returning a Promise that resolves to an array of ClientOrder objects
 export function getOrders(
   tableCode: string,
   deviceToken: string,
   options: OrderRequestOptions = {},
 ): Promise<ClientOrder[]> {
   return apiFetch<ClientOrder[]>(buildOrdersPath(tableCode), {
-    headers: createDeviceHeaders(deviceToken),
+    headers: createDeviceHeaders(deviceToken, {
+      includeJson: true,
+    }),
     signal: options.signal,
   });
 }
 
+// Creates a new order for the specified table code, device token, and order input, returning a Promise that resolves to the created ClientOrder object
 export function createOrder(
   tableCode: string,
   deviceToken: string,
@@ -87,7 +93,9 @@ export function createOrder(
   validateCreateOrderInput(input);
   return apiFetch<ClientOrder>(buildOrdersPath(tableCode), {
     method: 'POST',
-    headers: createDeviceHeaders(deviceToken, true),
+    headers: createDeviceHeaders(deviceToken, {
+      includeJson: true,
+    }),
     signal: options.signal,
     body: JSON.stringify({
       client_request_id: input.clientRequestId,
@@ -100,6 +108,7 @@ export function createOrder(
   });
 }
 
+// Validates the input for creating an order, throwing a TypeError if any validation rules are violated
 function validateCreateOrderInput(input: CreateOrderInput): void {
   if (!input.clientRequestId.trim()) {
     throw new TypeError('A client request ID is required.');
@@ -117,6 +126,7 @@ function validateCreateOrderInput(input: CreateOrderInput): void {
   }
 }
 
+// Cancels a specific order item for the given table code, order ID, and order item ID, using the provided device token for authentication
 export function cancelOrderItem(
   tableCode: string,
   orderId: OrderId,

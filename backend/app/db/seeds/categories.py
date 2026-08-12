@@ -8,13 +8,20 @@ from app.models.station import Station
 
 
 DEFAULT_CATEGORIES = [
+    
+    ("Starters", "starters", "fryer"),
+    
+    ("Nigiri", "nigiri", "sushi-bar"),
+    ("Sashimi", "sashimi", "sushi-bar"),
+    ("Uramaki", "uramaki", "sushi-bar"),
+    ("Hosomaki", "hosomaki", "sushi-bar"),
+    
+    ("Tempura", "tempura", "fryer"),
+    ("Ramen", "ramen", "hot-wok"),
+    
     ("Soft Drinks & Water", "soft-drinks-water", "bar"),
     ("Alcoholic Drinks", "alcoholic-drinks", "bar"),
     ("Desserts", "desserts", "cold-pantry"),
-    ("Tempura", "tempura", "fryer"),
-    ("Ramen", "ramen", "hot-wok"),
-    ("Nigiri", "nigiri", "sushi-bar"),
-    ("Sashimi", "sashimi", "sushi-bar"),
 ]
 
 

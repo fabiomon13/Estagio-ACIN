@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -97,6 +98,7 @@ class SessionResponse(ResponseSchema):
 
         return self
 
+
 # Schema for guest creation request
 # buffet_id: int (greater than 0) or None
 # device_token: str (min length 32, max length 128)
@@ -124,6 +126,9 @@ class GuestBuffetUpdate(RequestSchema):
     description="Null removes the buffet selection",
 )
 
+class GuestAllergyPreferencesUpdate(RequestSchema):
+    allergy_tag_ids: list[int] = Field(default_factory=list, max_length=14)
+
 # Schema for guest response
 # id, session_id, buffet_id: int (greater than 0)
 # buffet_id can be None
@@ -131,6 +136,8 @@ class GuestResponse(ResponseSchema):
     id: int = Field(gt=0)
     session_id: int = Field(gt=0)
     buffet_id: int | None = Field(default=None, gt=0)
+    allergy_tag_ids: list[int] = Field(default_factory=list)
+    allergy_preferences_completed_at: datetime | None = None
 
 # Schema for buffet response
 # id: int (greater than 0)
@@ -424,3 +431,10 @@ class TipUpdate(RequestSchema):
         max_digits=10,
         decimal_places=2,
     )
+
+# Schema for client session state response
+# session: SessionResponse
+# status: "active", "completed" or "closed"
+class ClientSessionStateResponse(ResponseSchema):
+    session: SessionResponse
+    status: Literal["active", "completed", "closed"]

@@ -1,0 +1,116 @@
+﻿.client-buffet-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: rgb(4 8 12 / 62%);
+  padding: 1.5rem;
+  backdrop-filter: blur(7px);
+  animation: client-confirmation-backdrop-in 200ms ease-out both;
+}
+
+.client-buffet-modal {
+  width: min(100%, 28rem);
+  border: 1px solid var(--color-border);
+  border-radius: 0.8rem;
+  background: var(--color-surface-raised);
+  padding: 1rem;
+  box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 45%);
+  transform-origin: center bottom;
+  animation: client-confirmation-modal-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.client-buffet-modal-backdrop.is-closing {
+  pointer-events: none;
+  animation: client-confirmation-backdrop-out 200ms ease-in both;
+}
+
+.client-buffet-modal-backdrop.is-closing .client-buffet-modal {
+  animation: client-confirmation-modal-out 200ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+@keyframes client-confirmation-backdrop-in {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(7px);
+  }
+}
+
+@keyframes client-confirmation-backdrop-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+}
+
+@keyframes client-confirmation-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.8rem) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes client-confirmation-modal-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(0.65rem) scale(0.98);
+  }
+}
+
+.client-buffet-modal h2 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.client-buffet-modal p {
+  margin: 0.55rem 0 0;
+  color: var(--color-content-muted);
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
+.client-buffet-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  margin-top: 1.4rem;
+}
+
+.client-buffet-modal-actions button {
+  min-width: 5.5rem;
+  min-height: 2.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-primary);
+  padding: 0.55rem 1rem;
+  color: white;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.client-buffet-modal-actions button.is-secondary {
+  background: transparent;
+  color: var(--color-content-muted);
+}
+
+.client-buffet-modal-actions button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}

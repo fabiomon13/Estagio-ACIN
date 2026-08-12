@@ -29,7 +29,7 @@ def get_current_staff(request: Request, db: Session = Depends(get_db)) -> Staff:
         raise InvalidSessionError()
 
     staff = db.get(Staff, staff_id)
-    if staff is None or not staff.is_active:
+    if staff is None:
         raise InvalidSessionError()
 
     return staff
@@ -75,6 +75,6 @@ async def authenticate_staff_websocket(websocket) -> Staff | None:
     if staff_id is None:
         return None
     staff = await run_in_threadpool(_load_staff_by_id, staff_id)  # sync DB call, off the event loop
-    if staff is None or not staff.is_active:
+    if staff is None:
         return None
     return staff

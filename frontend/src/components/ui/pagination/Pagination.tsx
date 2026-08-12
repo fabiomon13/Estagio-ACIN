@@ -12,7 +12,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
         onClick={() => onPageChange(currentPage - 1)}
         disabled={isFirstPage}
         aria-label="Página anterior"
-        className="rounded-full bg-primary p-2 text-content hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:bg-surface-raised"
+        className="rounded-full bg-primary p-2 text-content hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:bg-surface-raised cursor-pointer "
       >
         <ChevronIcon className="rotate-90" size={20} />
       </button>
@@ -26,7 +26,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
         onClick={() => onPageChange(currentPage + 1)}
         disabled={isLastPage}
         aria-label="Página seguinte"
-        className="rounded-full bg-primary p-2 text-content hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:bg-surface-raised"
+        className="rounded-full bg-primary p-2 text-content hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:bg-surface-raised cursor-pointer"
       >
         <span className="rotate-180">
           <ChevronIcon className="rotate-270" size={20} />

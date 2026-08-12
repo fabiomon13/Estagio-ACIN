@@ -13,6 +13,7 @@ export type KitchenOrderItem = {
   quantity: number;
   notes: string | null;
   tags: string[];
+  matched_allergens: string[]; // subset of `tags` the ordering guest actually declared
   station_id: number;
   station: string;
   status: KitchenItemStatus;

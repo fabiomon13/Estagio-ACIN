@@ -1,35 +1,14 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { ApiError, apiFetch } from '../../../services/api/client';
-
-export type StaffRole = 'admin' | 'waiter' | 'chef';
-
-export type AuthStaff = {
-  id: number;
-  name: string;
-  email: string;
-  role: StaffRole;
-};
-
-export const ROLE_HOME_ROUTE: Record<StaffRole, string> = {
-  admin: '/admin',
-  waiter: '/staff',
-  chef: '/kitchen',
-};
-
-type AuthContextValue = {
-  staff: AuthStaff | null;
-  isLoading: boolean;
-  connectionError: boolean;
-  retryConnection: () => void;
-  login: (email: string, password: string) => Promise<AuthStaff>;
-  logout: () => Promise<void>;
-};
-
-const AuthContext = createContext<AuthContextValue | null>(null);
+import { AuthContext } from './AuthContext';
+import type { AuthStaff } from './AuthContext';
 
 // Provides authentication state and actions to the entire application
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  const isClientRoute = pathname.startsWith('/table/');
   const [staff, setStaff] = useState<AuthStaff | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [connectionError, setConnectionError] = useState(false);
@@ -40,6 +19,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // it must not be treated as a logout, or a network blip on page load would
   // kick out an otherwise still-valid session.
   const checkSession = useCallback(() => {
+    if (isClientRoute) {
+      setIsLoading(false);
+      setConnectionError(false);
+      return;
+    }
+
     setIsLoading(true);
     apiFetch<AuthStaff>('/auth/me')
       .then((result) => {
@@ -55,11 +40,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       })
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [isClientRoute]);
 
   // Checks whether the user already has a valid session when the app loads
   useEffect(() => {
-    checkSession();
+    void Promise.resolve().then(checkSession);
   }, [checkSession]);
 
   // Authenticates the user and stores the returned staff data
@@ -79,21 +64,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStaff(null);
   };
 
+  // Toggles the current staff member's own shift status.
+  const updateShiftStatus = async (isActive: boolean): Promise<void> => {
+    const result = await apiFetch<AuthStaff>('/auth/me/shift', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_active: isActive }),
+    });
+    setStaff(result);
+  };
+
   return (
     <AuthContext.Provider
-      value={{ staff, isLoading, connectionError, retryConnection: checkSession, login, logout }}
+      value={{
+        staff,
+        isLoading,
+        connectionError,
+        retryConnection: checkSession,
+        login,
+        logout,
+        updateShiftStatus,
+      }}
     >
       {children}
     </AuthContext.Provider>
   );
-}
-
-// Returns the current authentication state and actions
-// Must be used inside AuthProvider
-export function useAuth(): AuthContextValue {
-  const context = useContext(AuthContext);
-  if (context === null) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 }

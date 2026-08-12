@@ -9,8 +9,8 @@ import type {
 } from '../types/kitchen.types';
 
 // Gets all active kitchen tickets.
-export function getTickets(): Promise<KitchenTicket[]> {
-  return apiFetch<KitchenTicket[]>('/kitchen/tickets');
+export function getTickets(signal?: AbortSignal): Promise<KitchenTicket[]> {
+  return apiFetch<KitchenTicket[]>('/kitchen/tickets', { signal });
 }
 
 // Updates the status of an order item.

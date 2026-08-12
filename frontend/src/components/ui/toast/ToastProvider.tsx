@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { ToastContext } from './ToastContext';
 import type { ToastData, ToastOptions } from './Toast.types';
 import Toast from './Toast';
+import { createUuid } from '../../../utils/createUuid';
 
 const DEFAULT_DURATION_MS = 4000;
 
@@ -21,7 +22,7 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
 
   const showToast = useCallback(
     (options: ToastOptions) => {
-      const id = crypto.randomUUID();
+      const id = createUuid();
       const duration = options.duration ?? DEFAULT_DURATION_MS;
 
       setToasts((current) => [...current, { ...options, id, closing: false }]);

@@ -1,0 +1,17 @@
+# Use LF for text files across Windows, macOS, Linux, and CI
+* text=auto eol=lf
+
+# Keep Windows command scripts using CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Treat binary assets as binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
