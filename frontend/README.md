@@ -16,24 +16,25 @@ Frontend for **Scan & Serve**, a group internship project. Web interface to mana
 ## Requirements
 
 - Node 24 (see `../mise.toml`; installed automatically if you use [mise](https://mise.jdx.dev/))
-- Yarn
+- npm (bundled with Node)
 
 ## Setup
 
 ```bash
-yarn install
+npm install
 ```
 
 ## Available scripts
 
-| Command             | Description                                      |
-| ------------------- | ------------------------------------------------ |
-| `yarn dev`          | Starts the dev server with HMR                   |
-| `yarn build`        | Type-checks (`tsc -b`) and builds for production |
-| `yarn preview`      | Serves the production build locally              |
-| `yarn lint`         | Runs ESLint across the project                   |
-| `yarn format`       | Formats the project with Prettier                |
-| `yarn format:check` | Checks formatting without writing changes        |
+| Command                | Description                                      |
+| ---------------------- | ------------------------------------------------ |
+| `npm run dev`          | Starts the dev server with HMR                   |
+| `npm run build`        | Type-checks (`tsc -b`) and builds for production |
+| `npm run preview`      | Serves the production build locally              |
+| `npm run lint`         | Runs ESLint across the project                   |
+| `npm run format`       | Formats the project with Prettier                |
+| `npm run format:check` | Checks formatting without writing changes        |
+| `npm run test`         | Runs the test suite (Vitest)                     |
 
 The app runs at `http://localhost:5173`.
 

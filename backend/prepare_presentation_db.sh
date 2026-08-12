@@ -51,5 +51,5 @@ fi
 
 echo
 echo "Falta um passo manual no frontend:"
-echo "  cd ../frontend && yarn dev:presentation"
-echo "(yarn dev normal deixa os tempos de warning/urgent em 10/20 min, demasiado lento para a demo)"
+echo "  cd ../frontend && npm run dev:presentation"
+echo "(npm run dev normal deixa os tempos de warning/urgent em 10/20 min, demasiado lento para a demo)"
