@@ -28,13 +28,15 @@ describe('StaffPaymentModal', () => {
   it('renders the bill and calculates waste and tip totals', () => {
     render(<StaffPaymentModal bill={bill} tableNumber={3} onClose={vi.fn()} onConfirm={vi.fn()} />);
 
-    expect(screen.getByText(/Table 03/)).toBeTruthy();
+    expect(screen.getByText(/Mesa 03/)).toBeTruthy();
     expect(screen.getByText('Guest 1')).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText(/Waste boxes/), { target: { value: '2' } });
-    fireEvent.change(screen.getByLabelText(/Tip amount/), { target: { value: '3.5' } });
+    fireEvent.change(screen.getByLabelText(/Caixas de desperdício/), {
+      target: { value: '2' },
+    });
+    fireEvent.change(screen.getByLabelText(/Gorjeta/), { target: { value: '3.5' } });
 
-    expect(screen.getByText('$40.50')).toBeTruthy();
+    expect(screen.getByText('40,50\u00a0€')).toBeTruthy();
   });
 
   it('submits the selected method and normalized amounts', async () => {
@@ -44,9 +46,11 @@ describe('StaffPaymentModal', () => {
     );
 
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'card' } });
-    fireEvent.change(screen.getByLabelText(/Waste boxes/), { target: { value: '2' } });
-    fireEvent.change(screen.getByLabelText(/Tip amount/), { target: { value: '3.5' } });
-    fireEvent.click(screen.getByRole('button', { name: /Confirm payment/ }));
+    fireEvent.change(screen.getByLabelText(/Caixas de desperdício/), {
+      target: { value: '2' },
+    });
+    fireEvent.change(screen.getByLabelText(/Gorjeta/), { target: { value: '3.5' } });
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar pagamento/ }));
 
     await waitFor(() => expect(onConfirm).toHaveBeenCalledWith('card', 3.5, 2));
   });
@@ -57,13 +61,13 @@ describe('StaffPaymentModal', () => {
       <StaffPaymentModal bill={bill} tableNumber={3} onClose={vi.fn()} onConfirm={onConfirm} />,
     );
 
-    const button = screen.getByRole('button', { name: /Confirm payment/ });
+    const button = screen.getByRole('button', { name: /Confirmar pagamento/ });
     fireEvent.click(button);
     fireEvent.click(button);
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
     expect(
-      (screen.getByRole('button', { name: /Saving payment/ }) as HTMLButtonElement).disabled,
+      (screen.getByRole('button', { name: /A guardar pagamento/ }) as HTMLButtonElement).disabled,
     ).toBe(true);
   });
 
@@ -73,9 +77,11 @@ describe('StaffPaymentModal', () => {
       <StaffPaymentModal bill={bill} tableNumber={3} onClose={vi.fn()} onConfirm={onConfirm} />,
     );
 
-    fireEvent.change(screen.getByLabelText(/Waste boxes/), { target: { value: '-2' } });
-    fireEvent.change(screen.getByLabelText(/Tip amount/), { target: { value: '-3' } });
-    fireEvent.click(screen.getByRole('button', { name: /Confirm payment/ }));
+    fireEvent.change(screen.getByLabelText(/Caixas de desperdício/), {
+      target: { value: '-2' },
+    });
+    fireEvent.change(screen.getByLabelText(/Gorjeta/), { target: { value: '-3' } });
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar pagamento/ }));
 
     await waitFor(() => expect(onConfirm).toHaveBeenCalledWith('cash', 0, 0));
   });

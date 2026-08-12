@@ -26,6 +26,7 @@ import { StaffPaymentModal } from '../components/StaffPaymentModal';
 import { StaffTableDetailsModal } from '../components/StaffTableDetailsModal';
 
 import Button from '../../../components/ui/button/Button';
+import { formatPrice } from '../../client/utils/formatPrice';
 
 import '../styles/staff-page.css';
 
@@ -160,6 +161,9 @@ export function StaffPage() {
     ? tablesView.filter((table) => table.waiter_id === staff?.id)
     : tablesView;
 
+  const canManageTable = (table: StaffDashboardTable) =>
+    isAdmin || table.waiter_id === null || table.waiter_id === staff?.id;
+
   const setKitchenOpenState = (isOpen: boolean) => {
     setKitchenOpen(isOpen);
     setSidebarWidth(isOpen ? OPEN_SIDEBAR_WIDTH : CLOSED_SIDEBAR_WIDTH);
@@ -240,7 +244,7 @@ export function StaffPage() {
     } catch {
       showToast({
         variant: 'danger',
-        title: 'Unable to load table details',
+        title: 'Não foi possível carregar os detalhes da mesa',
       });
     }
   };
@@ -257,7 +261,7 @@ export function StaffPage() {
     } catch {
       showToast({
         variant: 'danger',
-        title: 'Unable to load the table bill',
+        title: 'Não foi possível carregar a conta da mesa',
       });
     }
   };
@@ -280,7 +284,7 @@ export function StaffPage() {
 
       showToast({
         variant: 'success',
-        title: `Pagamento de $${payment.amount_paid} registado`,
+        title: `Pagamento de ${formatPrice(payment.amount_paid)} registado`,
       });
 
       setPaymentDialog(null);
@@ -321,7 +325,7 @@ export function StaffPage() {
   return (
     <div className="staff-page min-h-screen bg-background p-5 text-content xl:grid xl:h-dvh xl:min-h-0 xl:grid-rows-[auto_minmax(0,1fr)] xl:overflow-hidden">
       <div className="staff-page__portrait-message">
-        <p>Rotate the tablet to landscape mode to use the staff dashboard.</p>
+        <p>Rode o tablet para o modo horizontal para utilizar o painel de empregados.</p>
       </div>
       <StaffHeader
         staffName={staff?.name}
@@ -388,6 +392,7 @@ export function StaffPage() {
                   <StaffTableCard
                     key={table.table_number}
                     table={table}
+                    canManage={canManageTable(table)}
                     hasUrgentAssistance={hasUrgentAssistance}
                     assistanceRequest={assistanceRequest}
                     paymentRequest={paymentRequest}
