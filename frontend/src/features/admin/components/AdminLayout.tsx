@@ -1,42 +1,33 @@
 import { useCallback, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  BillFilledIcon,
-  BillIcon,
   HistoryFilledIcon,
   HistoryIcon,
-  SettingsFilledIcon,
-  SettingsIcon,
-} from '../../../../components/icons';
-import { useAuth } from '../../../auth/hooks/AuthContext';
-import { StaffProfileModal } from '../../../auth/components/StaffProfileModal';
-import SideBar from '../../../../components/layout/side-bar/SideBar';
+  UsersFilledIcon,
+  UsersIcon,
+} from '../../../components/icons';
+import SideBar from '../../../components/layout/side-bar/SideBar';
+import { useAuth } from '../../auth/hooks/AuthContext';
+import { StaffProfileModal } from '../../auth/components/StaffProfileModal';
 
 const TABS = [
   {
-    id: 'orders',
-    path: '/kitchen',
-    label: 'Pedidos',
-    icon: <BillIcon />,
-    activeIcon: <BillFilledIcon />,
+    id: 'staff',
+    path: '/admin',
+    label: 'Criar Staff',
+    icon: <UsersIcon />,
+    activeIcon: <UsersFilledIcon />,
   },
   {
-    id: 'history',
-    path: '/kitchen/historial',
-    label: 'Historial',
+    id: 'payments',
+    path: '/admin/pagamentos',
+    label: 'Histórico',
     icon: <HistoryIcon />,
     activeIcon: <HistoryFilledIcon />,
   },
-  {
-    id: 'settings',
-    path: '/kitchen/configuracao',
-    label: 'Configuração',
-    icon: <SettingsIcon />,
-    activeIcon: <SettingsFilledIcon />,
-  },
 ] as const;
 
-export function KitchenLayout() {
+export function AdminLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const { staff } = useAuth();
@@ -62,13 +53,13 @@ export function KitchenLayout() {
         onToggle={() => setIsSidebarOpen((prev) => !prev)}
         profile={{
           name: staff?.name ?? '',
-          role: staff?.role ?? 'chef',
+          role: staff?.role ?? 'admin',
           profileImageUrl: staff?.photo_url ?? undefined,
           onClick: () => setIsProfileModalOpen(true),
         }}
       />
 
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto pt-14 md:pt-0">
         <Outlet />
       </main>
 

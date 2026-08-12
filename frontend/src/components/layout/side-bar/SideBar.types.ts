@@ -1,4 +1,4 @@
-import type { ProfileMenuTriggerProps } from '../../../../../components/ui/profile-menu-trigger/ProfileMenuTrigger.types';
+import type { ProfileMenuTriggerProps } from '../../ui/profile-menu-trigger/ProfileMenuTrigger.types';
 
 type SideBarTabs = {
   id: string;
@@ -8,7 +8,7 @@ type SideBarTabs = {
   onClick: () => void;
 };
 
-export type KitchenSideBarProps = {
+export type SideBarProps = {
   tabs: SideBarTabs[];
   activeTabId: string;
   isOpen: boolean;

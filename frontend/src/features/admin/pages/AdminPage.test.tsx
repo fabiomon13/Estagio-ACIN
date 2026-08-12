@@ -1,5 +1,4 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError, apiFetch } from '../../../services/api/client';
@@ -7,11 +6,7 @@ import { getAdminCreateStaffError } from '../utils/adminErrors';
 import { AdminPage } from './AdminPage';
 
 function renderAdminPage() {
-  return render(
-    <MemoryRouter>
-      <AdminPage />
-    </MemoryRouter>,
-  );
+  return render(<AdminPage />);
 }
 
 vi.mock('../../../services/api/client', async () => {
@@ -26,22 +21,6 @@ const apiFetchMock = vi.mocked(apiFetch);
 const showToastMock = vi.fn();
 vi.mock('../../../components/ui/toast/useToast', () => ({
   useToast: () => ({ showToast: showToastMock }),
-}));
-
-vi.mock('../../auth/hooks/AuthContext', () => ({
-  useAuth: () => ({
-    staff: {
-      id: 1,
-      name: 'Dev Admin',
-      email: 'admin@scanandserve.dev',
-      role: 'admin',
-      photo_url: null,
-      is_active: true,
-    },
-    logout: vi.fn(),
-    updateShiftStatus: vi.fn(),
-  }),
-  ROLE_HOME_ROUTE: { admin: '/admin', waiter: '/staff', chef: '/kitchen' },
 }));
 
 function fillForm(role: 'Waiter' | 'Chef' | 'Admin' = 'Waiter') {

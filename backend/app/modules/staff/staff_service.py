@@ -1,5 +1,5 @@
 from fastapi import HTTPException, status
-from sqlalchemy import case, func
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session, joinedload   
 from datetime import datetime, timedelta, timezone
 
@@ -30,6 +30,9 @@ from app.modules.staff.staff_contract import (
     StaffPreparingTable,
     StaffPaymentCreate,
     StaffPaymentResponse,
+    StaffPaymentHistoryFilters,
+    StaffPaymentHistoryItemOut,
+    StaffPaymentHistoryListOut,
     StaffSessionBillGuest,
     StaffSessionBillResponse,
 )
@@ -1005,3 +1008,56 @@ def register_payment_and_close_session(
         waste_count=payment.waste_count,
         paid_at=payment.paid_at,
     )
+
+
+def get_payment_history(
+    db: Session,
+    filters: StaffPaymentHistoryFilters,
+) -> StaffPaymentHistoryListOut:
+    """
+    Admin-only. Every registered payment, most recent first -- a session
+    only ever gets a Payment row via register_payment_and_close_session(),
+    so this is implicitly "closed tables that were actually paid", never
+    a table closed via deactivate_session() with no payment.
+    """
+    query = (
+        db.query(Payment)
+        .join(DiningSession, Payment.session_id == DiningSession.id)
+        .join(RestaurantTable, DiningSession.table_id == RestaurantTable.id)
+        .options(
+            joinedload(Payment.dining_session).joinedload(DiningSession.restaurant_table),
+            joinedload(Payment.dining_session).joinedload(DiningSession.waiter),
+        )
+    )
+
+    if filters.table_number is not None:
+        query = query.filter(RestaurantTable.table_number == filters.table_number)
+    if filters.method is not None:
+        query = query.filter(Payment.method == filters.method.strip().lower())
+
+    total_count = db.scalar(select(func.count()).select_from(query.subquery())) or 0
+
+    payments = (
+        query.order_by(Payment.paid_at.desc(), Payment.id.desc())
+        .limit(filters.limit)
+        .offset(filters.offset)
+        .all()
+    )
+
+    items = [
+        StaffPaymentHistoryItemOut(
+            payment_id=payment.id,
+            session_id=payment.session_id,
+            table_number=payment.dining_session.restaurant_table.table_number,
+            guest_count=payment.dining_session.num_clients,
+            waiter_name=payment.dining_session.waiter.name if payment.dining_session.waiter else None,
+            amount_paid=Decimal(payment.amount_paid),
+            tip_amount=Decimal(payment.tip_amount),
+            method=payment.method,
+            waste_count=payment.waste_count,
+            paid_at=payment.paid_at,
+        )
+        for payment in payments
+    ]
+
+    return StaffPaymentHistoryListOut(items=items, total_count=total_count)

@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -5,6 +7,8 @@ from app.db.dependencies import get_db
 from app.modules.staff.staff_contract import (
     StaffDashboard,
     StaffPaymentCreate,
+    StaffPaymentHistoryFilters,
+    StaffPaymentHistoryListOut,
     StaffPaymentResponse,
     StaffSessionBillResponse,
 )
@@ -175,3 +179,19 @@ def get_session_bill(
         session_id,
         current_staff,
     )
+
+
+StaffPaymentHistoryQuery = Annotated[StaffPaymentHistoryFilters, Depends()]
+
+
+@router.get(
+    "/payments",
+    response_model=StaffPaymentHistoryListOut,
+    tags=["Staff - Payments"],
+    dependencies=[Depends(require_role())],
+)
+def get_payment_history(
+    filters: StaffPaymentHistoryQuery,
+    db: Session = Depends(get_db),
+) -> StaffPaymentHistoryListOut:
+    return staff_service.get_payment_history(db, filters)

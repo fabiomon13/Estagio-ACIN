@@ -24,6 +24,7 @@ from app.db.seeds.order_history import seed_order_history
 from app.db.seeds.order_item_statuses import seed_order_item_statuses
 from app.db.seeds.order_items import seed_order_items
 from app.db.seeds.orders import seed_orders
+from app.db.seeds.payments import seed_payments
 from app.db.seeds.restaurant_tables import seed_restaurant_table
 from app.db.seeds.service_request_statuses import seed_service_request_statuses
 from app.db.seeds.service_request_types import seed_service_request_types
@@ -50,6 +51,7 @@ CATALOG_STEPS = [
     ("service request statuses", seed_service_request_statuses),
     ("service request types", seed_service_request_types),
     ("order history (closed rounds, for Kitchen History)", seed_order_history),
+    ("payments (for Admin Payment History)", seed_payments),
 ]
 
 DEMO_STEPS = [

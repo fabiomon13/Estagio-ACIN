@@ -118,3 +118,28 @@ class StaffDashboard(BaseModel):
     ready_to_serve: list[StaffReadyTable]
     requests: list[StaffOpenRequest]
     preparing_orders: list[StaffPreparingTable]
+
+
+class StaffPaymentHistoryFilters(BaseModel):
+    table_number: int | None = None
+    method: str | None = None
+    limit: int = Field(default=50, ge=1, le=100)
+    offset: int = Field(default=0, ge=0)
+
+
+class StaffPaymentHistoryItemOut(BaseModel):
+    payment_id: int
+    session_id: int
+    table_number: int
+    guest_count: int
+    waiter_name: str | None
+    amount_paid: Decimal
+    tip_amount: Decimal
+    method: str
+    waste_count: int
+    paid_at: datetime
+
+
+class StaffPaymentHistoryListOut(BaseModel):
+    items: list[StaffPaymentHistoryItemOut]
+    total_count: int

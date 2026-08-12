@@ -15,5 +15,7 @@ export { default as SettingsIcon } from './SettingsIcon';
 export { default as SettingsFilledIcon } from './SettingsFilledIcon';
 export { default as PlayIcon } from './PlayIcon';
 export { default as WarningFilledIcon } from './WarningFilledIcon';
+export { default as UsersIcon } from './Users';
+export { default as UsersFilledIcon } from './UsersFilled';
 
 export type { IconProps } from './Icon.types';

@@ -4,8 +4,18 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from '../features/auth/hooks/useAuth';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 
+const AdminLayout = lazy(() =>
+  import('../features/admin/components/AdminLayout').then(({ AdminLayout }) => ({
+    default: AdminLayout,
+  })),
+);
 const AdminPage = lazy(() =>
   import('../features/admin/pages/AdminPage').then(({ AdminPage }) => ({ default: AdminPage })),
+);
+const AdminPaymentHistoryPage = lazy(() =>
+  import('../features/admin/pages/AdminPaymentHistoryPage').then(({ AdminPaymentHistoryPage }) => ({
+    default: AdminPaymentHistoryPage,
+  })),
 );
 const ClientPage = lazy(() =>
   import('../features/client/pages/ClientPage').then(({ ClientPage }) => ({ default: ClientPage })),
@@ -89,10 +99,13 @@ export function AppRouter() {
               path="/admin"
               element={
                 <ProtectedRoute roles={['admin']}>
-                  <AdminPage />
+                  <AdminLayout />
                 </ProtectedRoute>
               }
-            />
+            >
+              <Route index element={<AdminPage />} />
+              <Route path="pagamentos" element={<AdminPaymentHistoryPage />} />
+            </Route>
 
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
