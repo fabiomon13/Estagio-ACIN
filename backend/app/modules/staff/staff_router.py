@@ -11,6 +11,7 @@ from app.modules.staff.staff_contract import (
     StaffPaymentHistoryListOut,
     StaffPaymentResponse,
     StaffSessionBillResponse,
+    StaffSessionHistoryListOut,
 )
 from app.modules.staff import staff_service
 
@@ -129,20 +130,24 @@ def get_staff_request(
     return {"success": True, "request": item}
 
 
-@router.get("/sessions", tags=["Staff - Table management"], dependencies=[Depends(require_role(StaffRoleEnum.WAITER))])
+@router.get(
+    "/sessions",
+    response_model=StaffSessionHistoryListOut,
+    tags=["Staff - Table management"],
+    dependencies=[Depends(require_role(StaffRoleEnum.WAITER))],
+)
 def list_staff_sessions(
     db: Session = Depends(get_db),
     limit: int = 50,
     offset: int = 0,
     only_active: bool = True,
-):
-    items = staff_service.list_staff_sessions(
+) -> StaffSessionHistoryListOut:
+    return staff_service.list_staff_sessions(
         db=db,
         limit=limit,
         offset=offset,
         only_active=only_active,
     )
-    return {"success": True, "count": len(items), "items": items}
 
 @router.post(
     "/sessions/{session_id}/payment",

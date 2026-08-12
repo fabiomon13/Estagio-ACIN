@@ -17,6 +17,11 @@ const AdminPaymentHistoryPage = lazy(() =>
     default: AdminPaymentHistoryPage,
   })),
 );
+const AdminSessionHistoryPage = lazy(() =>
+  import('../features/admin/pages/AdminSessionHistoryPage').then(({ AdminSessionHistoryPage }) => ({
+    default: AdminSessionHistoryPage,
+  })),
+);
 const ClientPage = lazy(() =>
   import('../features/client/pages/ClientPage').then(({ ClientPage }) => ({ default: ClientPage })),
 );
@@ -104,6 +109,7 @@ export function AppRouter() {
               }
             >
               <Route index element={<AdminPage />} />
+              <Route path="mesas" element={<AdminSessionHistoryPage />} />
               <Route path="pagamentos" element={<AdminPaymentHistoryPage />} />
             </Route>
 

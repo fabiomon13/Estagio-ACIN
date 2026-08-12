@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
+  BillFilledIcon,
+  BillIcon,
   HistoryFilledIcon,
   HistoryIcon,
   UsersFilledIcon,
@@ -17,6 +19,13 @@ const TABS = [
     label: 'Criar Staff',
     icon: <UsersIcon />,
     activeIcon: <UsersFilledIcon />,
+  },
+  {
+    id: 'sessions',
+    path: '/admin/mesas',
+    label: 'Mesas',
+    icon: <BillIcon />,
+    activeIcon: <BillFilledIcon />,
   },
   {
     id: 'payments',

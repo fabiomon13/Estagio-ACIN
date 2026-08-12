@@ -143,3 +143,22 @@ class StaffPaymentHistoryItemOut(BaseModel):
 class StaffPaymentHistoryListOut(BaseModel):
     items: list[StaffPaymentHistoryItemOut]
     total_count: int
+
+
+class StaffSessionHistoryItemOut(BaseModel):
+    id: int
+    table_number: int | None
+    is_active: bool
+    is_approved: bool
+    guests_count: int
+    waiter_name: str | None
+    start_time: datetime
+    end_time: datetime | None
+    has_payment: bool
+    payment_total: Decimal | None
+    owed_total: Decimal | None
+
+
+class StaffSessionHistoryListOut(BaseModel):
+    items: list[StaffSessionHistoryItemOut]
+    total_count: int

@@ -35,6 +35,8 @@ from app.modules.staff.staff_contract import (
     StaffPaymentHistoryListOut,
     StaffSessionBillGuest,
     StaffSessionBillResponse,
+    StaffSessionHistoryItemOut,
+    StaffSessionHistoryListOut,
 )
 from app.models.service_request_type import ServiceRequestType
 from app.models.service_request_status import ServiceRequestStatus
@@ -59,6 +61,7 @@ from decimal import Decimal
 from app.models.payment import Payment
 from app.modules.client.services.billing import (
     ZERO_MONEY,
+    calculate_buffet_total,
     calculate_extras_total,
     calculate_waste_total,
 )
@@ -706,27 +709,56 @@ def list_staff_sessions(
         limit: int = 50,
         offset: int = 0,
         only_active: bool = True,
-):
-    q = db.query(DiningSession).options(joinedload(DiningSession.restaurant_table))
+) -> StaffSessionHistoryListOut:
+    """List of table sessions -- with only_active=False, this is every table
+    that was ever closed, whether or not it went through the payment flow
+    (e.g. deactivate_session() closes a table with no Payment at all). Lets
+    admin confirm a closed session's history didn't just disappear."""
+    query = db.query(DiningSession)
 
     if only_active:
-        q = q.filter(DiningSession.is_active == True)
+        query = query.filter(DiningSession.is_active == True)
 
-    sessions = q.order_by(DiningSession.start_time.desc()).limit(limit).offset(offset).all()
+    total_count = query.count()
+
+    sessions = (
+        query.options(
+            joinedload(DiningSession.restaurant_table),
+            joinedload(DiningSession.waiter),
+            joinedload(DiningSession.payment),
+        )
+        .order_by(DiningSession.start_time.desc())
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
 
     items = []
     for s in sessions:
-        items.append({
-            "id": s.id,
-            "table_number": s.restaurant_table.table_number if s.restaurant_table else None,
-            "is_active": s.is_active,
-            "is_approved": s.is_approved,
-            "guests_count": s.num_clients,
-            "start_time": s.start_time,
-            "end_time": s.end_time
-        })
+        has_payment = s.payment is not None
+        owed_total = (
+            None
+            if has_payment
+            else calculate_buffet_total(db, s.id) + calculate_extras_total(db, s.id)
+        )
 
-    return items
+        items.append(
+            StaffSessionHistoryItemOut(
+                id=s.id,
+                table_number=s.restaurant_table.table_number if s.restaurant_table else None,
+                is_active=s.is_active,
+                is_approved=s.is_approved,
+                guests_count=s.num_clients,
+                waiter_name=s.waiter.name if s.waiter else None,
+                start_time=s.start_time,
+                end_time=s.end_time,
+                has_payment=has_payment,
+                payment_total=Decimal(s.payment.amount_paid) if s.payment else None,
+                owed_total=owed_total,
+            )
+        )
+
+    return StaffSessionHistoryListOut(items=items, total_count=total_count)
 
 def associate_staff_to_tables(db: Session) -> tuple[Staff, int]:
     """
