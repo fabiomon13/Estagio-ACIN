@@ -1,15 +1,13 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { AvatarIcon, EyeIcon, EyeOffIcon } from '../../../components/icons';
+import { EyeIcon, EyeOffIcon } from '../../../components/icons';
 import Button from '../../../components/ui/button/Button';
 import Input from '../../../components/ui/input/Input';
-import ProfileMenuTrigger from '../../../components/ui/profile-menu-trigger/ProfileMenuTrigger';
 import Radio from '../../../components/ui/radio/Radio';
 import { useToast } from '../../../components/ui/toast/useToast';
 import { apiFetch } from '../../../services/api/client';
-import { StaffProfileModal } from '../../auth/components/StaffProfileModal';
-import { useAuth } from '../../auth/hooks/AuthContext';
 import type { AuthStaff, StaffRole } from '../../auth/hooks/AuthContext';
+import { StaffListTable } from '../components/StaffListTable';
 import { getAdminCreateStaffError } from '../utils/adminErrors';
 
 const ROLE_OPTIONS: { value: StaffRole; label: string }[] = [
@@ -18,10 +16,12 @@ const ROLE_OPTIONS: { value: StaffRole; label: string }[] = [
   { value: 'admin', label: 'Admin' },
 ];
 
+type AdminPageView = 'create' | 'list';
+
 export function AdminPage() {
-  const { staff } = useAuth();
   const { showToast } = useToast();
 
+  const [view, setView] = useState<AdminPageView>('create');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,7 +29,6 @@ export function AdminPage() {
   const [role, setRole] = useState<StaffRole>('waiter');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -59,62 +58,29 @@ export function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background px-6 py-10 sm:px-8 lg:px-12">
-      <header className="flex flex-col gap-3 md:gap-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold tracking-widest text-primary uppercase">
-              Staff Portal
-            </p>
-            <h1 className="mt-2 text-3xl font-bold text-content sm:text-4xl">Admin</h1>
-          </div>
+    <div className="flex flex-col p-5">
+      <h1 className="text-content text-2xl">Gestão de staff</h1>
+      <p className="mt-1 pb-5 text-content-subtle">
+        Cria novas contas de staff ou consulta as contas já existentes.
+      </p>
 
-          {staff && (
-            <>
-              {/* Mobile: avatar-only, the full trigger doesn't fit next to the title */}
-              <button
-                type="button"
-                onClick={() => setIsProfileOpen(true)}
-                aria-label="Abrir perfil"
-                className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-surface-raised sm:hidden"
-              >
-                {staff.photo_url ? (
-                  <img
-                    src={staff.photo_url}
-                    alt={`Fotografia de ${staff.name}`}
-                    className="size-full rounded-full object-cover"
-                  />
-                ) : (
-                  <AvatarIcon size={22} className="text-content-muted" />
-                )}
-              </button>
+      <div className="mb-5 flex gap-2">
+        <Button
+          variant={view === 'create' ? 'primary' : 'outline'}
+          onClick={() => setView('create')}
+        >
+          Criar Staff
+        </Button>
+        <Button variant={view === 'list' ? 'primary' : 'outline'} onClick={() => setView('list')}>
+          Ver Staff
+        </Button>
+      </div>
 
-              <div className="hidden w-56 shrink-0 sm:block">
-                <ProfileMenuTrigger
-                  name={staff.name}
-                  role={staff.role}
-                  profileImageUrl={staff.photo_url ?? undefined}
-                  onClick={() => setIsProfileOpen(true)}
-                />
-              </div>
-            </>
-          )}
-        </div>
+      {view === 'list' && <StaffListTable />}
 
-        <p className="text-content-subtle text-md">
-          Gere os acessos da equipa e cria novas contas para os diferentes espaços da aplicação.
-        </p>
-        <div className="w-full h-0.5 bg-border rounded-full"></div>
-      </header>
-
-      <div className="flex flex-col justify-center items-center mt-6">
-        <div className="w-full max-w-xl rounded-xl border border-border bg-surface-raised p-5 sm:p-6 md:p-8">
-          <h2 className="text-lg font-semibold text-content">Criar conta de staff</h2>
-          <p className="mt-1 text-sm text-content-subtle">
-            Cria uma nova conta de staff com acesso à cozinha, ao serviço de mesas ou à
-            administração.
-          </p>
-          <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+      {view === 'create' && (
+        <div className="w-full max-w-xl rounded-xl border border-border bg-surface p-5 sm:p-6 md:p-8">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <Input
               label="Name"
               value={name}
@@ -186,9 +152,7 @@ export function AdminPage() {
             </Button>
           </form>
         </div>
-      </div>
-
-      <StaffProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+      )}
     </div>
   );
 }

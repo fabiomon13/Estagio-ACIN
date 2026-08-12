@@ -7,6 +7,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.guest import Guest
+from app.models.buffet import Buffet
 from app.models.buffet_item import BuffetItem
 from app.models.order import Order
 from app.models.order_item import OrderItem
@@ -20,6 +21,19 @@ EXCLUDED_ITEM_STATUSES = (
     "cancelled",
     "returned",
 )
+
+
+def calculate_buffet_total(
+    db: Session,
+    session_id: int,
+) -> Decimal:
+    buffet_value = db.scalar(
+        select(func.coalesce(func.sum(Buffet.price), 0))
+        .join(Guest, Guest.buffet_id == Buffet.id)
+        .where(Guest.session_id == session_id)
+    )
+
+    return Decimal(buffet_value or 0)
 
 
 def calculate_extras_total(

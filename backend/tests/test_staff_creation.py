@@ -71,3 +71,32 @@ def test_password_missing_digit_is_rejected(client, login_as, make_staff):
     login_as(make_staff("Admin"))
     response = client.post(CREATE_STAFF_URL, json=_payload(password="NoDigits!!"))
     assert response.status_code == 422
+
+
+def test_list_staff_requires_authentication(client):
+    response = client.get(CREATE_STAFF_URL)
+    assert response.status_code == 401
+
+
+def test_non_admin_is_forbidden_from_listing_staff(client, login_as, make_staff):
+    login_as(make_staff("Waiter"))
+    response = client.get(CREATE_STAFF_URL)
+    assert response.status_code == 403
+
+
+def test_admin_can_list_all_staff_accounts(client, login_as, make_staff):
+    admin = make_staff("Admin")
+    waiter = make_staff("Waiter")
+    login_as(admin)
+
+    response = client.get(CREATE_STAFF_URL)
+
+    assert response.status_code == 200
+    body = response.json()
+    ids = {item["id"] for item in body}
+    assert {admin.id, waiter.id}.issubset(ids)
+    listed_waiter = next(item for item in body if item["id"] == waiter.id)
+    assert listed_waiter["name"] == waiter.name
+    assert listed_waiter["email"] == waiter.email
+    assert listed_waiter["role"] == "waiter"
+    assert listed_waiter["is_active"] is True

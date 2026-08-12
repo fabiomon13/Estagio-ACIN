@@ -54,7 +54,7 @@ def test_waiter_and_admin_can_list_staff_sessions(
     login_as(make_staff(role_name))
     response = client.get(STAFF_SESSIONS_URL)
     assert response.status_code == 200
-    assert response.json() == {"success": True, "count": 0, "items": []}
+    assert response.json() == {"items": [], "total_count": 0}
 
 
 # Verifies the dashboard summary and visibility of inactive restaurant tables.

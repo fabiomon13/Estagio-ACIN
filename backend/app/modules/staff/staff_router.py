@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -5,8 +7,11 @@ from app.db.dependencies import get_db
 from app.modules.staff.staff_contract import (
     StaffDashboard,
     StaffPaymentCreate,
+    StaffPaymentHistoryFilters,
+    StaffPaymentHistoryListOut,
     StaffPaymentResponse,
     StaffSessionBillResponse,
+    StaffSessionHistoryListOut,
 )
 from app.modules.staff import staff_service
 
@@ -30,6 +35,16 @@ router = APIRouter(prefix="/staff")
 def create_staff(payload: CreateStaffRequest, db: Session = Depends(get_db)) -> StaffOut:
     staff = staff_service.create_staff(db, payload)
     return staff_to_out(staff)
+
+
+@router.get(
+    "",
+    response_model=list[StaffOut],
+    tags=["Staff - Management"],
+    dependencies=[Depends(require_role())],
+)
+def list_staff(db: Session = Depends(get_db)) -> list[StaffOut]:
+    return [staff_to_out(staff) for staff in staff_service.list_staff(db)]
 
 
 # Dashboard
@@ -125,20 +140,24 @@ def get_staff_request(
     return {"success": True, "request": item}
 
 
-@router.get("/sessions", tags=["Staff - Table management"], dependencies=[Depends(require_role(StaffRoleEnum.WAITER))])
+@router.get(
+    "/sessions",
+    response_model=StaffSessionHistoryListOut,
+    tags=["Staff - Table management"],
+    dependencies=[Depends(require_role(StaffRoleEnum.WAITER))],
+)
 def list_staff_sessions(
     db: Session = Depends(get_db),
     limit: int = 50,
     offset: int = 0,
     only_active: bool = True,
-):
-    items = staff_service.list_staff_sessions(
+) -> StaffSessionHistoryListOut:
+    return staff_service.list_staff_sessions(
         db=db,
         limit=limit,
         offset=offset,
         only_active=only_active,
     )
-    return {"success": True, "count": len(items), "items": items}
 
 @router.post(
     "/sessions/{session_id}/payment",
@@ -175,3 +194,19 @@ def get_session_bill(
         session_id,
         current_staff,
     )
+
+
+StaffPaymentHistoryQuery = Annotated[StaffPaymentHistoryFilters, Depends()]
+
+
+@router.get(
+    "/payments",
+    response_model=StaffPaymentHistoryListOut,
+    tags=["Staff - Payments"],
+    dependencies=[Depends(require_role())],
+)
+def get_payment_history(
+    filters: StaffPaymentHistoryQuery,
+    db: Session = Depends(get_db),
+) -> StaffPaymentHistoryListOut:
+    return staff_service.get_payment_history(db, filters)
