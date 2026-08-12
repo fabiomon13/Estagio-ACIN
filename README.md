@@ -28,11 +28,11 @@ The API is available at `http://localhost:8000`, with the main router mounted un
 
 ```bash
 cd frontend
-yarn install
-yarn dev
+npm install
+npm run dev
 ```
 
-The app is available at `http://localhost:5173`.
+The app is available at `http://localhost:5174`.
 
 ## Docs
 
