@@ -7,6 +7,7 @@ ClientEventType = Literal[
     "orders.changed",
     "service_requests.changed",
     "session.changed",
+    "payment.completed",
     "menu.changed",
 ]
 

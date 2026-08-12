@@ -7,7 +7,12 @@ export type ClientRealtimeEvent =
     }
   | {
       type:
-        'orders.changed' | 'service_requests.changed' | 'session.changed' | 'menu.changed' | 'pong';
+        | 'orders.changed'
+        | 'service_requests.changed'
+        | 'session.changed'
+        | 'payment.completed'
+        | 'menu.changed'
+        | 'pong';
     };
 
 // Builds the WebSocket URL for the client based on the provided table code and environment configuration
@@ -73,6 +78,7 @@ export function parseClientRealtimeEvent(rawMessage: string): ClientRealtimeEven
       case 'orders.changed':
       case 'service_requests.changed':
       case 'session.changed':
+      case 'payment.completed':
       case 'menu.changed':
       case 'pong':
         return {

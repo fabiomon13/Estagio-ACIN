@@ -6,7 +6,14 @@ export const CLIENT_VIEWS = ['menu', 'buffet', 'orders'] as const;
 
 export type ClientView = (typeof CLIENT_VIEWS)[number];
 
-export const CLIENT_SESSION_STATES = ['loading', 'setup', 'waiting', 'ready', 'error'] as const;
+export const CLIENT_SESSION_STATES = [
+  'loading',
+  'setup',
+  'waiting',
+  'ready',
+  'completed',
+  'error',
+] as const;
 
 export type ClientSessionState = (typeof CLIENT_SESSION_STATES)[number];
 

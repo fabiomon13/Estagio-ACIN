@@ -172,3 +172,74 @@ body:has(.client-shell) {
   min-width: 11rem;
   padding-inline: 1.75rem;
 }
+
+/* Final state shown after the waiter closes a paid table. */
+.client-thank-you-screen {
+  display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
+  place-items: center;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 38%, rgb(255 87 87 / 14%), transparent 15rem), #080b10;
+  padding: max(2rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right))
+    max(2rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left));
+  color: var(--color-content);
+  text-align: center;
+}
+
+.client-thank-you-content {
+  display: grid;
+  width: min(100%, 27rem);
+  justify-items: center;
+  gap: clamp(1.75rem, 5vh, 2.75rem);
+}
+
+.client-thank-you-logo {
+  width: min(13rem, 62vw);
+}
+
+.client-thank-you-icon {
+  display: grid;
+  width: 5.5rem;
+  height: 5.5rem;
+  place-items: center;
+  border: 1px solid rgb(255 87 87 / 35%);
+  border-radius: 50%;
+  background: rgb(255 87 87 / 10%);
+  color: var(--color-primary);
+  box-shadow: 0 0 3rem rgb(255 87 87 / 18%);
+}
+
+.client-thank-you-icon svg {
+  width: 2.75rem;
+}
+
+.client-thank-you-eyebrow {
+  margin: 0 0 0.65rem;
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.client-thank-you-content h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 8vw, 2.75rem);
+  line-height: 1.1;
+}
+
+.client-thank-you-content div > p:last-child {
+  max-width: 22rem;
+  margin: 1rem auto 0;
+  color: var(--color-content-muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.client-thank-you-farewell {
+  margin: 0;
+  color: var(--color-content-subtle);
+  font-size: 0.9rem;
+}

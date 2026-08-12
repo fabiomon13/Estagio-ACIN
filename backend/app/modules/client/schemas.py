@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -96,6 +97,7 @@ class SessionResponse(ResponseSchema):
             )
 
         return self
+
 
 # Schema for guest creation request
 # buffet_id: int (greater than 0) or None
@@ -429,3 +431,10 @@ class TipUpdate(RequestSchema):
         max_digits=10,
         decimal_places=2,
     )
+
+# Schema for client session state response
+# session: SessionResponse
+# status: "active", "completed" or "closed"
+class ClientSessionStateResponse(ResponseSchema):
+    session: SessionResponse
+    status: Literal["active", "completed", "closed"]

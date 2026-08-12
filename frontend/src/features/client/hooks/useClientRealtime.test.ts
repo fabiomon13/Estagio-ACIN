@@ -45,6 +45,7 @@ describe('useClientRealtime', () => {
     onOrdersChanged: vi.fn(),
     onServiceRequestsChanged: vi.fn(),
     onSessionChanged: vi.fn(),
+    onPaymentCompleted: vi.fn(),
     onMenuChanged: vi.fn(),
     onReconnect: vi.fn(),
   });
@@ -78,6 +79,13 @@ describe('useClientRealtime', () => {
       ),
     );
     await waitFor(() => expect(cb.onOrdersChanged).toHaveBeenCalledOnce());
+
+    act(() =>
+      socket.onmessage?.(
+        new MessageEvent('message', { data: JSON.stringify({ type: 'payment.completed' }) }),
+      ),
+    );
+    await waitFor(() => expect(cb.onPaymentCompleted).toHaveBeenCalledOnce());
   });
   it('agrupa eventos repetidos recebidos no mesmo ciclo', async () => {
     const cb = callbacks();
