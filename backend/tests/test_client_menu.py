@@ -2,8 +2,7 @@ from app.models.buffet_item import BuffetItem
 from app.models.tag import Tag
 from app.models.tag_item import TagItem
 
-# tests for the client menu endpoints, including filtering, pagination, and data integrity
-# Verifies that every public catalogue endpoint returns its reference data.
+# verifies that the client menu endpoints return the expected reference data for buffets, categories, and tags
 def test_catalogue_lists_reference_data(
     client, db_session, make_buffet, make_menu_item
 ):
@@ -27,8 +26,7 @@ def test_catalogue_lists_reference_data(
     assert [entry["id"] for entry in buffet_items] == [item.id]
     assert buffet_items[0]["tags"][0]["alias"] == tag.alias
 
-# tests for the client menu endpoints, including filtering, pagination, and data integrity
-# Verifies that menu search, filters, and pagination select the expected items.
+# verifies if the client menu endpoints correctly filter and paginate menu items based on search, category, availability, tag, and buffet ID
 def test_menu_filters_and_paginates(
     client, db_session, make_buffet, make_menu_item
 ):
@@ -67,14 +65,12 @@ def test_menu_filters_and_paginates(
     assert paged.json()["offset"] == 1
     assert len(paged.json()["items"]) == 1
 
-# tests for the client menu endpoints, including filtering, pagination, and data integrity
-# Verifies that missing menu items and buffets return a not-found response.
+# verifies that the client menu endpoints return 404 for non-existent menu items and buffet items
 def test_menu_item_and_buffet_not_found(client):
     assert client.get("/api/client/menu-items/999999").status_code == 404
     assert client.get("/api/client/buffets/999999/items").status_code == 404
 
-# tests for the client menu endpoints, including filtering, pagination, and data integrity
-# Verifies that invalid pagination and category filters are rejected.
+# verifies that the client menu endpoints return 422 for invalid query parameters for limit, offset, and category_id
 def test_menu_filter_validation(client):
     assert client.get("/api/client/menu-items", params={"limit": 0}).status_code == 422
     assert client.get("/api/client/menu-items", params={"offset": -1}).status_code == 422
