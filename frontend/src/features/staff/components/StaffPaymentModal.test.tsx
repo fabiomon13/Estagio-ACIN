@@ -36,7 +36,7 @@ describe('StaffPaymentModal', () => {
     });
     fireEvent.change(screen.getByLabelText(/Gorjeta/), { target: { value: '3.5' } });
 
-    expect(screen.getByText('40,50\u00a0€')).toBeTruthy();
+    expect(screen.getByText(/40,50\s*€/)).toBeTruthy();
   });
 
   it('submits the selected method and normalized amounts', async () => {
