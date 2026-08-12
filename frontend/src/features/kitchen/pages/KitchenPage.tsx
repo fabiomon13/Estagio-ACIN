@@ -14,26 +14,14 @@ import { useKitchenDragAndDrop } from '../hooks/useKitchenDragAndDrop';
 import { loadInteractionMode } from '../utils/interactionModePreferences';
 import KitchenColumn from '../components/kitchen-column/KitchenColumn';
 import KitchenClock from '../components/kitchen-clock/KitchenClock';
+import { StationFilter } from '../components/station-filter/StationFilter';
 import Loader from '../../../components/ui/loader/Loader';
 import SearchInput from '../../../components/ui/search-input/SearchInput';
-import Dropdown from '../../../components/ui/dropdown/Dropdown';
-import { getStationColor, STATION_NAMES } from '../../../utils/getStationColor';
-
-const ALL_STATIONS_VALUE = '';
-
-const stationOptions = [
-  { value: ALL_STATIONS_VALUE, label: 'Todas as estações' },
-  ...STATION_NAMES.map((station) => ({
-    value: station,
-    label: station,
-    leftContent: <span className={`size-2.5 rounded-full ${getStationColor(station)}`} />,
-  })),
-];
 
 export function KitchenPage() {
   const { tickets, isLoading, updateStatus, updateStatusAsync } = useKitchenTickets();
   const [search, setSearch] = useState('');
-  const [stationFilter, setStationFilter] = useState(ALL_STATIONS_VALUE);
+  const [stationFilter, setStationFilter] = useState<string[]>([]);
   // Read once per mount -- KitchenSettingsPage is a separate route/page, so
   // there's no live cross-tab sync need; revisiting Configuração and coming
   // back remounts this page anyway.
@@ -84,8 +72,8 @@ export function KitchenPage() {
 
   return (
     <div className="bg-background p-5 gap-8">
-      <header className="flex justify-between pb-10 items-center">
-        <div className="flex gap-4 w-[70%]">
+      <header className="flex flex-col gap-4 pb-10">
+        <div className="flex justify-between items-center">
           <div className="w-[40%]">
             <SearchInput
               placeholder="Procurar por messa ou item"
@@ -94,20 +82,18 @@ export function KitchenPage() {
               onClear={() => setSearch('')}
             />
           </div>
-          <div className="w-[25%]">
-            <Dropdown
-              value={stationFilter}
-              onChange={setStationFilter}
-              options={stationOptions}
-              placeholder="Todas as estações"
-            />
-          </div>
+          <KitchenClock />
         </div>
-        <KitchenClock />
+        <StationFilter selectedStations={stationFilter} onChange={setStationFilter} />
       </header>
 
       {interactionMode === 'drag' ? (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+          autoScroll={false}
+        >
           {board}
         </DndContext>
       ) : (

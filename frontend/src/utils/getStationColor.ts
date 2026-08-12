@@ -1,8 +1,8 @@
 const STATION_COLORS: Record<string, string> = {
   'Sushi Bar': 'bg-station-aqua',
-  'Hot / Wok': 'bg-station-orange',
+  'Hot/Wok': 'bg-station-orange',
   Fryer: 'bg-station-yellow',
-  'Cold / Pantry': 'bg-station-blue',
+  'Cold/Pantry': 'bg-station-blue',
   Bar: 'bg-station-magenta',
 };
 
