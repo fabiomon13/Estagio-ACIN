@@ -42,3 +42,14 @@ python -m app.db.seeds.seed_all --catalog-only
 
 echo
 echo "Pronto -- base de apresentação limpa e pronta."
+
+if [ -n "${SEED_STAFF_PASSWORD:-}" ]; then
+  echo "Password de staff semeada: a definida em SEED_STAFF_PASSWORD (.env.presentation)."
+else
+  echo "AVISO: SEED_STAFF_PASSWORD não está definida -- as contas ficaram com a password de dev (ChangeMe123!)."
+fi
+
+echo
+echo "Falta um passo manual no frontend:"
+echo "  cd ../frontend && yarn dev:presentation"
+echo "(yarn dev normal deixa os tempos de warning/urgent em 10/20 min, demasiado lento para a demo)"
