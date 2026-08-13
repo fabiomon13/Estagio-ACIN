@@ -1,10 +1,21 @@
+import { useEffect } from 'react';
 import LogoIcon from '../../../../components/icons/Logo';
 
 type ThankYouScreenProps = {
   tableNumber?: number;
+  onStartOver: () => void;
 };
 
-export function ThankYouScreen({ tableNumber }: ThankYouScreenProps) {
+// The guest walks away after paying -- nobody stays to tap a button, so the
+// table frees itself for the next guest on its own after a short read.
+const AUTO_RETURN_MS = 8_000;
+
+export function ThankYouScreen({ tableNumber, onStartOver }: ThankYouScreenProps) {
+  useEffect(() => {
+    const timer = window.setTimeout(onStartOver, AUTO_RETURN_MS);
+    return () => window.clearTimeout(timer);
+  }, [onStartOver]);
+
   return (
     <main className="client-thank-you-screen">
       <div className="client-thank-you-content">
