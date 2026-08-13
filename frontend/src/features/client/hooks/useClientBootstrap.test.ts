@@ -131,6 +131,19 @@ describe('useClientBootstrap', () => {
     await waitFor(() => expect(result.result.current.status).toBe('error'));
     expect(result.result.current.error).toBe('Falha controlada');
   });
+  it('limpa a sessão guardada ao detetar que já está concluída, para um simples reload não voltar a mostrá-la', async () => {
+    sessionStorage.setItem('client-session:mesa', '99');
+    mocks.session.mockRejectedValue(new ApiError(404, 'Não encontrada'));
+    mocks.sessionState.mockResolvedValue({
+      session: { id: 99 },
+      status: 'completed',
+    });
+
+    const result = setup();
+
+    await waitFor(() => expect(result.setSessionState).toHaveBeenCalledWith('completed'));
+    expect(sessionStorage.getItem('client-session:mesa')).toBeNull();
+  });
 });
 // frontend/src/features/client/hooks/useClientBootstrap.test.ts
 

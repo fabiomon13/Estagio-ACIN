@@ -21,6 +21,7 @@ import { useClientSwipe } from '../hooks/swipe/useClientSwipe';
 import { updateGuestAllergyPreferences, updateGuestBuffet } from '../services/guestApi';
 import { createSession, getSessionState } from '../services/menuApi';
 import { cancelOrderItem, createOrder } from '../services/orderApi';
+import { clearStoredSessionId } from '../utils/completedSessionStorage';
 import { getDeviceToken } from '../utils/deviceToken';
 import { ClientConfirmationModal } from './components/ClientConfirmationModal';
 import { ClientViewStage } from './components/ClientViewStage';
@@ -56,7 +57,13 @@ export function ClientPage() {
     onOrdersChanged: clientOrders.refetch,
     onServiceRequestsChanged: serviceRequests.refetch,
     onSessionChanged: reload,
-    onPaymentCompleted: () => session.setSessionState('completed'),
+    onPaymentCompleted: () => {
+      // Otherwise a later reload (the Thank You screen's own auto-return,
+      // or a manual refresh) still finds this session id in storage and
+      // re-detects "completed" all over again -- see completedSessionStorage.ts.
+      if (tableCode) clearStoredSessionId(tableCode);
+      session.setSessionState('completed');
+    },
     onMenuChanged: reload,
     onReconnect: () => {
       void serviceRequests.refetch();
@@ -94,6 +101,7 @@ export function ClientPage() {
         const currentSession = await getSessionState(tableCode, activeSessionId, getDeviceToken());
 
         if (isActive && currentSession.status === 'completed') {
+          clearStoredSessionId(tableCode);
           setClientSessionState('completed');
         }
       } catch {
@@ -438,7 +446,7 @@ export function ClientPage() {
   }
 
   if (session.sessionState === 'completed') {
-    return <ThankYouScreen tableNumber={session.table?.table_number} />;
+    return <ThankYouScreen tableNumber={session.table?.table_number} onStartOver={reload} />;
   }
 
   return (

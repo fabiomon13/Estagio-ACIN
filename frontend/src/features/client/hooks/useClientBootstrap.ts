@@ -30,6 +30,11 @@ import { getOrders, type ClientOrder } from '../services/orderApi';
 import { ApiError } from '../../../services/api/client';
 import { getDeviceToken } from '../utils/deviceToken';
 import { buildCategorySections, groupCategorySections } from '../utils/clientSections';
+import {
+  clearStoredSessionId,
+  getStoredSessionId,
+  setStoredSessionId,
+} from '../utils/completedSessionStorage';
 
 type Status = 'loading' | 'ready' | 'error';
 
@@ -136,8 +141,9 @@ export function useClientBootstrap({
         setGuestCount(Math.min(2, currentTable.max_capacity));
         try {
           const activeSession = await getActiveSession(tableCode, { signal: controller.signal });
+          if (!isActive) return;
           setSessionId(activeSession.id);
-          sessionStorage.setItem(`client-session:${tableCode}`, String(activeSession.id));
+          setStoredSessionId(tableCode, activeSession.id);
           if (!activeSession.is_approved || activeSession.waiter_id === null) {
             setSessionState('waiting');
             setStatus('ready');
@@ -147,9 +153,9 @@ export function useClientBootstrap({
           }
         } catch (requestError) {
           if (requestError instanceof ApiError && requestError.status === 404) {
-            const storedSessionId = Number(sessionStorage.getItem(`client-session:${tableCode}`));
+            const storedSessionId = getStoredSessionId(tableCode);
 
-            if (Number.isSafeInteger(storedSessionId) && storedSessionId > 0) {
+            if (storedSessionId !== null) {
               try {
                 const previousSession = await getSessionState(
                   tableCode,
@@ -157,17 +163,23 @@ export function useClientBootstrap({
                   getDeviceToken(),
                   { signal: controller.signal },
                 );
+                if (!isActive) return;
 
                 if (previousSession.status === 'completed') {
+                  // Clear it now, not only when the guest leaves the Thank You
+                  // screen -- otherwise a plain page reload keeps re-detecting
+                  // this same completed session forever, even after the table
+                  // is free for a new one.
+                  clearStoredSessionId(tableCode);
                   setSessionId(storedSessionId);
                   setSessionState('completed');
                   setStatus('ready');
                   return;
                 }
 
-                sessionStorage.removeItem(`client-session:${tableCode}`);
+                clearStoredSessionId(tableCode);
               } catch {
-                sessionStorage.removeItem(`client-session:${tableCode}`);
+                clearStoredSessionId(tableCode);
               }
             }
 
