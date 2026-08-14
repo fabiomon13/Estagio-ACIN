@@ -13,6 +13,14 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
+      // Menu item photos (MenuItem.photo_url) resolve to a root-relative
+      // "/static/..." path -- see toMediaUrl() in services/api/client.ts.
+      // Needs the same proxy as /api so it reaches the backend instead of
+      // falling through to this dev server's own SPA fallback.
+      '/static': {
+        target: process.env.VITE_PROXY_TARGET ?? 'http://localhost:8000',
+        changeOrigin: true,
+      },
     },
     port: 5174,
     strictPort: true,
