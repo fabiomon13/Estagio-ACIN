@@ -16,9 +16,11 @@ Set `DATABASE_URL` and the remaining secrets in `backend/.env`. With Docker
 Desktop running, start the frontend and backend from the repository root:
 
 ```bash
+$env:BACKEND_ENV_FILE="./backend/.env.presentation"
 docker compose down
 docker compose up --build -d
 docker run --rm cloudflare/cloudflared:latest tunnel --no-autoupdate --url http://host.docker.internal:5173
+npx qrcode "https://your-link.trycloudflare.com/client/table/TABLE_UUID" -o tableX-qr.png
 ```
 
 The frontend is available at `http://localhost:5173`, the API at
